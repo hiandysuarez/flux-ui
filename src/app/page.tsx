@@ -1,5 +1,5 @@
 // app/page.tsx
-import { fetchStatus, fetchLatestCycle } from "@/lib/api";
+import { fetchStatus, fetchLatestCycle } from "../lib/api";
 
 export default async function Dashboard() {
   const status = await fetchStatus();
