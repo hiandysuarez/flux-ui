@@ -1,33 +1,26 @@
-// lib/api.ts
-export const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, "") || "";
+// src/lib/api.ts
+type Json = Record<string, any>;
+
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE?.replace(/\/+$/, "") ||
+  "http://localhost:8000"; // fallback for local only
+
+async function getJSON<T = Json>(path: string): Promise<T> {
+  const url = `${API_BASE}${path}`;
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`GET ${url} -> ${res.status} ${text}`);
+    }
+  return (await res.json()) as T;
+}
 
 export async function fetchStatus() {
-  if (!API_BASE) throw new Error("NEXT_PUBLIC_API_BASE is not set");
-
-  const res = await fetch(`${API_BASE}/api/status`, {
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    const txt = await res.text().catch(() => "");
-    throw new Error(`Status fetch failed: ${res.status} ${txt.slice(0, 200)}`);
-  }
-
-  return res.json();
+  // Your Render endpoint
+  return getJSON("/api/status");
 }
 
 export async function fetchLatestCycle() {
-  if (!API_BASE) throw new Error("NEXT_PUBLIC_API_BASE is not set");
-
-  const res = await fetch(`${API_BASE}/api/cycle/latest`, {
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    const txt = await res.text().catch(() => "");
-    throw new Error(`Cycle fetch failed: ${res.status} ${txt.slice(0, 200)}`);
-  }
-
-  return res.json();
+  // Your Render endpoint
+  return getJSON("/api/cycle/latest");
 }
