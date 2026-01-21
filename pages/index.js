@@ -158,7 +158,7 @@ export default function Home() {
       <div style={{ marginTop: 16, display: "flex", gap: 12, flexWrap: "wrap" }}>
         <Badge label="MODE" value={status?.mode} />
         <Badge label="KILL" value={status?.kill_switch} />
-        <Badge label="LAST_CYCLE" value={status?.last_cycle_ts || "n/a"} />
+        <Badge label="LAST_CYCLE" value=fmtLocal(status?.last_cycle_ts) />
         <Badge label="HAS_POSITIONS" value={status?.has_positions ? "yes" : "no"} />
       </div>
 
@@ -242,7 +242,7 @@ export default function Home() {
 
       {/* Step 3: "Today" quick cards */}
       <div style={{ marginTop: 14, display: "flex", gap: 12, flexWrap: "wrap" }}>
-        <Card title="Latest cycle" value={ts || "none"} />
+        <Card title="Latest cycle" value={fmtLocal(ts)} />
         <Card title="Unrealized" value={unrealized != null ? String(unrealized) : "n/a"} />
         <Card title="Candles OK" value={`${candlesOkPct}%`} subtitle={total ? `${total - noPrice}/${total}` : "0/0"} />
         <Card title="MQ Present" value={`${mqPresentPct}%`} subtitle={total ? `${total - mqNull}/${total}` : "0/0"} />
@@ -420,3 +420,28 @@ const smallInputStyle = {
   color: "#fff",
   outline: "none",
 };
+
+function parseTs(v) {
+  if (!v) return null;
+  if (v instanceof Date) return v;
+  const s = String(v);
+
+  // If "YYYY-MM-DD HH:MM:SS+00" -> make it ISO-ish
+  const normalized =
+    s.includes("T") ? s : s.replace(" ", "T");
+
+  const d = new Date(normalized);
+  if (!isFinite(d.getTime())) return null;
+  return d;
+}
+
+function fmtLocal(v) {
+  const d = parseTs(v);
+  return d ? d.toLocaleString() : "—";
+}
+
+function fmtTime(v) {
+  const d = parseTs(v);
+  return d ? d.toLocaleTimeString() : "—";
+}
+
