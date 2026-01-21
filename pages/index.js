@@ -52,7 +52,6 @@ export default function Home() {
     if (!autoRefresh) return;
 
     const tick = async () => {
-      // Don't hammer API when tab is hidden
       if (typeof document !== "undefined" && document.hidden) return;
       await load({ silent: true });
     };
@@ -90,21 +89,22 @@ export default function Home() {
       const prev = prevMap.get(sym);
       if (!prev) continue;
 
-      // Compare only the stuff that matters for “ops”
       const nowSig = rowSignature(r);
       const prevSig = rowSignature(prev);
       if (nowSig !== prevSig) changed.add(sym);
     }
 
-    // Update snapshot for next render
+    return changed;
+  }, [rows, ts]);
+
+  // ✅ Update snapshot AFTER render when rows/ts change (no side effects in useMemo)
+  useEffect(() => {
     const nextMap = new Map();
     for (const r of rows) {
       if (r?.symbol) nextMap.set(r.symbol, r);
     }
     prevRowsRef.current = nextMap;
-
-    return changed;
-  }, [rows, ts]); // ts changes every cycle, good trigger
+  }, [rows, ts]);
 
   async function onRunCycle(force = false) {
     setActing(true);
@@ -158,45 +158,25 @@ export default function Home() {
       <div style={{ marginTop: 16, display: "flex", gap: 12, flexWrap: "wrap" }}>
         <Badge label="MODE" value={status?.mode} />
         <Badge label="KILL" value={status?.kill_switch} />
-        <Badge label="LAST_CYCLE" value=fmtLocal(status?.last_cycle_ts) />
+        <Badge label="LAST_CYCLE" value={fmtLocal(status?.last_cycle_ts)} />
         <Badge label="HAS_POSITIONS" value={status?.has_positions ? "yes" : "no"} />
       </div>
 
       {/* Step A: Operator controls */}
       <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <button
-          onClick={() => onRunCycle(false)}
-          disabled={acting}
-          style={buttonStyle}
-          title="Run a normal decision cycle"
-        >
+        <button onClick={() => onRunCycle(false)} disabled={acting} style={buttonStyle} title="Run a normal decision cycle">
           {acting ? "Working…" : "Run Cycle"}
         </button>
 
-        <button
-          onClick={() => onRunCycle(true)}
-          disabled={acting}
-          style={buttonStyle}
-          title="Force cycle (bypass windows)"
-        >
+        <button onClick={() => onRunCycle(true)} disabled={acting} style={buttonStyle} title="Force cycle (bypass windows)">
           {acting ? "Working…" : "Force Cycle"}
         </button>
 
-        <button
-          onClick={onForceExitAll}
-          disabled={acting}
-          style={dangerButtonStyle}
-          title="Force exit all positions"
-        >
+        <button onClick={onForceExitAll} disabled={acting} style={dangerButtonStyle} title="Force exit all positions">
           {acting ? "Working…" : "Force Exit All"}
         </button>
 
-        <button
-          onClick={() => load()}
-          disabled={acting}
-          style={ghostButtonStyle}
-          title="Refresh dashboard data"
-        >
+        <button onClick={() => load()} disabled={acting} style={ghostButtonStyle} title="Refresh dashboard data">
           Refresh
         </button>
       </div>
@@ -311,7 +291,6 @@ export default function Home() {
 }
 
 function rowSignature(r) {
-  // Only include “ops-critical” fields; keep it stable and cheap
   const lp = r?.last_price ?? null;
   const dec = r?.decision ?? null;
   const conf = typeof r?.confidence === "number" ? Number(r.confidence.toFixed(3)) : null;
@@ -425,11 +404,7 @@ function parseTs(v) {
   if (!v) return null;
   if (v instanceof Date) return v;
   const s = String(v);
-
-  // If "YYYY-MM-DD HH:MM:SS+00" -> make it ISO-ish
-  const normalized =
-    s.includes("T") ? s : s.replace(" ", "T");
-
+  const normalized = s.includes("T") ? s : s.replace(" ", "T");
   const d = new Date(normalized);
   if (!isFinite(d.getTime())) return null;
   return d;
@@ -444,4 +419,3 @@ function fmtTime(v) {
   const d = parseTs(v);
   return d ? d.toLocaleTimeString() : "—";
 }
-
