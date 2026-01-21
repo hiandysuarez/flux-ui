@@ -1,6 +1,11 @@
 // pages/index.js
 import { useEffect, useMemo, useState } from "react";
-import { fetchStatus, fetchLatestCycle } from "../lib/api";
+import {
+  fetchStatus,
+  fetchLatestCycle,
+  runDecisionCycle,
+  forceExitAll,
+} from "../lib/api";
 import Layout from "../components/Layout";
 
 export default function Home() {
@@ -8,18 +13,25 @@ export default function Home() {
   const [cycle, setCycle] = useState(null);
   const [err, setErr] = useState(null);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const s = await fetchStatus();
-        setStatus(s);
+  // Step A: operator action state
+  const [acting, setActing] = useState(false);
+  const [actionMsg, setActionMsg] = useState(null);
+  const [actionErr, setActionErr] = useState(null);
 
-        const latest = await fetchLatestCycle();
-        setCycle(latest?.cycle ?? null);
-      } catch (e) {
-        setErr(String(e?.message || e));
-      }
+  async function load() {
+    try {
+      setErr(null);
+      const s = await fetchStatus();
+      setStatus(s);
+
+      const latest = await fetchLatestCycle();
+      setCycle(latest?.cycle ?? null);
+    } catch (e) {
+      setErr(String(e?.message || e));
     }
+  }
+
+  useEffect(() => {
     load();
   }, []);
 
@@ -38,6 +50,46 @@ export default function Home() {
 
     return { candlesOkPct, mqPresentPct, noPrice, mqNull, total };
   }, [rows]);
+
+  async function onRunCycle(force = false) {
+    setActing(true);
+    setActionMsg(null);
+    setActionErr(null);
+    try {
+      const res = await runDecisionCycle(force);
+      // Show something human-readable
+      setActionMsg(force ? "Forced cycle ran ✅" : "Cycle ran ✅");
+
+      // Refresh UI data after action
+      await load();
+
+      // Optional: surface payload for debugging if you want later
+      // console.log("decision_cycle_result", res);
+    } catch (e) {
+      setActionErr(String(e?.message || e));
+    } finally {
+      setActing(false);
+    }
+  }
+
+  async function onForceExitAll() {
+    const ok = confirm("Force exit ALL positions right now?");
+    if (!ok) return;
+
+    setActing(true);
+    setActionMsg(null);
+    setActionErr(null);
+    try {
+      const res = await forceExitAll();
+      setActionMsg("Force exit requested ✅");
+      await load();
+      // console.log("force_exit_all_result", res);
+    } catch (e) {
+      setActionErr(String(e?.message || e));
+    } finally {
+      setActing(false);
+    }
+  }
 
   return (
     <Layout active="dashboard">
@@ -61,6 +113,53 @@ export default function Home() {
         <Badge label="LAST_CYCLE" value={status?.last_cycle_ts || "n/a"} />
         <Badge label="HAS_POSITIONS" value={status?.has_positions ? "yes" : "no"} />
       </div>
+
+      {/* ✅ Step A: Operator controls (below MODE row) */}
+      <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <button
+          onClick={() => onRunCycle(false)}
+          disabled={acting}
+          style={buttonStyle}
+          title="Run a normal decision cycle"
+        >
+          {acting ? "Working…" : "Run Cycle"}
+        </button>
+
+        <button
+          onClick={() => onRunCycle(true)}
+          disabled={acting}
+          style={buttonStyle}
+          title="Force cycle (bypass windows)"
+        >
+          {acting ? "Working…" : "Force Cycle"}
+        </button>
+
+        <button
+          onClick={onForceExitAll}
+          disabled={acting}
+          style={dangerButtonStyle}
+          title="Force exit all positions"
+        >
+          {acting ? "Working…" : "Force Exit All"}
+        </button>
+
+        <button
+          onClick={() => load()}
+          disabled={acting}
+          style={ghostButtonStyle}
+          title="Refresh dashboard data"
+        >
+          Refresh
+        </button>
+      </div>
+
+      {actionMsg ? (
+        <div style={{ marginTop: 10, color: "lime", fontWeight: 700 }}>{actionMsg}</div>
+      ) : null}
+
+      {actionErr ? (
+        <pre style={{ marginTop: 10, color: "crimson", whiteSpace: "pre-wrap" }}>{actionErr}</pre>
+      ) : null}
 
       {/* Step 3: "Today" quick cards (data health + latest cycle info) */}
       <div style={{ marginTop: 14, display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -143,3 +242,34 @@ function Td({ children, colSpan }) {
     </td>
   );
 }
+
+const buttonStyle = {
+  padding: "10px 14px",
+  borderRadius: 12,
+  border: "1px solid #222",
+  background: "#111",
+  color: "#fff",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const ghostButtonStyle = {
+  padding: "10px 14px",
+  borderRadius: 12,
+  border: "1px solid #222",
+  background: "transparent",
+  color: "#fff",
+  fontWeight: 800,
+  cursor: "pointer",
+  opacity: 0.9,
+};
+
+const dangerButtonStyle = {
+  padding: "10px 14px",
+  borderRadius: 12,
+  border: "1px solid #3b0b0b",
+  background: "#220808",
+  color: "#ffb4b4",
+  fontWeight: 900,
+  cursor: "pointer",
+};
