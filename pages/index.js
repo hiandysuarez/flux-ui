@@ -1,9 +1,10 @@
 // pages/index.js
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   fetchStatus,
   fetchLatestCycle,
   fetchRecentTrades,
+  fetchRecentShadowLogs,
   runDecisionCycle,
   forceExitAll,
 } from '../lib/api';
@@ -17,7 +18,6 @@ import {
   buttonGhostStyle,
   toggleOnStyle,
   toggleOffStyle,
-  decisionColors,
 } from '../lib/theme';
 import Layout from '../components/Layout';
 
@@ -33,7 +33,7 @@ export default function Home() {
   const [lastRefresh, setLastRefresh] = useState(null);
   const [trades, setTrades] = useState([]);
   const [todayPnl, setTodayPnl] = useState(null);
-  const prevRowsRef = useRef(new Map());
+  const [shadowLogs, setShadowLogs] = useState([]);
 
   async function load({ silent = false } = {}) {
     try {
@@ -45,6 +45,8 @@ export default function Home() {
       const tradesRes = await fetchRecentTrades(10);
       setTrades(tradesRes?.trades || []);
       setTodayPnl(tradesRes?.today_pnl ?? null);
+      const shadowRes = await fetchRecentShadowLogs(10);
+      setShadowLogs(shadowRes?.logs || []);
       setLastRefresh(new Date().toISOString());
     } catch (e) {
       setErr(String(e?.message || e));
@@ -68,43 +70,13 @@ export default function Home() {
   const ts = cycle?.ts ?? null;
   const unrealized = cycle?.unrealized ?? null;
 
-  // Filter out outside_window and only show valid decisions (HOLD, BUY, SELL)
-  const rows = rawRows.filter((r) => {
-    if (r?.hold_reason === 'outside_window') return false;
-    const d = r?.decision;
-    return d === 'HOLD' || d === 'BUY' || d === 'SELL';
-  });
-
-  const { candlesOkPct, mqPresentPct, noPrice, mqNull, total, activePositions } = useMemo(() => {
+  const { candlesOkPct, noPrice, total, activePositions } = useMemo(() => {
     const total = rawRows.length || 0;
     const noPrice = rawRows.filter((r) => r?.last_price == null).length;
-    const mqNull = rawRows.filter((r) => r?.mq_ok == null).length;
     const activePositions = rawRows.filter((r) => r?.position_qty && r.position_qty !== 0).length;
     const candlesOkPct = total ? Math.round(((total - noPrice) / total) * 100) : 0;
-    const mqPresentPct = total ? Math.round(((total - mqNull) / total) * 100) : 0;
-    return { candlesOkPct, mqPresentPct, noPrice, mqNull, total, activePositions };
+    return { candlesOkPct, noPrice, total, activePositions };
   }, [rawRows]);
-
-  const changedSymbols = useMemo(() => {
-    const changed = new Set();
-    const prevMap = prevRowsRef.current;
-    for (const r of rows) {
-      const sym = r?.symbol;
-      if (!sym) continue;
-      const prev = prevMap.get(sym);
-      if (!prev) continue;
-      if (rowSignature(r) !== rowSignature(prev)) changed.add(sym);
-    }
-    return changed;
-  }, [rows, ts]);
-
-  useEffect(() => {
-    const nextMap = new Map();
-    for (const r of rows) {
-      if (r?.symbol) nextMap.set(r.symbol, r);
-    }
-    prevRowsRef.current = nextMap;
-  }, [rows, ts]);
 
   async function onRunCycle(force = false) {
     setActing(true);
@@ -285,97 +257,6 @@ export default function Home() {
         />
       </div>
 
-      {/* Trading Table */}
-      <div style={{
-        ...cardStyle,
-        padding: 0,
-        overflow: 'hidden',
-      }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: colors.bgSecondary }}>
-              <Th>Symbol</Th>
-              <Th>Decision</Th>
-              <Th>Confidence</Th>
-              <Th>Hold Reason</Th>
-              <Th>Price</Th>
-              <Th>Position</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={6} style={{ padding: 20, textAlign: 'center', color: colors.textMuted }}>
-                  No data yet. Run a cycle to see results.
-                </td>
-              </tr>
-            ) : (
-              rows.map((r) => {
-                const isChanged = changedSymbols.has(r.symbol);
-                const decisionColor = decisionColors[r.decision] || colors.textMuted;
-
-                return (
-                  <tr
-                    key={r.symbol}
-                    style={{
-                      borderTop: `1px solid ${colors.border}`,
-                      background: isChanged ? 'rgba(0, 255, 136, 0.05)' : 'transparent',
-                      transition: 'background 0.3s ease',
-                    }}
-                  >
-                    <Td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontWeight: 700 }}>{r.symbol}</span>
-                        {isChanged && (
-                          <span style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: '50%',
-                            background: colors.accent,
-                          }} />
-                        )}
-                      </div>
-                    </Td>
-                    <Td>
-                      <span style={{
-                        fontWeight: 800,
-                        color: decisionColor,
-                        padding: '2px 8px',
-                        borderRadius: borderRadius.sm,
-                        background: `${decisionColor}15`,
-                      }}>
-                        {r.decision ?? '—'}
-                      </span>
-                    </Td>
-                    <Td>
-                      <ConfidenceBar value={r.confidence} />
-                    </Td>
-                    <Td style={{ color: colors.textMuted, fontSize: 12 }}>
-                      {r.hold_reason ?? '—'}
-                    </Td>
-                    <Td style={{ fontFamily: 'monospace' }}>
-                      {r.last_price ? `$${Number(r.last_price).toFixed(2)}` : '—'}
-                    </Td>
-                    <Td>
-                      {r.position_qty ? (
-                        <span style={{
-                          color: r.position_side === 'long' ? colors.accent : colors.error,
-                          fontWeight: 600,
-                        }}>
-                          {r.position_side} ({r.position_qty})
-                        </span>
-                      ) : (
-                        <span style={{ color: colors.textMuted }}>flat</span>
-                      )}
-                    </Td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
-
       {/* Recent Trades Table */}
       <div style={{
         ...cardStyle,
@@ -446,6 +327,69 @@ export default function Home() {
           </tbody>
         </table>
       </div>
+
+      {/* Shadow Logs Table */}
+      <div style={{
+        ...cardStyle,
+        padding: 0,
+        overflow: 'hidden',
+        marginTop: 24,
+      }}>
+        <div style={{
+          padding: '12px 16px',
+          borderBottom: `1px solid ${colors.border}`,
+        }}>
+          <span style={{ fontWeight: 800, color: colors.textPrimary }}>Shadow Logs</span>
+          <span style={{ marginLeft: 8, fontSize: 12, color: colors.textMuted }}>ML Predictions</span>
+        </div>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ background: colors.bgSecondary }}>
+              <Th>Time</Th>
+              <Th>Symbol</Th>
+              <Th>ML Label</Th>
+              <Th>Win Prob</Th>
+              <Th>Bot Action</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {shadowLogs.length === 0 ? (
+              <tr>
+                <td colSpan={5} style={{ padding: 20, textAlign: 'center', color: colors.textMuted }}>
+                  No shadow logs yet.
+                </td>
+              </tr>
+            ) : (
+              shadowLogs.map((s, i) => (
+                <tr key={i} style={{ borderTop: `1px solid ${colors.border}` }}>
+                  <Td style={{ fontSize: 12, color: colors.textMuted }}>
+                    {s.ts ? new Date(s.ts).toLocaleTimeString() : '—'}
+                  </Td>
+                  <Td style={{ fontWeight: 700 }}>{s.symbol}</Td>
+                  <Td>
+                    <span style={{
+                      color: s.ml_label === 'BUY' ? colors.accent : s.ml_label === 'SELL' ? colors.error : colors.textMuted,
+                      fontWeight: 700,
+                    }}>
+                      {s.ml_label || '—'}
+                    </span>
+                  </Td>
+                  <Td style={{ fontFamily: 'monospace' }}>
+                    {s.ml_win_prob != null ? `${(s.ml_win_prob * 100).toFixed(0)}%` : '—'}
+                  </Td>
+                  <Td>
+                    <span style={{
+                      color: s.bot_action === 'BUY' ? colors.accent : s.bot_action === 'SELL' ? colors.error : colors.textMuted,
+                    }}>
+                      {s.bot_action || '—'}
+                    </span>
+                  </Td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </Layout>
   );
 }
@@ -484,34 +428,6 @@ function MetricCard({ title, value, subtitle, color = colors.textPrimary }) {
   );
 }
 
-function ConfidenceBar({ value }) {
-  const pct = typeof value === 'number' ? Math.round(value * 100) : 0;
-  const color = pct >= 70 ? colors.accent : pct >= 50 ? colors.warning : colors.textMuted;
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <div style={{
-        width: 60,
-        height: 6,
-        borderRadius: 3,
-        background: colors.bgSecondary,
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          width: `${pct}%`,
-          height: '100%',
-          background: color,
-          borderRadius: 3,
-          transition: 'width 0.3s ease',
-        }} />
-      </div>
-      <span style={{ fontSize: 12, fontWeight: 600, color, minWidth: 35 }}>
-        {pct}%
-      </span>
-    </div>
-  );
-}
-
 function Th({ children }) {
   return (
     <th style={{
@@ -537,17 +453,6 @@ function Td({ children, style = {} }) {
 }
 
 // Helpers
-function rowSignature(r) {
-  return JSON.stringify([
-    r?.last_price ?? null,
-    r?.decision ?? null,
-    typeof r?.confidence === 'number' ? Number(r.confidence.toFixed(3)) : null,
-    r?.hold_reason ?? null,
-    r?.position_side ?? null,
-    typeof r?.position_qty === 'number' ? Number(r.position_qty.toFixed(6)) : null,
-  ]);
-}
-
 function parseTs(v) {
   if (!v) return null;
   if (v instanceof Date) return v;
