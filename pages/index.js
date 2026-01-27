@@ -64,19 +64,26 @@ export default function Home() {
     return () => clearInterval(id);
   }, [autoRefresh, refreshSec]);
 
-  const rows = Array.isArray(cycle?.rows) ? cycle.rows : [];
+  const rawRows = Array.isArray(cycle?.rows) ? cycle.rows : [];
   const ts = cycle?.ts ?? null;
   const unrealized = cycle?.unrealized ?? null;
 
+  // Filter out outside_window and only show valid decisions (HOLD, BUY, SELL)
+  const rows = rawRows.filter((r) => {
+    if (r?.hold_reason === 'outside_window') return false;
+    const d = r?.decision;
+    return d === 'HOLD' || d === 'BUY' || d === 'SELL';
+  });
+
   const { candlesOkPct, mqPresentPct, noPrice, mqNull, total, activePositions } = useMemo(() => {
-    const total = rows.length || 0;
-    const noPrice = rows.filter((r) => r?.last_price == null).length;
-    const mqNull = rows.filter((r) => r?.mq_ok == null).length;
-    const activePositions = rows.filter((r) => r?.position_qty && r.position_qty !== 0).length;
+    const total = rawRows.length || 0;
+    const noPrice = rawRows.filter((r) => r?.last_price == null).length;
+    const mqNull = rawRows.filter((r) => r?.mq_ok == null).length;
+    const activePositions = rawRows.filter((r) => r?.position_qty && r.position_qty !== 0).length;
     const candlesOkPct = total ? Math.round(((total - noPrice) / total) * 100) : 0;
     const mqPresentPct = total ? Math.round(((total - mqNull) / total) * 100) : 0;
     return { candlesOkPct, mqPresentPct, noPrice, mqNull, total, activePositions };
-  }, [rows]);
+  }, [rawRows]);
 
   const changedSymbols = useMemo(() => {
     const changed = new Set();
