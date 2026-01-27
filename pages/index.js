@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   fetchStatus,
   fetchLatestCycle,
+  fetchRecentTrades,
   runDecisionCycle,
   forceExitAll,
 } from '../lib/api';
@@ -30,6 +31,8 @@ export default function Home() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshSec, setRefreshSec] = useState(10);
   const [lastRefresh, setLastRefresh] = useState(null);
+  const [trades, setTrades] = useState([]);
+  const [todayPnl, setTodayPnl] = useState(null);
   const prevRowsRef = useRef(new Map());
 
   async function load({ silent = false } = {}) {
@@ -39,6 +42,9 @@ export default function Home() {
       setStatus(s);
       const latest = await fetchLatestCycle();
       setCycle(latest?.cycle ?? null);
+      const tradesRes = await fetchRecentTrades(10);
+      setTrades(tradesRes?.trades || []);
+      setTodayPnl(tradesRes?.today_pnl ?? null);
       setLastRefresh(new Date().toISOString());
     } catch (e) {
       setErr(String(e?.message || e));
@@ -254,6 +260,12 @@ export default function Home() {
           color={unrealized > 0 ? colors.accent : unrealized < 0 ? colors.error : colors.textPrimary}
         />
         <MetricCard
+          title="Today's P&L"
+          value={todayPnl != null ? `$${Number(todayPnl).toFixed(2)}` : '—'}
+          subtitle="realized"
+          color={todayPnl > 0 ? colors.accent : todayPnl < 0 ? colors.error : colors.textPrimary}
+        />
+        <MetricCard
           title="Active Positions"
           value={`${activePositions}/${total}`}
           subtitle="symbols"
@@ -352,6 +364,77 @@ export default function Home() {
                   </tr>
                 );
               })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Recent Trades Table */}
+      <div style={{
+        ...cardStyle,
+        padding: 0,
+        overflow: 'hidden',
+        marginTop: 24,
+      }}>
+        <div style={{
+          padding: '12px 16px',
+          borderBottom: `1px solid ${colors.border}`,
+        }}>
+          <span style={{ fontWeight: 800, color: colors.textPrimary }}>Recent Trades</span>
+        </div>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ background: colors.bgSecondary }}>
+              <Th>Time</Th>
+              <Th>Symbol</Th>
+              <Th>Side</Th>
+              <Th>P&L</Th>
+              <Th>Result</Th>
+              <Th>Exit Reason</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {trades.length === 0 ? (
+              <tr>
+                <td colSpan={6} style={{ padding: 20, textAlign: 'center', color: colors.textMuted }}>
+                  No completed trades yet.
+                </td>
+              </tr>
+            ) : (
+              trades.map((t, i) => (
+                <tr key={i} style={{ borderTop: `1px solid ${colors.border}` }}>
+                  <Td style={{ fontSize: 12, color: colors.textMuted }}>
+                    {t.ts ? new Date(t.ts).toLocaleTimeString() : '—'}
+                  </Td>
+                  <Td style={{ fontWeight: 700 }}>{t.symbol}</Td>
+                  <Td>
+                    <span style={{ color: t.side === 'BUY' ? colors.accent : colors.error }}>
+                      {t.side}
+                    </span>
+                  </Td>
+                  <Td style={{
+                    fontFamily: 'monospace',
+                    color: t.pnl > 0 ? colors.accent : t.pnl < 0 ? colors.error : colors.textPrimary,
+                  }}>
+                    ${Number(t.pnl || 0).toFixed(2)}
+                  </Td>
+                  <Td>
+                    <span style={{
+                      padding: '2px 8px',
+                      borderRadius: 4,
+                      background: t.win ? colors.accentDark : '#1a0a0a',
+                      color: t.win ? colors.accent : colors.error,
+                      fontWeight: 700,
+                      fontSize: 12,
+                    }}>
+                      {t.win ? 'WIN' : 'LOSS'}
+                    </span>
+                  </Td>
+                  <Td style={{ fontSize: 12, color: colors.textMuted }}>
+                    {t.exit_reason || '—'}
+                  </Td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>

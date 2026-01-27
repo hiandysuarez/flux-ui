@@ -171,24 +171,13 @@ export default function SettingsPage() {
           </SettingRow>
 
           <SettingRow label="Confidence Threshold" description="Minimum confidence to enter a trade (0.00-1.00)">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={get('thresholds.conf_threshold', 0.55)}
-                onChange={(e) => set('thresholds.conf_threshold', Number(e.target.value))}
-                style={{ width: 200, accentColor: colors.accent }}
-              />
-              <span style={{
-                fontWeight: 700,
-                color: colors.accent,
-                minWidth: 45,
-              }}>
-                {(get('thresholds.conf_threshold', 0.55) * 100).toFixed(0)}%
-              </span>
-            </div>
+            <NumberInput
+              value={get('thresholds.conf_threshold', 0.55)}
+              onChange={(v) => set('thresholds.conf_threshold', v)}
+              step={0.01}
+              min={0}
+              max={1}
+            />
           </SettingRow>
         </SettingsCard>
 
