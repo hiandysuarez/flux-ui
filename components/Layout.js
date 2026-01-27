@@ -1,31 +1,92 @@
-export default function Layout({ children, active = "dashboard" }) {
-  const linkStyle = (on) => ({
-    padding: "8px 12px",
-    borderRadius: 10,
-    border: "1px solid #333",
-    background: on ? "#111" : "transparent",
-    color: "white",
-    textDecoration: "none",
+import { colors, borderRadius } from '../lib/theme';
+
+export default function Layout({ children, active = 'dashboard' }) {
+  const linkStyle = (isActive) => ({
+    padding: '8px 14px',
+    borderRadius: borderRadius.md,
+    border: `1px solid ${isActive ? colors.accentMuted : colors.border}`,
+    background: isActive ? colors.accentDark : 'transparent',
+    color: isActive ? colors.accent : colors.textPrimary,
+    textDecoration: 'none',
     fontWeight: 700,
-    opacity: on ? 1 : 0.75,
+    transition: 'all 0.2s ease',
   });
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0b0b0b", color: "white" }}>
-      <header style={{ padding: 18, borderBottom: "1px solid #222", display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ fontWeight: 900, fontSize: 18 }}>Flux</div>
+    <div style={{
+      minHeight: '100vh',
+      background: colors.bgPrimary,
+      color: colors.textPrimary,
+    }}>
+      {/* Header */}
+      <header style={{
+        padding: '16px 20px',
+        borderBottom: `1px solid ${colors.border}`,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 16,
+        background: colors.bgSecondary,
+      }}>
+        {/* Logo */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+        }}>
+          <div style={{
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentMuted} 100%)`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 900,
+            fontSize: 16,
+            color: colors.bgPrimary,
+          }}>
+            F
+          </div>
+          <span style={{
+            fontWeight: 900,
+            fontSize: 20,
+            background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.textPrimary} 100%)`,
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+          }}>
+            Flux
+          </span>
+        </div>
 
-        <nav style={{ display: "flex", gap: 10 }}>
-          <a href="/" style={linkStyle(active === "dashboard")}>Dashboard</a>
-          <a href="/settings" style={linkStyle(active === "settings")}>Settings</a>
+        {/* Navigation */}
+        <nav style={{ display: 'flex', gap: 8 }}>
+          <a href="/" style={linkStyle(active === 'dashboard')}>
+            Dashboard
+          </a>
+          <a href="/settings" style={linkStyle(active === 'settings')}>
+            Settings
+          </a>
         </nav>
 
-        <div style={{ marginLeft: "auto", opacity: 0.7, fontSize: 12 }}>
-          Operator UI (v0)
+        {/* Version badge */}
+        <div style={{
+          marginLeft: 'auto',
+          padding: '4px 10px',
+          borderRadius: borderRadius.full,
+          background: colors.bgCard,
+          border: `1px solid ${colors.border}`,
+          fontSize: 11,
+          color: colors.textMuted,
+          fontWeight: 600,
+        }}>
+          v1.0
         </div>
       </header>
 
-      <div style={{ padding: 18 }}>{children}</div>
+      {/* Main content */}
+      <main style={{ padding: 20 }}>
+        {children}
+      </main>
     </div>
   );
 }
