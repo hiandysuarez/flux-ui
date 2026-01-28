@@ -92,6 +92,9 @@ export default function Layout({ children, active = 'dashboard' }) {
           <a href="/symbols" style={linkStyle(active === 'symbols')}>
             Symbols
           </a>
+          <a href="/timing" style={linkStyle(active === 'timing')}>
+            Timing
+          </a>
           <a href="/settings" style={linkStyle(active === 'settings')}>
             Settings
           </a>
