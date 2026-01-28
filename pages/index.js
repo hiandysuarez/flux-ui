@@ -5,6 +5,8 @@ import {
   fetchLatestCycle,
   fetchRecentTrades,
   fetchRecentShadowLogs,
+  fetchActivePositions,
+  fetchDailyPnl,
   runDecisionCycle,
   forceExitAll,
 } from '../lib/api';
@@ -34,6 +36,8 @@ export default function Home() {
   const [trades, setTrades] = useState([]);
   const [todayPnl, setTodayPnl] = useState(null);
   const [shadowLogs, setShadowLogs] = useState([]);
+  const [positions, setPositions] = useState([]);
+  const [dailyPnl, setDailyPnl] = useState([]);
 
   async function load({ silent = false } = {}) {
     try {
@@ -47,6 +51,10 @@ export default function Home() {
       setTodayPnl(tradesRes?.today_pnl ?? null);
       const shadowRes = await fetchRecentShadowLogs(10);
       setShadowLogs(shadowRes?.logs || []);
+      const posRes = await fetchActivePositions();
+      setPositions(posRes?.positions || []);
+      const pnlRes = await fetchDailyPnl(7);
+      setDailyPnl(pnlRes?.data || []);
       setLastRefresh(new Date().toISOString());
     } catch (e) {
       setErr(String(e?.message || e));
@@ -77,6 +85,13 @@ export default function Home() {
     const candlesOkPct = total ? Math.round(((total - noPrice) / total) * 100) : 0;
     return { candlesOkPct, noPrice, total, activePositions };
   }, [rawRows]);
+
+  const winRate = useMemo(() => {
+    const completed = trades.filter(t => t.win !== undefined);
+    if (!completed.length) return null;
+    const wins = completed.filter(t => t.win).length;
+    return Math.round((wins / completed.length) * 100);
+  }, [trades]);
 
   async function onRunCycle(force = false) {
     setActing(true);
@@ -255,7 +270,65 @@ export default function Home() {
           subtitle={`${total - noPrice}/${total} candles OK`}
           color={candlesOkPct >= 80 ? colors.accent : candlesOkPct >= 50 ? colors.warning : colors.error}
         />
+        <MetricCard
+          title="Win Rate"
+          value={winRate != null ? `${winRate}%` : '—'}
+          subtitle={`${trades.filter(t => t.win).length}/${trades.filter(t => t.win !== undefined).length} wins`}
+          color={winRate >= 50 ? colors.accent : winRate != null ? colors.error : colors.textPrimary}
+        />
       </div>
+
+      {/* Active Positions Panel */}
+      {positions.length > 0 && (
+        <div style={{
+          ...cardStyle,
+          padding: 0,
+          overflow: 'hidden',
+          marginTop: 24,
+        }}>
+          <div style={{
+            padding: '12px 16px',
+            borderBottom: `1px solid ${colors.border}`,
+          }}>
+            <span style={{ fontWeight: 800, color: colors.textPrimary }}>Active Positions</span>
+            <span style={{ marginLeft: 8, fontSize: 12, color: colors.textMuted }}>Live from Alpaca</span>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: colors.bgSecondary }}>
+                <Th>Symbol</Th>
+                <Th>Side</Th>
+                <Th>Qty</Th>
+                <Th>Entry</Th>
+                <Th>Current</Th>
+                <Th>Unrealized P&L</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {positions.map((p, i) => (
+                <tr key={i} style={{ borderTop: `1px solid ${colors.border}` }}>
+                  <Td style={{ fontWeight: 700 }}>{p.symbol}</Td>
+                  <Td>
+                    <span style={{ color: p.side === 'LONG' ? colors.accent : colors.error }}>
+                      {p.side}
+                    </span>
+                  </Td>
+                  <Td style={{ fontFamily: 'monospace' }}>{p.qty}</Td>
+                  <Td style={{ fontFamily: 'monospace' }}>${Number(p.entry_price).toFixed(2)}</Td>
+                  <Td style={{ fontFamily: 'monospace' }}>${Number(p.current_price).toFixed(2)}</Td>
+                  <Td style={{
+                    fontFamily: 'monospace',
+                    fontWeight: 700,
+                    color: p.unrealized_pnl > 0 ? colors.accent : p.unrealized_pnl < 0 ? colors.error : colors.textPrimary,
+                  }}>
+                    ${Number(p.unrealized_pnl).toFixed(2)}
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Recent Trades Table */}
       <div style={{
@@ -390,7 +463,99 @@ export default function Home() {
           </tbody>
         </table>
       </div>
+
+      {/* P&L History Chart */}
+      <div style={{
+        ...cardStyle,
+        marginTop: 24,
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 16,
+        }}>
+          <span style={{ fontWeight: 800, color: colors.textPrimary }}>P&L History</span>
+          <span style={{ fontSize: 12, color: colors.textMuted }}>Last 7 days</span>
+        </div>
+        <PnlBarChart data={dailyPnl} />
+      </div>
     </Layout>
+  );
+}
+
+// P&L Bar Chart Component
+function PnlBarChart({ data }) {
+  if (!data || data.length === 0) {
+    return (
+      <div style={{ padding: 20, textAlign: 'center', color: colors.textMuted }}>
+        No P&L data yet.
+      </div>
+    );
+  }
+
+  const maxAbs = Math.max(...data.map(d => Math.abs(d.pnl)), 1);
+  const chartHeight = 120;
+  const barWidth = 100 / data.length;
+
+  return (
+    <div>
+      <svg width="100%" height={chartHeight} style={{ display: 'block' }}>
+        {/* Zero line */}
+        <line
+          x1="0"
+          y1={chartHeight / 2}
+          x2="100%"
+          y2={chartHeight / 2}
+          stroke={colors.border}
+          strokeWidth="1"
+        />
+        {/* Bars */}
+        {data.map((d, i) => {
+          const pnl = d.pnl || 0;
+          const barHeight = Math.abs(pnl) / maxAbs * (chartHeight / 2 - 4);
+          const isPositive = pnl >= 0;
+          const y = isPositive ? chartHeight / 2 - barHeight : chartHeight / 2;
+          const x = `${i * barWidth + barWidth * 0.1}%`;
+          const width = `${barWidth * 0.8}%`;
+
+          return (
+            <g key={i}>
+              <rect
+                x={x}
+                y={y}
+                width={width}
+                height={Math.max(barHeight, 2)}
+                fill={isPositive ? colors.accent : colors.error}
+                rx="4"
+                opacity="0.8"
+              />
+            </g>
+          );
+        })}
+      </svg>
+      {/* Labels */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
+        {data.map((d, i) => (
+          <div key={i} style={{ textAlign: 'center', flex: 1 }}>
+            <div style={{
+              fontSize: 11,
+              color: colors.textMuted,
+            }}>
+              {d.date ? new Date(d.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' }) : '—'}
+            </div>
+            <div style={{
+              fontSize: 12,
+              fontFamily: 'monospace',
+              fontWeight: 600,
+              color: d.pnl > 0 ? colors.accent : d.pnl < 0 ? colors.error : colors.textMuted,
+            }}>
+              ${d.pnl?.toFixed(0) ?? 0}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
