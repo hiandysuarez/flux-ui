@@ -22,6 +22,12 @@ import {
   toggleOffStyle,
   tableRowHoverBg,
   skeletonStyle,
+  fontFamily,
+  fontSize,
+  fontWeight,
+  shadows,
+  spacing,
+  transitions,
 } from '../lib/theme';
 import Layout from '../components/Layout';
 
@@ -192,11 +198,17 @@ export default function Home() {
         }
       `}</style>
       {/* Header */}
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 32, fontWeight: 900, margin: 0, color: colors.textPrimary }}>
+      <div style={{ marginBottom: spacing.xxl }}>
+        <h1 style={{
+          fontSize: fontSize['2xl'],
+          fontWeight: fontWeight.black,
+          margin: 0,
+          color: colors.textPrimary,
+          letterSpacing: '-0.02em',
+        }}>
           Dashboard
         </h1>
-        <p style={{ margin: '10px 0 0', color: colors.textMuted, fontSize: 15 }}>
+        <p style={{ margin: `${spacing.sm}px 0 0`, color: colors.textMuted, fontSize: fontSize.base }}>
           Real-time trading overview and controls
         </p>
       </div>
@@ -421,11 +433,11 @@ export default function Home() {
                       {p.side}
                     </span>
                   </Td>
-                  <Td style={{ fontFamily: 'monospace' }}>{p.qty}</Td>
-                  <Td style={{ fontFamily: 'monospace' }}>{formatCurrency(p.entry_price, false)}</Td>
-                  <Td style={{ fontFamily: 'monospace' }}>{formatCurrency(p.current_price, false)}</Td>
+                  <Td style={{ fontFamily: fontFamily.mono }}>{p.qty}</Td>
+                  <Td style={{ fontFamily: fontFamily.mono }}>{formatCurrency(p.entry_price, false)}</Td>
+                  <Td style={{ fontFamily: fontFamily.mono }}>{formatCurrency(p.current_price, false)}</Td>
                   <Td style={{
-                    fontFamily: 'monospace',
+                    fontFamily: fontFamily.mono,
                     fontWeight: 700,
                     color: p.unrealized_pnl > 0 ? colors.accent : p.unrealized_pnl < 0 ? colors.error : colors.textPrimary,
                   }}>
@@ -484,7 +496,7 @@ export default function Home() {
                       </span>
                     </Td>
                     <Td style={{
-                      fontFamily: 'monospace',
+                      fontFamily: fontFamily.mono,
                       fontSize: 14,
                       color: t.pnl > 0 ? colors.accent : t.pnl < 0 ? colors.error : colors.textPrimary,
                     }}>
@@ -554,7 +566,7 @@ export default function Home() {
                         {s.ml_label || '—'}
                       </span>
                     </Td>
-                    <Td style={{ fontFamily: 'monospace', fontSize: 14 }}>
+                    <Td style={{ fontFamily: fontFamily.mono, fontSize: 14 }}>
                       {s.ml_win_prob != null ? `${(s.ml_win_prob * 100).toFixed(0)}%` : '—'}
                     </Td>
                     <Td style={{ fontSize: 14 }}>
@@ -672,7 +684,7 @@ function PnlBarChart({ data }) {
             </div>
             <div style={{
               fontSize: 13,
-              fontFamily: 'monospace',
+              fontFamily: fontFamily.mono,
               fontWeight: 600,
               color: d.pnl > 0 ? colors.accent : d.pnl < 0 ? colors.error : colors.textMuted,
             }}>
@@ -737,7 +749,7 @@ function TopTickersChart({ data }) {
             <span style={{
               width: 80,
               textAlign: 'right',
-              fontFamily: 'monospace',
+              fontFamily: fontFamily.mono,
               fontSize: 15,
               fontWeight: 700,
               color: isPositive ? colors.accent : colors.error,
@@ -759,18 +771,19 @@ function Toast({ message, type = 'success', onClose }) {
     <div style={{
       display: 'flex',
       alignItems: 'center',
-      gap: 12,
-      padding: '12px 16px',
-      borderRadius: borderRadius.md,
-      background: type === 'error' ? '#1a0a0a' : colors.accentDark,
-      border: `1px solid ${type === 'error' ? colors.error : colors.accentMuted}`,
+      gap: spacing.md,
+      padding: '14px 18px',
+      borderRadius: borderRadius.lg,
+      background: type === 'error' ? colors.errorDark : colors.accentDark,
+      border: `1px solid ${type === 'error' ? 'rgba(255, 95, 109, 0.3)' : colors.accentMuted}`,
       color: type === 'error' ? colors.error : colors.accent,
-      boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+      boxShadow: shadows.lg,
       animation: 'slideIn 0.3s ease',
-      minWidth: 250,
+      minWidth: 280,
+      backdropFilter: 'blur(8px)',
     }}>
-      <span style={{ fontSize: 16 }}>{type === 'error' ? '!' : '+'}</span>
-      <span style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{message}</span>
+      <span style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold }}>{type === 'error' ? '!' : '+'}</span>
+      <span style={{ flex: 1, fontSize: fontSize.sm, fontWeight: fontWeight.semibold }}>{message}</span>
       <button
         onClick={onClose}
         style={{
@@ -780,7 +793,8 @@ function Toast({ message, type = 'success', onClose }) {
           cursor: 'pointer',
           padding: 4,
           opacity: 0.7,
-          fontSize: 16,
+          fontSize: fontSize.md,
+          transition: `opacity ${transitions.fast}`,
         }}
       >
         x
@@ -831,14 +845,26 @@ function StatusBadge({ label, value, color = colors.textPrimary }) {
     <div style={{
       display: 'flex',
       alignItems: 'center',
-      gap: 10,
-      padding: '10px 16px',
+      gap: spacing.md,
+      padding: '10px 18px',
       borderRadius: borderRadius.full,
-      background: colors.bgCard,
+      background: colors.bgSecondary,
       border: `1px solid ${colors.border}`,
+      boxShadow: shadows.sm,
     }}>
-      <span style={{ color: colors.textMuted, fontSize: 13, fontWeight: 600 }}>{label}</span>
-      <span style={{ color, fontWeight: 800, fontSize: 15 }}>{String(value ?? '—')}</span>
+      <span style={{
+        color: colors.textMuted,
+        fontSize: fontSize.xs,
+        fontWeight: fontWeight.semibold,
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+      }}>{label}</span>
+      <span style={{
+        color,
+        fontWeight: fontWeight.bold,
+        fontSize: fontSize.sm,
+        fontFamily: fontFamily.mono,
+      }}>{String(value ?? '—')}</span>
     </div>
   );
 }
@@ -854,19 +880,33 @@ function MetricCard({ title, value, subtitle, color = colors.textPrimary, trend,
         display: 'flex',
         flexDirection: 'column',
         cursor: 'default',
+        transition: `all ${transitions.normal}`,
         ...(hovered ? {
           borderColor: colors.borderAccent,
-          boxShadow: `0 0 20px ${colors.accentGlow}`,
+          boxShadow: `${shadows.md}, ${shadows.glow}`,
+          transform: 'translateY(-2px)',
         } : {}),
       }}
     >
-      <span style={{ color: colors.textMuted, fontSize: 14, fontWeight: 600 }}>{title}</span>
-      <div style={{ display: 'flex', alignItems: 'center', marginTop: 6 }}>
-        <span style={{ fontSize: 32, fontWeight: 900, color }}>{value}</span>
+      <span style={{
+        color: colors.textMuted,
+        fontSize: fontSize.sm,
+        fontWeight: fontWeight.semibold,
+        textTransform: 'uppercase',
+        letterSpacing: '0.03em',
+      }}>{title}</span>
+      <div style={{ display: 'flex', alignItems: 'center', marginTop: spacing.sm }}>
+        <span style={{
+          fontSize: fontSize['2xl'],
+          fontWeight: fontWeight.black,
+          color,
+          fontFamily: fontFamily.mono,
+          letterSpacing: '-0.02em',
+        }}>{value}</span>
         {trend != null && (
           <span style={{
-            marginLeft: 8,
-            fontSize: 18,
+            marginLeft: spacing.sm,
+            fontSize: fontSize.lg,
             color: trend > 0 ? colors.accent : trend < 0 ? colors.error : colors.textMuted
           }}>
             {trend > 0 ? '↑' : trend < 0 ? '↓' : '→'}
@@ -875,7 +915,7 @@ function MetricCard({ title, value, subtitle, color = colors.textPrimary, trend,
       </div>
       {sparklineData && <Sparkline data={sparklineData} color={color !== colors.textPrimary ? color : colors.accent} />}
       {subtitle && (
-        <span style={{ color: colors.textMuted, fontSize: 13, marginTop: 6 }}>{subtitle}</span>
+        <span style={{ color: colors.textMuted, fontSize: fontSize.xs, marginTop: spacing.sm }}>{subtitle}</span>
       )}
     </div>
   );
@@ -886,11 +926,11 @@ function Th({ children }) {
     <th style={{
       textAlign: 'left',
       padding: '14px 16px',
-      fontSize: 13,
-      fontWeight: 700,
+      fontSize: fontSize.xs,
+      fontWeight: fontWeight.semibold,
       color: colors.textMuted,
       textTransform: 'uppercase',
-      letterSpacing: '0.5px',
+      letterSpacing: '0.05em',
     }}>
       {children}
     </th>
@@ -899,7 +939,7 @@ function Th({ children }) {
 
 function Td({ children, style = {} }) {
   return (
-    <td style={{ padding: '14px 16px', fontSize: 15, ...style }}>
+    <td style={{ padding: '14px 16px', fontSize: fontSize.sm, ...style }}>
       {children}
     </td>
   );
