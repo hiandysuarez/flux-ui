@@ -1,15 +1,25 @@
-import { colors, borderRadius } from '../lib/theme';
+import {
+  colors,
+  borderRadius,
+  spacing,
+  fontSize,
+  fontWeight,
+  fontFamily,
+  shadows,
+  transitions,
+} from '../lib/theme';
 
 export default function Layout({ children, active = 'dashboard' }) {
   const linkStyle = (isActive) => ({
-    padding: '8px 14px',
+    padding: '8px 16px',
     borderRadius: borderRadius.md,
-    border: `1px solid ${isActive ? colors.accentMuted : colors.border}`,
+    border: `1px solid ${isActive ? colors.accentMuted : 'transparent'}`,
     background: isActive ? colors.accentDark : 'transparent',
-    color: isActive ? colors.accent : colors.textPrimary,
+    color: isActive ? colors.accent : colors.textSecondary,
     textDecoration: 'none',
-    fontWeight: 700,
-    transition: 'all 0.2s ease',
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    transition: `all ${transitions.fast}`,
   });
 
   return (
@@ -18,7 +28,7 @@ export default function Layout({ children, active = 'dashboard' }) {
       background: colors.bgPrimary,
       color: colors.textPrimary,
     }}>
-      {/* Responsive styles */}
+      {/* Responsive styles + animations */}
       <style>{`
         @media (max-width: 768px) {
           .responsive-grid-2 {
@@ -31,45 +41,63 @@ export default function Layout({ children, active = 'dashboard' }) {
             flex-direction: column !important;
             align-items: stretch !important;
           }
+          .nav-wrapper {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+          }
+        }
+
+        @keyframes shimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+
+        .nav-link:hover {
+          color: ${colors.textPrimary} !important;
+          background: ${colors.bgHover} !important;
         }
       `}</style>
 
-      {/* Header - Sticky */}
+      {/* Header - Sticky with glass effect */}
       <header style={{
-        padding: '16px 20px',
+        height: 64,
+        padding: '0 24px',
         borderBottom: `1px solid ${colors.border}`,
         display: 'flex',
         alignItems: 'center',
-        gap: 16,
-        background: colors.bgSecondary,
+        gap: 24,
+        background: 'rgba(13, 15, 18, 0.85)',
         position: 'sticky',
         top: 0,
         zIndex: 50,
-        backdropFilter: 'blur(8px)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
       }}>
         {/* Logo */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
+          gap: 10,
         }}>
           <div style={{
-            width: 32,
-            height: 32,
-            borderRadius: 8,
+            width: 36,
+            height: 36,
+            borderRadius: borderRadius.md,
             background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentMuted} 100%)`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontWeight: 900,
-            fontSize: 16,
+            fontWeight: fontWeight.black,
+            fontSize: fontSize.lg,
             color: colors.bgPrimary,
+            boxShadow: '0 2px 8px rgba(0, 255, 136, 0.3)',
           }}>
             F
           </div>
           <span style={{
-            fontWeight: 900,
-            fontSize: 20,
+            fontWeight: fontWeight.black,
+            fontSize: '22px',
+            letterSpacing: '-0.02em',
             background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.textPrimary} 100%)`,
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
@@ -79,44 +107,76 @@ export default function Layout({ children, active = 'dashboard' }) {
         </div>
 
         {/* Navigation */}
-        <nav style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <a href="/" style={linkStyle(active === 'dashboard')}>
+        <nav className="nav-wrapper" style={{
+          display: 'flex',
+          gap: 4,
+          flexWrap: 'nowrap',
+        }}>
+          <a href="/" className="nav-link" style={linkStyle(active === 'dashboard')}>
             Dashboard
           </a>
-          <a href="/analytics" style={linkStyle(active === 'analytics')}>
+          <a href="/analytics" className="nav-link" style={linkStyle(active === 'analytics')}>
             Analytics
           </a>
-          <a href="/history" style={linkStyle(active === 'history')}>
+          <a href="/history" className="nav-link" style={linkStyle(active === 'history')}>
             History
           </a>
-          <a href="/symbols" style={linkStyle(active === 'symbols')}>
+          <a href="/symbols" className="nav-link" style={linkStyle(active === 'symbols')}>
             Symbols
           </a>
-          <a href="/timing" style={linkStyle(active === 'timing')}>
+          <a href="/timing" className="nav-link" style={linkStyle(active === 'timing')}>
             Timing
           </a>
-          <a href="/settings" style={linkStyle(active === 'settings')}>
+          <a href="/settings" className="nav-link" style={linkStyle(active === 'settings')}>
             Settings
           </a>
         </nav>
 
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
+
+        {/* Status indicator */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '6px 12px',
+          borderRadius: borderRadius.full,
+          background: colors.bgTertiary,
+          border: `1px solid ${colors.border}`,
+        }}>
+          <div style={{
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
+            background: colors.accent,
+            boxShadow: `0 0 8px ${colors.accent}`,
+          }} />
+          <span style={{
+            fontSize: fontSize.xs,
+            fontWeight: fontWeight.semibold,
+            color: colors.textSecondary,
+          }}>
+            Live
+          </span>
+        </div>
+
         {/* Version badge */}
         <div style={{
-          marginLeft: 'auto',
-          padding: '4px 10px',
+          padding: '6px 12px',
           borderRadius: borderRadius.full,
-          background: colors.bgCard,
+          background: colors.bgTertiary,
           border: `1px solid ${colors.border}`,
-          fontSize: 11,
+          fontSize: fontSize.xs,
           color: colors.textMuted,
-          fontWeight: 600,
+          fontWeight: fontWeight.semibold,
         }}>
           v1.0
         </div>
       </header>
 
       {/* Main content */}
-      <main style={{ padding: 20 }}>
+      <main style={{ padding: spacing.xl }}>
         {children}
       </main>
     </div>
