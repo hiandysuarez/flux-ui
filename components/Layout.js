@@ -83,6 +83,30 @@ export default function Layout({ children, active = 'dashboard' }) {
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
       }}>
+        {/* Hamburger button - LEFT side */}
+        <button
+          onClick={() => setMenuOpen(true)}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: 5,
+            width: 44,
+            height: 44,
+            borderRadius: borderRadius.md,
+            background: colors.bgTertiary,
+            border: `1px solid ${colors.border}`,
+            cursor: 'pointer',
+            transition: `all ${transitions.fast}`,
+          }}
+          aria-label="Open menu"
+        >
+          <span style={{ width: 20, height: 2, background: colors.textPrimary, borderRadius: 1 }} />
+          <span style={{ width: 20, height: 2, background: colors.textPrimary, borderRadius: 1 }} />
+          <span style={{ width: 20, height: 2, background: colors.textPrimary, borderRadius: 1 }} />
+        </button>
+
         {/* Logo */}
         <a href="/" style={{ display: 'flex', alignItems: 'center' }}>
           <img
@@ -138,30 +162,6 @@ export default function Layout({ children, active = 'dashboard' }) {
         }}>
           v1.0
         </div>
-
-        {/* Hamburger button */}
-        <button
-          onClick={() => setMenuOpen(true)}
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: 5,
-            width: 44,
-            height: 44,
-            borderRadius: borderRadius.md,
-            background: colors.bgTertiary,
-            border: `1px solid ${colors.border}`,
-            cursor: 'pointer',
-            transition: `all ${transitions.fast}`,
-          }}
-          aria-label="Open menu"
-        >
-          <span style={{ width: 20, height: 2, background: colors.textPrimary, borderRadius: 1 }} />
-          <span style={{ width: 20, height: 2, background: colors.textPrimary, borderRadius: 1 }} />
-          <span style={{ width: 20, height: 2, background: colors.textPrimary, borderRadius: 1 }} />
-        </button>
       </header>
 
       {/* Slide-out menu */}
