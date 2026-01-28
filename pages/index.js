@@ -95,6 +95,21 @@ export default function Home() {
     return Math.round((wins / completed.length) * 100);
   }, [trades]);
 
+  // Calculate top performing tickers from trades
+  const topTickers = useMemo(() => {
+    const bySymbol = {};
+    trades.forEach(t => {
+      const sym = t.symbol;
+      if (!sym) return;
+      if (!bySymbol[sym]) bySymbol[sym] = 0;
+      bySymbol[sym] += Number(t.pnl || 0);
+    });
+    return Object.entries(bySymbol)
+      .map(([symbol, pnl]) => ({ symbol, pnl }))
+      .sort((a, b) => b.pnl - a.pnl)
+      .slice(0, 5);
+  }, [trades]);
+
   async function onRunCycle(force = false) {
     setActing(true);
     setActionMsg(null);
@@ -167,11 +182,11 @@ export default function Home() {
         }
       `}</style>
       {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0, color: colors.textPrimary }}>
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={{ fontSize: 32, fontWeight: 900, margin: 0, color: colors.textPrimary }}>
           Dashboard
         </h1>
-        <p style={{ margin: '8px 0 0', color: colors.textMuted, fontSize: 13 }}>
+        <p style={{ margin: '10px 0 0', color: colors.textMuted, fontSize: 15 }}>
           Real-time trading overview and controls
         </p>
       </div>
@@ -318,21 +333,35 @@ export default function Home() {
         />
       </div>
 
-      {/* P&L History Chart */}
-      <div style={{
-        ...cardStyle,
-        marginBottom: 24,
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 16,
-        }}>
-          <span style={{ fontWeight: 800, fontSize: 16, color: colors.textPrimary }}>P&L History</span>
-          <span style={{ fontSize: 13, color: colors.textMuted }}>Last 14 days</span>
+      {/* Charts Side by Side */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24, marginBottom: 24 }}>
+        {/* P&L History Chart */}
+        <div style={cardStyle}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 20,
+          }}>
+            <span style={{ fontWeight: 800, fontSize: 18, color: colors.textPrimary }}>P&L History</span>
+            <span style={{ fontSize: 14, color: colors.textMuted }}>Last 14 days</span>
+          </div>
+          <PnlBarChart data={dailyPnl} />
         </div>
-        <PnlBarChart data={dailyPnl} />
+
+        {/* Top Tickers Chart */}
+        <div style={cardStyle}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 20,
+          }}>
+            <span style={{ fontWeight: 800, fontSize: 18, color: colors.textPrimary }}>Top Performers</span>
+            <span style={{ fontSize: 14, color: colors.textMuted }}>By P&L</span>
+          </div>
+          <TopTickersChart data={topTickers} />
+        </div>
       </div>
 
       {/* Active Positions Panel */}
@@ -527,14 +556,14 @@ export default function Home() {
 function PnlBarChart({ data }) {
   if (!data || data.length === 0) {
     return (
-      <div style={{ padding: 20, textAlign: 'center', color: colors.textMuted }}>
+      <div style={{ padding: 40, textAlign: 'center', color: colors.textMuted, fontSize: 15 }}>
         No P&L data yet.
       </div>
     );
   }
 
   const maxAbs = Math.max(...data.map(d => Math.abs(d.pnl)), 1);
-  const chartHeight = 180;
+  const chartHeight = 220;
   const barWidth = 100 / data.length;
 
   return (
@@ -574,17 +603,17 @@ function PnlBarChart({ data }) {
         })}
       </svg>
       {/* Labels */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12 }}>
         {data.map((d, i) => (
           <div key={i} style={{ textAlign: 'center', flex: 1 }}>
             <div style={{
-              fontSize: 11,
+              fontSize: 12,
               color: colors.textMuted,
             }}>
               {d.date ? new Date(d.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' }) : '—'}
             </div>
             <div style={{
-              fontSize: 12,
+              fontSize: 13,
               fontFamily: 'monospace',
               fontWeight: 600,
               color: d.pnl > 0 ? colors.accent : d.pnl < 0 ? colors.error : colors.textMuted,
@@ -598,20 +627,90 @@ function PnlBarChart({ data }) {
   );
 }
 
+// Top Tickers Horizontal Bar Chart
+function TopTickersChart({ data }) {
+  if (!data || data.length === 0) {
+    return (
+      <div style={{ padding: 40, textAlign: 'center', color: colors.textMuted, fontSize: 15 }}>
+        No ticker data yet.
+      </div>
+    );
+  }
+
+  const maxAbs = Math.max(...data.map(d => Math.abs(d.pnl)), 1);
+  const barHeight = 36;
+  const chartHeight = data.length * (barHeight + 12);
+
+  return (
+    <div style={{ minHeight: 220 }}>
+      {data.map((d, i) => {
+        const pnl = d.pnl || 0;
+        const barWidth = Math.abs(pnl) / maxAbs * 100;
+        const isPositive = pnl >= 0;
+
+        return (
+          <div key={i} style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            marginBottom: 12,
+          }}>
+            <span style={{
+              width: 60,
+              fontWeight: 700,
+              fontSize: 15,
+              color: colors.textPrimary,
+            }}>
+              {d.symbol}
+            </span>
+            <div style={{
+              flex: 1,
+              height: barHeight,
+              background: colors.bgSecondary,
+              borderRadius: 6,
+              overflow: 'hidden',
+              position: 'relative',
+            }}>
+              <div style={{
+                width: `${Math.max(barWidth, 2)}%`,
+                height: '100%',
+                background: isPositive ? colors.accent : colors.error,
+                opacity: 0.8,
+                borderRadius: 6,
+                transition: 'width 0.3s ease',
+              }} />
+            </div>
+            <span style={{
+              width: 80,
+              textAlign: 'right',
+              fontFamily: 'monospace',
+              fontSize: 15,
+              fontWeight: 700,
+              color: isPositive ? colors.accent : colors.error,
+            }}>
+              ${pnl.toFixed(2)}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // Components
 function StatusBadge({ label, value, color = colors.textPrimary }) {
   return (
     <div style={{
       display: 'flex',
       alignItems: 'center',
-      gap: 8,
-      padding: '8px 14px',
+      gap: 10,
+      padding: '10px 16px',
       borderRadius: borderRadius.full,
       background: colors.bgCard,
       border: `1px solid ${colors.border}`,
     }}>
-      <span style={{ color: colors.textMuted, fontSize: 11, fontWeight: 600 }}>{label}</span>
-      <span style={{ color, fontWeight: 800, fontSize: 13 }}>{String(value ?? '—')}</span>
+      <span style={{ color: colors.textMuted, fontSize: 13, fontWeight: 600 }}>{label}</span>
+      <span style={{ color, fontWeight: 800, fontSize: 15 }}>{String(value ?? '—')}</span>
     </div>
   );
 }
@@ -633,10 +732,10 @@ function MetricCard({ title, value, subtitle, color = colors.textPrimary }) {
         } : {}),
       }}
     >
-      <span style={{ color: colors.textMuted, fontSize: 13, fontWeight: 600 }}>{title}</span>
-      <span style={{ fontSize: 28, fontWeight: 900, color, marginTop: 4 }}>{value}</span>
+      <span style={{ color: colors.textMuted, fontSize: 14, fontWeight: 600 }}>{title}</span>
+      <span style={{ fontSize: 32, fontWeight: 900, color, marginTop: 6 }}>{value}</span>
       {subtitle && (
-        <span style={{ color: colors.textMuted, fontSize: 11, marginTop: 4 }}>{subtitle}</span>
+        <span style={{ color: colors.textMuted, fontSize: 13, marginTop: 6 }}>{subtitle}</span>
       )}
     </div>
   );
@@ -646,8 +745,8 @@ function Th({ children }) {
   return (
     <th style={{
       textAlign: 'left',
-      padding: '12px 16px',
-      fontSize: 12,
+      padding: '14px 16px',
+      fontSize: 13,
       fontWeight: 700,
       color: colors.textMuted,
       textTransform: 'uppercase',
@@ -660,7 +759,7 @@ function Th({ children }) {
 
 function Td({ children, style = {} }) {
   return (
-    <td style={{ padding: '12px 16px', ...style }}>
+    <td style={{ padding: '14px 16px', fontSize: 15, ...style }}>
       {children}
     </td>
   );
