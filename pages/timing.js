@@ -66,8 +66,16 @@ export default function TimingPage() {
         <>
           {/* Best Trading Hours */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginBottom: 24 }}>
-            <BestHoursCard hours={data.best_hours} title="Best Trading Hours" color={colors.accent} />
-            <BestHoursCard hours={data.worst_hours} title="Worst Trading Hours" color={colors.error} />
+            <BestHoursCard
+              hours={data.by_hour?.filter(h => h.trades > 0).sort((a, b) => b.win_rate - a.win_rate)}
+              title="Best Trading Hours"
+              color={colors.accent}
+            />
+            <BestHoursCard
+              hours={data.by_hour?.filter(h => h.trades > 0).sort((a, b) => a.win_rate - b.win_rate)}
+              title="Worst Trading Hours"
+              color={colors.error}
+            />
           </div>
 
           {/* Hour Heatmap */}
@@ -102,31 +110,34 @@ export default function TimingPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.by_hour && data.by_hour.map((h, i) => (
-                  <tr key={i} style={{ borderTop: `1px solid ${colors.border}` }}>
-                    <Td style={{ fontWeight: 700 }}>{formatHour(h.hour)}</Td>
-                    <Td style={{ fontFamily: 'monospace' }}>{h.trade_count}</Td>
-                    <Td style={{
-                      fontWeight: 600,
-                      color: h.win_rate >= 50 ? colors.accent : colors.error,
-                    }}>
-                      {h.win_rate}%
-                    </Td>
-                    <Td style={{
-                      fontFamily: 'monospace',
-                      fontWeight: 700,
-                      color: h.total_pnl > 0 ? colors.accent : h.total_pnl < 0 ? colors.error : colors.textPrimary,
-                    }}>
-                      ${h.total_pnl.toFixed(2)}
-                    </Td>
-                    <Td style={{
-                      fontFamily: 'monospace',
-                      color: h.avg_pnl > 0 ? colors.accent : h.avg_pnl < 0 ? colors.error : colors.textPrimary,
-                    }}>
-                      ${h.avg_pnl.toFixed(2)}
-                    </Td>
-                  </tr>
-                ))}
+                {data.by_hour && data.by_hour.map((h, i) => {
+                  const avgPnl = h.trades > 0 ? h.pnl / h.trades : 0;
+                  return (
+                    <tr key={i} style={{ borderTop: `1px solid ${colors.border}` }}>
+                      <Td style={{ fontWeight: 700 }}>{formatHour(h.hour)}</Td>
+                      <Td style={{ fontFamily: 'monospace' }}>{h.trades}</Td>
+                      <Td style={{
+                        fontWeight: 600,
+                        color: h.win_rate >= 50 ? colors.accent : colors.error,
+                      }}>
+                        {h.win_rate}%
+                      </Td>
+                      <Td style={{
+                        fontFamily: 'monospace',
+                        fontWeight: 700,
+                        color: h.pnl > 0 ? colors.accent : h.pnl < 0 ? colors.error : colors.textPrimary,
+                      }}>
+                        ${h.pnl.toFixed(2)}
+                      </Td>
+                      <Td style={{
+                        fontFamily: 'monospace',
+                        color: avgPnl > 0 ? colors.accent : avgPnl < 0 ? colors.error : colors.textPrimary,
+                      }}>
+                        ${avgPnl.toFixed(2)}
+                      </Td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -184,7 +195,7 @@ function BestHoursCard({ hours, title, color }) {
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontWeight: 700, color, fontSize: 14 }}>{h.win_rate}%</div>
-              <div style={{ fontSize: 11, color: colors.textMuted }}>{h.trade_count} trades</div>
+              <div style={{ fontSize: 11, color: colors.textMuted }}>{h.trades} trades</div>
             </div>
           </div>
         ))}
@@ -198,18 +209,18 @@ function HourHeatmap({ data }) {
     return <div style={{ color: colors.textMuted }}>No hourly data available</div>;
   }
 
-  const maxPnl = Math.max(...data.map(d => d.total_pnl), 0);
-  const minPnl = Math.min(...data.map(d => d.total_pnl), 0);
+  const maxPnl = Math.max(...data.map(d => d.pnl), 0);
+  const minPnl = Math.min(...data.map(d => d.pnl), 0);
 
   return (
     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
       {data.map((h, i) => {
-        const intensity = h.total_pnl > 0
-          ? Math.min(h.total_pnl / (maxPnl || 1), 1)
-          : Math.min(Math.abs(h.total_pnl) / (Math.abs(minPnl) || 1), 1);
-        const bgColor = h.total_pnl > 0
+        const intensity = h.pnl > 0
+          ? Math.min(h.pnl / (maxPnl || 1), 1)
+          : Math.min(Math.abs(h.pnl) / (Math.abs(minPnl) || 1), 1);
+        const bgColor = h.pnl > 0
           ? `rgba(0, 255, 136, ${0.2 + intensity * 0.6})`
-          : h.total_pnl < 0
+          : h.pnl < 0
           ? `rgba(255, 71, 87, ${0.2 + intensity * 0.6})`
           : colors.bgSecondary;
 
@@ -224,7 +235,7 @@ function HourHeatmap({ data }) {
               textAlign: 'center',
               border: `1px solid ${colors.border}`,
             }}
-            title={`${formatHour(h.hour)}: $${h.total_pnl.toFixed(2)} P&L, ${h.win_rate}% win rate`}
+            title={`${formatHour(h.hour)}: $${h.pnl.toFixed(2)} P&L, ${h.win_rate}% win rate`}
           >
             <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 2 }}>
               {formatHour(h.hour)}
@@ -232,7 +243,7 @@ function HourHeatmap({ data }) {
             <div style={{
               fontSize: 13,
               fontWeight: 700,
-              color: h.total_pnl > 0 ? colors.accent : h.total_pnl < 0 ? colors.error : colors.textPrimary,
+              color: h.pnl > 0 ? colors.accent : h.pnl < 0 ? colors.error : colors.textPrimary,
             }}>
               {h.win_rate}%
             </div>
@@ -248,16 +259,16 @@ function DayOfWeekChart({ data }) {
     return <div style={{ color: colors.textMuted }}>No daily data available</div>;
   }
 
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-  const maxPnl = Math.max(...data.map(d => Math.abs(d.total_pnl)), 1);
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const maxPnl = Math.max(...data.map(d => Math.abs(d.pnl)), 1);
   const chartHeight = 160;
   const barWidth = 60;
 
   return (
     <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', height: chartHeight, padding: '20px 0' }}>
       {data.map((d, i) => {
-        const barHeight = Math.abs(d.total_pnl) / maxPnl * (chartHeight - 40);
-        const isPositive = d.total_pnl >= 0;
+        const barHeight = Math.abs(d.pnl) / maxPnl * (chartHeight - 40);
+        const isPositive = d.pnl >= 0;
 
         return (
           <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
@@ -267,7 +278,7 @@ function DayOfWeekChart({ data }) {
               fontWeight: 700,
               color: isPositive ? colors.accent : colors.error,
             }}>
-              ${d.total_pnl.toFixed(0)}
+              ${d.pnl.toFixed(0)}
             </div>
             {/* Bar */}
             <div style={{
@@ -281,11 +292,11 @@ function DayOfWeekChart({ data }) {
             }} />
             {/* Day Label */}
             <div style={{ fontSize: 13, fontWeight: 700, color: colors.textPrimary }}>
-              {days[d.day_of_week] || `Day ${d.day_of_week}`}
+              {days[d.day] || `Day ${d.day}`}
             </div>
             {/* Win Rate */}
             <div style={{ fontSize: 11, color: colors.textMuted }}>
-              {d.win_rate}% ({d.trade_count})
+              {d.win_rate}% ({d.trades})
             </div>
           </div>
         );
