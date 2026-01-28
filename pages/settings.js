@@ -11,6 +11,12 @@ import {
   inputStyle,
   toggleOnStyle,
   toggleOffStyle,
+  fontFamily,
+  fontSize,
+  fontWeight,
+  shadows,
+  spacing,
+  transitions,
 } from '../lib/theme';
 
 // Default values for reset functionality

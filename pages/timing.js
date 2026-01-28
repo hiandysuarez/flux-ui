@@ -6,6 +6,12 @@ import {
   colors,
   borderRadius,
   cardStyle,
+  fontFamily,
+  fontSize,
+  fontWeight,
+  shadows,
+  spacing,
+  transitions,
 } from '../lib/theme';
 
 export default function TimingPage() {

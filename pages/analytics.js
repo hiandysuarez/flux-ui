@@ -7,6 +7,12 @@ import {
   borderRadius,
   cardStyle,
   buttonStyle,
+  fontFamily,
+  fontSize,
+  fontWeight,
+  shadows,
+  spacing,
+  transitions,
 } from '../lib/theme';
 
 export default function AnalyticsPage() {
@@ -37,11 +43,17 @@ export default function AnalyticsPage() {
   return (
     <Layout active="analytics">
       {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0, color: colors.textPrimary }}>
+      <div style={{ marginBottom: spacing.xl }}>
+        <h1 style={{
+          fontSize: fontSize.xl,
+          fontWeight: fontWeight.black,
+          margin: 0,
+          color: colors.textPrimary,
+          letterSpacing: '-0.02em',
+        }}>
           Analytics
         </h1>
-        <p style={{ margin: '8px 0 0', color: colors.textMuted, fontSize: 13 }}>
+        <p style={{ margin: `${spacing.sm}px 0 0`, color: colors.textMuted, fontSize: fontSize.sm }}>
           Performance metrics and trading analysis
         </p>
       </div>

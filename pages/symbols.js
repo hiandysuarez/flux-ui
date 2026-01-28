@@ -7,6 +7,12 @@ import {
   borderRadius,
   cardStyle,
   tableRowHoverBg,
+  fontFamily,
+  fontSize,
+  fontWeight,
+  shadows,
+  spacing,
+  transitions,
 } from '../lib/theme';
 
 export default function SymbolsPage() {
