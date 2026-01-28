@@ -18,7 +18,23 @@ export default function Layout({ children, active = 'dashboard' }) {
       background: colors.bgPrimary,
       color: colors.textPrimary,
     }}>
-      {/* Header */}
+      {/* Responsive styles */}
+      <style>{`
+        @media (max-width: 768px) {
+          .responsive-grid-2 {
+            grid-template-columns: 1fr !important;
+          }
+          .responsive-hide {
+            display: none !important;
+          }
+          .responsive-flex-col {
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+        }
+      `}</style>
+
+      {/* Header - Sticky */}
       <header style={{
         padding: '16px 20px',
         borderBottom: `1px solid ${colors.border}`,
@@ -26,6 +42,10 @@ export default function Layout({ children, active = 'dashboard' }) {
         alignItems: 'center',
         gap: 16,
         background: colors.bgSecondary,
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+        backdropFilter: 'blur(8px)',
       }}>
         {/* Logo */}
         <div style={{

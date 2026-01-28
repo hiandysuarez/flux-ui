@@ -30,8 +30,6 @@ export default function Home() {
   const [cycle, setCycle] = useState(null);
   const [err, setErr] = useState(null);
   const [acting, setActing] = useState(false);
-  const [actionMsg, setActionMsg] = useState(null);
-  const [actionErr, setActionErr] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshSec, setRefreshSec] = useState(10);
   const [lastRefresh, setLastRefresh] = useState(null);
@@ -40,6 +38,18 @@ export default function Home() {
   const [shadowLogs, setShadowLogs] = useState([]);
   const [positions, setPositions] = useState([]);
   const [dailyPnl, setDailyPnl] = useState([]);
+
+  // Toast notifications
+  const [toasts, setToasts] = useState([]);
+  const addToast = (message, type = 'success') => {
+    const id = Date.now();
+    setToasts(t => [...t, { id, message, type }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000);
+  };
+
+  // Collapsible sections
+  const [chartsOpen, setChartsOpen] = useState(true);
+  const [tablesOpen, setTablesOpen] = useState(true);
 
   async function load({ silent = false } = {}) {
     try {
@@ -112,14 +122,12 @@ export default function Home() {
 
   async function onRunCycle(force = false) {
     setActing(true);
-    setActionMsg(null);
-    setActionErr(null);
     try {
       await runDecisionCycle(force);
-      setActionMsg(force ? 'Forced cycle ran' : 'Cycle ran');
+      addToast(force ? 'Forced cycle ran successfully' : 'Cycle ran successfully', 'success');
       await load();
     } catch (e) {
-      setActionErr(String(e?.message || e));
+      addToast(String(e?.message || e), 'error');
     } finally {
       setActing(false);
     }
@@ -128,14 +136,12 @@ export default function Home() {
   async function onForceExitAll() {
     if (!confirm('Force exit ALL positions right now?')) return;
     setActing(true);
-    setActionMsg(null);
-    setActionErr(null);
     try {
       await forceExitAll();
-      setActionMsg('Force exit requested');
+      addToast('Force exit requested', 'success');
       await load();
     } catch (e) {
-      setActionErr(String(e?.message || e));
+      addToast(String(e?.message || e), 'error');
     } finally {
       setActing(false);
     }
@@ -179,6 +185,10 @@ export default function Home() {
         @keyframes shimmer {
           0% { background-position: 200% 0; }
           100% { background-position: -200% 0; }
+        }
+        @keyframes slideIn {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
         }
       `}</style>
       {/* Header */}
@@ -287,14 +297,20 @@ export default function Home() {
         </span>
       </div>
 
-      {actionMsg && (
-        <div style={{ marginBottom: 16, color: colors.accent, fontWeight: 700 }}>
-          {actionMsg}
-        </div>
-      )}
-      {actionErr && (
-        <div style={{ marginBottom: 16, color: colors.error }}>{actionErr}</div>
-      )}
+      {/* Toast Notifications */}
+      <div style={{
+        position: 'fixed',
+        top: 80,
+        right: 20,
+        zIndex: 100,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+      }}>
+        {toasts.map(t => (
+          <Toast key={t.id} message={t.message} type={t.type} onClose={() => setToasts(ts => ts.filter(x => x.id !== t.id))} />
+        ))}
+      </div>
 
       {/* Metrics Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 24 }}>
@@ -336,36 +352,39 @@ export default function Home() {
         />
       </div>
 
-      {/* Charts Side by Side */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24, marginBottom: 24 }}>
-        {/* P&L History Chart */}
-        <div style={cardStyle}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 20,
-          }}>
-            <span style={{ fontWeight: 800, fontSize: 18, color: colors.textPrimary }}>P&L History</span>
-            <span style={{ fontSize: 14, color: colors.textMuted }}>Last 14 days</span>
+      {/* Charts Section */}
+      <SectionHeader title="Charts" isOpen={chartsOpen} onToggle={() => setChartsOpen(!chartsOpen)} />
+      {chartsOpen && (
+        <div className="responsive-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24, marginBottom: 24 }}>
+          {/* P&L History Chart */}
+          <div style={cardStyle}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 20,
+            }}>
+              <span style={{ fontWeight: 800, fontSize: 18, color: colors.textPrimary }}>P&L History</span>
+              <span style={{ fontSize: 14, color: colors.textMuted }}>Last 14 days</span>
+            </div>
+            <PnlBarChart data={dailyPnl} />
           </div>
-          <PnlBarChart data={dailyPnl} />
-        </div>
 
-        {/* Top Tickers Chart */}
-        <div style={cardStyle}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 20,
-          }}>
-            <span style={{ fontWeight: 800, fontSize: 18, color: colors.textPrimary }}>Top Performers</span>
-            <span style={{ fontSize: 14, color: colors.textMuted }}>By P&L</span>
+          {/* Top Tickers Chart */}
+          <div style={cardStyle}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 20,
+            }}>
+              <span style={{ fontWeight: 800, fontSize: 18, color: colors.textPrimary }}>Top Performers</span>
+              <span style={{ fontSize: 14, color: colors.textMuted }}>By P&L</span>
+            </div>
+            <TopTickersChart data={topTickers} />
           </div>
-          <TopTickersChart data={topTickers} />
         </div>
-      </div>
+      )}
 
       {/* Active Positions Panel */}
       {positions.length > 0 && (
@@ -419,8 +438,10 @@ export default function Home() {
         </div>
       )}
 
-      {/* Tables Side by Side */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24 }}>
+      {/* Tables Section */}
+      <SectionHeader title="Activity" isOpen={tablesOpen} onToggle={() => setTablesOpen(!tablesOpen)} />
+      {tablesOpen && (
+      <div className="responsive-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24 }}>
         {/* Recent Trades Table */}
         <div style={{
           ...cardStyle,
@@ -550,6 +571,7 @@ export default function Home() {
           </table>
         </div>
       </div>
+      )}
 
     </Layout>
   );
@@ -730,6 +752,80 @@ function TopTickersChart({ data }) {
 }
 
 // Components
+
+// Toast notification
+function Toast({ message, type = 'success', onClose }) {
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12,
+      padding: '12px 16px',
+      borderRadius: borderRadius.md,
+      background: type === 'error' ? '#1a0a0a' : colors.accentDark,
+      border: `1px solid ${type === 'error' ? colors.error : colors.accentMuted}`,
+      color: type === 'error' ? colors.error : colors.accent,
+      boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+      animation: 'slideIn 0.3s ease',
+      minWidth: 250,
+    }}>
+      <span style={{ fontSize: 16 }}>{type === 'error' ? '!' : '+'}</span>
+      <span style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{message}</span>
+      <button
+        onClick={onClose}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: 'inherit',
+          cursor: 'pointer',
+          padding: 4,
+          opacity: 0.7,
+          fontSize: 16,
+        }}
+      >
+        x
+      </button>
+    </div>
+  );
+}
+
+// Collapsible section header
+function SectionHeader({ title, isOpen, onToggle }) {
+  return (
+    <button
+      onClick={onToggle}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        width: '100%',
+        padding: '12px 0',
+        marginBottom: 12,
+        background: 'none',
+        border: 'none',
+        borderBottom: `1px solid ${colors.border}`,
+        cursor: 'pointer',
+        color: colors.textPrimary,
+      }}
+    >
+      <span style={{
+        fontSize: 12,
+        color: colors.textMuted,
+        transition: 'transform 0.2s ease',
+        transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+      }}>
+        {'>'}
+      </span>
+      <span style={{ fontWeight: 700, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+        {title}
+      </span>
+      <span style={{ fontSize: 12, color: colors.textMuted, marginLeft: 4 }}>
+        {isOpen ? 'collapse' : 'expand'}
+      </span>
+    </button>
+  );
+}
+
 function StatusBadge({ label, value, color = colors.textPrimary }) {
   return (
     <div style={{
