@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   colors,
   borderRadius,
@@ -10,17 +11,16 @@ import {
 } from '../lib/theme';
 
 export default function Layout({ children, active = 'dashboard' }) {
-  const linkStyle = (isActive) => ({
-    padding: '8px 16px',
-    borderRadius: borderRadius.md,
-    border: `1px solid ${isActive ? colors.accentMuted : 'transparent'}`,
-    background: isActive ? colors.accentDark : 'transparent',
-    color: isActive ? colors.accent : colors.textSecondary,
-    textDecoration: 'none',
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.semibold,
-    transition: `all ${transitions.fast}`,
-  });
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const navLinks = [
+    { href: '/', label: 'Dashboard', key: 'dashboard' },
+    { href: '/analytics', label: 'Analytics', key: 'analytics' },
+    { href: '/history', label: 'History', key: 'history' },
+    { href: '/symbols', label: 'Symbols', key: 'symbols' },
+    { href: '/timing', label: 'Timing', key: 'timing' },
+    { href: '/settings', label: 'Settings', key: 'settings' },
+  ];
 
   return (
     <div style={{
@@ -28,7 +28,7 @@ export default function Layout({ children, active = 'dashboard' }) {
       background: colors.bgPrimary,
       color: colors.textPrimary,
     }}>
-      {/* Responsive styles + animations */}
+      {/* Styles + animations */}
       <style>{`
         @media (max-width: 768px) {
           .responsive-grid-2 {
@@ -41,10 +41,6 @@ export default function Layout({ children, active = 'dashboard' }) {
             flex-direction: column !important;
             align-items: stretch !important;
           }
-          .nav-wrapper {
-            overflow-x: auto !important;
-            -webkit-overflow-scrolling: touch;
-          }
         }
 
         @keyframes shimmer {
@@ -52,21 +48,35 @@ export default function Layout({ children, active = 'dashboard' }) {
           100% { background-position: -200% 0; }
         }
 
-        .nav-link:hover {
-          color: ${colors.textPrimary} !important;
+        @keyframes slideIn {
+          from { transform: translateX(-100%); }
+          to { transform: translateX(0); }
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        .menu-link {
+          transition: all 0.15s ease;
+        }
+
+        .menu-link:hover {
           background: ${colors.bgHover} !important;
+          padding-left: 24px !important;
         }
       `}</style>
 
-      {/* Header - Sticky with glass effect */}
+      {/* Header */}
       <header style={{
-        height: 64,
+        height: 72,
         padding: '0 24px',
         borderBottom: `1px solid ${colors.border}`,
         display: 'flex',
         alignItems: 'center',
-        gap: 24,
-        background: 'rgba(13, 15, 18, 0.85)',
+        gap: 16,
+        background: 'rgba(13, 15, 18, 0.9)',
         position: 'sticky',
         top: 0,
         zIndex: 50,
@@ -74,63 +84,17 @@ export default function Layout({ children, active = 'dashboard' }) {
         WebkitBackdropFilter: 'blur(12px)',
       }}>
         {/* Logo */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-        }}>
-          <div style={{
-            width: 36,
-            height: 36,
-            borderRadius: borderRadius.md,
-            background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentMuted} 100%)`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: fontWeight.black,
-            fontSize: fontSize.lg,
-            color: colors.bgPrimary,
-            boxShadow: '0 2px 8px rgba(0, 255, 136, 0.3)',
-          }}>
-            F
-          </div>
-          <span style={{
-            fontWeight: fontWeight.black,
-            fontSize: '22px',
-            letterSpacing: '-0.02em',
-            background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.textPrimary} 100%)`,
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-          }}>
-            Flux
-          </span>
-        </div>
-
-        {/* Navigation */}
-        <nav className="nav-wrapper" style={{
-          display: 'flex',
-          gap: 4,
-          flexWrap: 'nowrap',
-        }}>
-          <a href="/" className="nav-link" style={linkStyle(active === 'dashboard')}>
-            Dashboard
-          </a>
-          <a href="/analytics" className="nav-link" style={linkStyle(active === 'analytics')}>
-            Analytics
-          </a>
-          <a href="/history" className="nav-link" style={linkStyle(active === 'history')}>
-            History
-          </a>
-          <a href="/symbols" className="nav-link" style={linkStyle(active === 'symbols')}>
-            Symbols
-          </a>
-          <a href="/timing" className="nav-link" style={linkStyle(active === 'timing')}>
-            Timing
-          </a>
-          <a href="/settings" className="nav-link" style={linkStyle(active === 'settings')}>
-            Settings
-          </a>
-        </nav>
+        <a href="/" style={{ display: 'flex', alignItems: 'center' }}>
+          <img
+            src="/images/flux_logo.png"
+            alt="Flux"
+            style={{
+              height: 48,
+              width: 'auto',
+              objectFit: 'contain',
+            }}
+          />
+        </a>
 
         {/* Spacer */}
         <div style={{ flex: 1 }} />
@@ -151,6 +115,7 @@ export default function Layout({ children, active = 'dashboard' }) {
             borderRadius: '50%',
             background: colors.accent,
             boxShadow: `0 0 8px ${colors.accent}`,
+            animation: 'pulse 2s infinite',
           }} />
           <span style={{
             fontSize: fontSize.xs,
@@ -173,12 +138,149 @@ export default function Layout({ children, active = 'dashboard' }) {
         }}>
           v1.0
         </div>
+
+        {/* Hamburger button */}
+        <button
+          onClick={() => setMenuOpen(true)}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: 5,
+            width: 44,
+            height: 44,
+            borderRadius: borderRadius.md,
+            background: colors.bgTertiary,
+            border: `1px solid ${colors.border}`,
+            cursor: 'pointer',
+            transition: `all ${transitions.fast}`,
+          }}
+          aria-label="Open menu"
+        >
+          <span style={{ width: 20, height: 2, background: colors.textPrimary, borderRadius: 1 }} />
+          <span style={{ width: 20, height: 2, background: colors.textPrimary, borderRadius: 1 }} />
+          <span style={{ width: 20, height: 2, background: colors.textPrimary, borderRadius: 1 }} />
+        </button>
       </header>
+
+      {/* Slide-out menu */}
+      {menuOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            onClick={() => setMenuOpen(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0, 0, 0, 0.7)',
+              zIndex: 100,
+              animation: 'fadeIn 0.2s ease',
+              backdropFilter: 'blur(4px)',
+            }}
+          />
+
+          {/* Menu panel */}
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            bottom: 0,
+            width: 280,
+            background: colors.bgSecondary,
+            borderRight: `1px solid ${colors.border}`,
+            zIndex: 101,
+            animation: 'slideIn 0.25s ease',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: shadows.xl,
+          }}>
+            {/* Menu header */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '16px 20px',
+              borderBottom: `1px solid ${colors.border}`,
+            }}>
+              <img
+                src="/images/flux_logo.png"
+                alt="Flux"
+                style={{ height: 40, width: 'auto' }}
+              />
+              <button
+                onClick={() => setMenuOpen(false)}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: borderRadius.md,
+                  background: colors.bgTertiary,
+                  border: `1px solid ${colors.border}`,
+                  color: colors.textPrimary,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: fontSize.lg,
+                  fontWeight: fontWeight.bold,
+                }}
+                aria-label="Close menu"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Nav links */}
+            <nav style={{ flex: 1, padding: '12px 0' }}>
+              {navLinks.map((link) => (
+                <a
+                  key={link.key}
+                  href={link.href}
+                  className="menu-link"
+                  onClick={() => setMenuOpen(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '14px 20px',
+                    color: active === link.key ? colors.accent : colors.textPrimary,
+                    fontSize: fontSize.base,
+                    fontWeight: active === link.key ? fontWeight.bold : fontWeight.medium,
+                    textDecoration: 'none',
+                    background: active === link.key ? colors.accentDark : 'transparent',
+                    borderLeft: active === link.key ? `3px solid ${colors.accent}` : '3px solid transparent',
+                  }}
+                >
+                  {link.label}
+                </a>
+              ))}
+            </nav>
+
+            {/* Menu footer */}
+            <div style={{
+              padding: '16px 20px',
+              borderTop: `1px solid ${colors.border}`,
+              color: colors.textMuted,
+              fontSize: fontSize.xs,
+            }}>
+              Flux Trading Platform v1.0
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Main content */}
       <main style={{ padding: spacing.xl }}>
         {children}
       </main>
+
+      {/* Pulse animation for live indicator */}
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      `}</style>
     </div>
   );
 }
