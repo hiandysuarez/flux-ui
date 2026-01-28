@@ -55,7 +55,7 @@ export default function Home() {
       setShadowLogs(shadowRes?.logs || []);
       const posRes = await fetchActivePositions();
       setPositions(posRes?.positions || []);
-      const pnlRes = await fetchDailyPnl(7);
+      const pnlRes = await fetchDailyPnl(14);
       setDailyPnl(pnlRes?.data || []);
       setLastRefresh(new Date().toISOString());
     } catch (e) {
@@ -318,6 +318,23 @@ export default function Home() {
         />
       </div>
 
+      {/* P&L History Chart */}
+      <div style={{
+        ...cardStyle,
+        marginBottom: 24,
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 16,
+        }}>
+          <span style={{ fontWeight: 800, fontSize: 16, color: colors.textPrimary }}>P&L History</span>
+          <span style={{ fontSize: 13, color: colors.textMuted }}>Last 14 days</span>
+        </div>
+        <PnlBarChart data={dailyPnl} />
+      </div>
+
       {/* Active Positions Panel */}
       {positions.length > 0 && (
         <div style={{
@@ -370,156 +387,138 @@ export default function Home() {
         </div>
       )}
 
-      {/* Recent Trades Table */}
-      <div style={{
-        ...cardStyle,
-        padding: 0,
-        overflow: 'hidden',
-        marginTop: 24,
-      }}>
+      {/* Tables Side by Side */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24 }}>
+        {/* Recent Trades Table */}
         <div style={{
-          padding: '12px 16px',
-          borderBottom: `1px solid ${colors.border}`,
+          ...cardStyle,
+          padding: 0,
+          overflow: 'hidden',
         }}>
-          <span style={{ fontWeight: 800, color: colors.textPrimary }}>Recent Trades</span>
-        </div>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: colors.bgSecondary }}>
-              <Th>Time</Th>
-              <Th>Symbol</Th>
-              <Th>Side</Th>
-              <Th>P&L</Th>
-              <Th>Result</Th>
-              <Th>Exit Reason</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {trades.length === 0 ? (
-              <tr>
-                <td colSpan={6} style={{ padding: 20, textAlign: 'center', color: colors.textMuted }}>
-                  No completed trades yet.
-                </td>
+          <div style={{
+            padding: '12px 16px',
+            borderBottom: `1px solid ${colors.border}`,
+          }}>
+            <span style={{ fontWeight: 800, fontSize: 16, color: colors.textPrimary }}>Recent Trades</span>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: colors.bgSecondary }}>
+                <Th>Time</Th>
+                <Th>Symbol</Th>
+                <Th>Side</Th>
+                <Th>P&L</Th>
+                <Th>Result</Th>
               </tr>
-            ) : (
-              trades.map((t, i) => (
-                <HoverRow key={i} style={{ borderTop: `1px solid ${colors.border}` }}>
-                  <Td style={{ fontSize: 12, color: colors.textMuted }}>
-                    {t.ts ? new Date(t.ts).toLocaleTimeString() : '—'}
-                  </Td>
-                  <Td style={{ fontWeight: 700 }}>{t.symbol}</Td>
-                  <Td>
-                    <span style={{ color: t.side === 'BUY' ? colors.accent : colors.error }}>
-                      {t.side}
-                    </span>
-                  </Td>
-                  <Td style={{
-                    fontFamily: 'monospace',
-                    color: t.pnl > 0 ? colors.accent : t.pnl < 0 ? colors.error : colors.textPrimary,
-                  }}>
-                    ${Number(t.pnl || 0).toFixed(2)}
-                  </Td>
-                  <Td>
-                    <span style={{
-                      padding: '2px 8px',
-                      borderRadius: 4,
-                      background: t.win ? colors.accentDark : '#1a0a0a',
-                      color: t.win ? colors.accent : colors.error,
-                      fontWeight: 700,
-                      fontSize: 12,
+            </thead>
+            <tbody>
+              {trades.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ padding: 20, textAlign: 'center', color: colors.textMuted, fontSize: 14 }}>
+                    No completed trades yet.
+                  </td>
+                </tr>
+              ) : (
+                trades.map((t, i) => (
+                  <HoverRow key={i} style={{ borderTop: `1px solid ${colors.border}` }}>
+                    <Td style={{ fontSize: 13, color: colors.textMuted }}>
+                      {t.ts ? new Date(t.ts).toLocaleTimeString() : '—'}
+                    </Td>
+                    <Td style={{ fontWeight: 700, fontSize: 14 }}>{t.symbol}</Td>
+                    <Td style={{ fontSize: 14 }}>
+                      <span style={{ color: t.side === 'BUY' ? colors.accent : colors.error }}>
+                        {t.side}
+                      </span>
+                    </Td>
+                    <Td style={{
+                      fontFamily: 'monospace',
+                      fontSize: 14,
+                      color: t.pnl > 0 ? colors.accent : t.pnl < 0 ? colors.error : colors.textPrimary,
                     }}>
-                      {t.win ? 'WIN' : 'LOSS'}
-                    </span>
-                  </Td>
-                  <Td style={{ fontSize: 12, color: colors.textMuted }}>
-                    {t.exit_reason || '—'}
-                  </Td>
-                </HoverRow>
-              ))
-            )}
-          </tbody>
-        </table>
+                      ${Number(t.pnl || 0).toFixed(2)}
+                    </Td>
+                    <Td>
+                      <span style={{
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        background: t.win ? colors.accentDark : '#1a0a0a',
+                        color: t.win ? colors.accent : colors.error,
+                        fontWeight: 700,
+                        fontSize: 13,
+                      }}>
+                        {t.win ? 'WIN' : 'LOSS'}
+                      </span>
+                    </Td>
+                  </HoverRow>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Shadow Logs Table */}
+        <div style={{
+          ...cardStyle,
+          padding: 0,
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            padding: '12px 16px',
+            borderBottom: `1px solid ${colors.border}`,
+          }}>
+            <span style={{ fontWeight: 800, fontSize: 16, color: colors.textPrimary }}>Shadow Logs</span>
+            <span style={{ marginLeft: 8, fontSize: 13, color: colors.textMuted }}>ML Predictions</span>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: colors.bgSecondary }}>
+                <Th>Time</Th>
+                <Th>Symbol</Th>
+                <Th>Label</Th>
+                <Th>Win %</Th>
+                <Th>Action</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {shadowLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ padding: 20, textAlign: 'center', color: colors.textMuted, fontSize: 14 }}>
+                    No shadow logs yet.
+                  </td>
+                </tr>
+              ) : (
+                shadowLogs.map((s, i) => (
+                  <HoverRow key={i} style={{ borderTop: `1px solid ${colors.border}` }}>
+                    <Td style={{ fontSize: 13, color: colors.textMuted }}>
+                      {s.ts ? new Date(s.ts).toLocaleTimeString() : '—'}
+                    </Td>
+                    <Td style={{ fontWeight: 700, fontSize: 14 }}>{s.symbol}</Td>
+                    <Td style={{ fontSize: 14 }}>
+                      <span style={{
+                        color: s.ml_label === 'BUY' ? colors.accent : s.ml_label === 'SELL' ? colors.error : colors.textMuted,
+                        fontWeight: 700,
+                      }}>
+                        {s.ml_label || '—'}
+                      </span>
+                    </Td>
+                    <Td style={{ fontFamily: 'monospace', fontSize: 14 }}>
+                      {s.ml_win_prob != null ? `${(s.ml_win_prob * 100).toFixed(0)}%` : '—'}
+                    </Td>
+                    <Td style={{ fontSize: 14 }}>
+                      <span style={{
+                        color: s.bot_action === 'BUY' ? colors.accent : s.bot_action === 'SELL' ? colors.error : colors.textMuted,
+                      }}>
+                        {s.bot_action || '—'}
+                      </span>
+                    </Td>
+                  </HoverRow>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Shadow Logs Table */}
-      <div style={{
-        ...cardStyle,
-        padding: 0,
-        overflow: 'hidden',
-        marginTop: 24,
-      }}>
-        <div style={{
-          padding: '12px 16px',
-          borderBottom: `1px solid ${colors.border}`,
-        }}>
-          <span style={{ fontWeight: 800, color: colors.textPrimary }}>Shadow Logs</span>
-          <span style={{ marginLeft: 8, fontSize: 12, color: colors.textMuted }}>ML Predictions</span>
-        </div>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: colors.bgSecondary }}>
-              <Th>Time</Th>
-              <Th>Symbol</Th>
-              <Th>ML Label</Th>
-              <Th>Win Prob</Th>
-              <Th>Bot Action</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {shadowLogs.length === 0 ? (
-              <tr>
-                <td colSpan={5} style={{ padding: 20, textAlign: 'center', color: colors.textMuted }}>
-                  No shadow logs yet.
-                </td>
-              </tr>
-            ) : (
-              shadowLogs.map((s, i) => (
-                <HoverRow key={i} style={{ borderTop: `1px solid ${colors.border}` }}>
-                  <Td style={{ fontSize: 12, color: colors.textMuted }}>
-                    {s.ts ? new Date(s.ts).toLocaleTimeString() : '—'}
-                  </Td>
-                  <Td style={{ fontWeight: 700 }}>{s.symbol}</Td>
-                  <Td>
-                    <span style={{
-                      color: s.ml_label === 'BUY' ? colors.accent : s.ml_label === 'SELL' ? colors.error : colors.textMuted,
-                      fontWeight: 700,
-                    }}>
-                      {s.ml_label || '—'}
-                    </span>
-                  </Td>
-                  <Td style={{ fontFamily: 'monospace' }}>
-                    {s.ml_win_prob != null ? `${(s.ml_win_prob * 100).toFixed(0)}%` : '—'}
-                  </Td>
-                  <Td>
-                    <span style={{
-                      color: s.bot_action === 'BUY' ? colors.accent : s.bot_action === 'SELL' ? colors.error : colors.textMuted,
-                    }}>
-                      {s.bot_action || '—'}
-                    </span>
-                  </Td>
-                </HoverRow>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* P&L History Chart */}
-      <div style={{
-        ...cardStyle,
-        marginTop: 24,
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 16,
-        }}>
-          <span style={{ fontWeight: 800, color: colors.textPrimary }}>P&L History</span>
-          <span style={{ fontSize: 12, color: colors.textMuted }}>Last 7 days</span>
-        </div>
-        <PnlBarChart data={dailyPnl} />
-      </div>
     </Layout>
   );
 }
@@ -535,7 +534,7 @@ function PnlBarChart({ data }) {
   }
 
   const maxAbs = Math.max(...data.map(d => Math.abs(d.pnl)), 1);
-  const chartHeight = 120;
+  const chartHeight = 180;
   const barWidth = 100 / data.length;
 
   return (
@@ -634,8 +633,8 @@ function MetricCard({ title, value, subtitle, color = colors.textPrimary }) {
         } : {}),
       }}
     >
-      <span style={{ color: colors.textMuted, fontSize: 12, fontWeight: 600 }}>{title}</span>
-      <span style={{ fontSize: 24, fontWeight: 900, color, marginTop: 4 }}>{value}</span>
+      <span style={{ color: colors.textMuted, fontSize: 13, fontWeight: 600 }}>{title}</span>
+      <span style={{ fontSize: 28, fontWeight: 900, color, marginTop: 4 }}>{value}</span>
       {subtitle && (
         <span style={{ color: colors.textMuted, fontSize: 11, marginTop: 4 }}>{subtitle}</span>
       )}
@@ -648,7 +647,7 @@ function Th({ children }) {
     <th style={{
       textAlign: 'left',
       padding: '12px 16px',
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: 700,
       color: colors.textMuted,
       textTransform: 'uppercase',
