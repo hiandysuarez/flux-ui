@@ -305,14 +305,17 @@ export default function Home() {
         />
         <MetricCard
           title="Unrealized P&L"
-          value={unrealized != null ? `$${Number(unrealized).toFixed(2)}` : '—'}
+          value={formatCurrency(unrealized)}
           color={unrealized > 0 ? colors.accent : unrealized < 0 ? colors.error : colors.textPrimary}
+          trend={unrealized != null ? (unrealized > 0 ? 1 : unrealized < 0 ? -1 : 0) : null}
         />
         <MetricCard
           title="Today's P&L"
-          value={todayPnl != null ? `$${Number(todayPnl).toFixed(2)}` : '—'}
+          value={formatCurrency(todayPnl)}
           subtitle="realized"
           color={todayPnl > 0 ? colors.accent : todayPnl < 0 ? colors.error : colors.textPrimary}
+          trend={todayPnl != null ? (todayPnl > 0 ? 1 : todayPnl < 0 ? -1 : 0) : null}
+          sparklineData={dailyPnl.slice(-7).map(d => d.pnl || 0)}
         />
         <MetricCard
           title="Active Positions"
@@ -392,7 +395,7 @@ export default function Home() {
             </thead>
             <tbody>
               {positions.map((p, i) => (
-                <HoverRow key={i} style={{ borderTop: `1px solid ${colors.border}` }}>
+                <PnlRow key={i} pnl={p.unrealized_pnl} style={{ borderTop: `1px solid ${colors.border}` }}>
                   <Td style={{ fontWeight: 700 }}>{p.symbol}</Td>
                   <Td>
                     <span style={{ color: p.side === 'LONG' ? colors.accent : colors.error }}>
@@ -400,16 +403,16 @@ export default function Home() {
                     </span>
                   </Td>
                   <Td style={{ fontFamily: 'monospace' }}>{p.qty}</Td>
-                  <Td style={{ fontFamily: 'monospace' }}>${Number(p.entry_price).toFixed(2)}</Td>
-                  <Td style={{ fontFamily: 'monospace' }}>${Number(p.current_price).toFixed(2)}</Td>
+                  <Td style={{ fontFamily: 'monospace' }}>{formatCurrency(p.entry_price, false)}</Td>
+                  <Td style={{ fontFamily: 'monospace' }}>{formatCurrency(p.current_price, false)}</Td>
                   <Td style={{
                     fontFamily: 'monospace',
                     fontWeight: 700,
                     color: p.unrealized_pnl > 0 ? colors.accent : p.unrealized_pnl < 0 ? colors.error : colors.textPrimary,
                   }}>
-                    ${Number(p.unrealized_pnl).toFixed(2)}
+                    {formatCurrency(p.unrealized_pnl)}
                   </Td>
-                </HoverRow>
+                </PnlRow>
               ))}
             </tbody>
           </table>
@@ -443,13 +446,13 @@ export default function Home() {
             <tbody>
               {trades.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ padding: 20, textAlign: 'center', color: colors.textMuted, fontSize: 14 }}>
-                    No completed trades yet.
+                  <td colSpan={5}>
+                    <EmptyState message="No completed trades yet" icon="~" />
                   </td>
                 </tr>
               ) : (
                 trades.map((t, i) => (
-                  <HoverRow key={i} style={{ borderTop: `1px solid ${colors.border}` }}>
+                  <PnlRow key={i} pnl={t.pnl} style={{ borderTop: `1px solid ${colors.border}` }}>
                     <Td style={{ fontSize: 13, color: colors.textMuted }}>
                       {t.ts ? new Date(t.ts).toLocaleTimeString() : '—'}
                     </Td>
@@ -464,7 +467,7 @@ export default function Home() {
                       fontSize: 14,
                       color: t.pnl > 0 ? colors.accent : t.pnl < 0 ? colors.error : colors.textPrimary,
                     }}>
-                      ${Number(t.pnl || 0).toFixed(2)}
+                      {formatCurrency(t.pnl)}
                     </Td>
                     <Td>
                       <span style={{
@@ -478,7 +481,7 @@ export default function Home() {
                         {t.win ? 'WIN' : 'LOSS'}
                       </span>
                     </Td>
-                  </HoverRow>
+                  </PnlRow>
                 ))
               )}
             </tbody>
@@ -511,8 +514,8 @@ export default function Home() {
             <tbody>
               {shadowLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ padding: 20, textAlign: 'center', color: colors.textMuted, fontSize: 14 }}>
-                    No shadow logs yet.
+                  <td colSpan={5}>
+                    <EmptyState message="No shadow logs yet" icon="~" />
                   </td>
                 </tr>
               ) : (
@@ -552,8 +555,10 @@ export default function Home() {
   );
 }
 
-// P&L Bar Chart Component
+// P&L Bar Chart Component with Tooltips
 function PnlBarChart({ data }) {
+  const [tooltip, setTooltip] = useState(null);
+
   // Filter out weekends and zero PnL days
   const filtered = (data || []).filter(d => {
     if (!d.date) return false;
@@ -564,11 +569,7 @@ function PnlBarChart({ data }) {
   });
 
   if (filtered.length === 0) {
-    return (
-      <div style={{ padding: 40, textAlign: 'center', color: colors.textMuted, fontSize: 15 }}>
-        No P&L data yet.
-      </div>
-    );
+    return <EmptyState message="No P&L data yet" icon="~" />;
   }
 
   const maxAbs = Math.max(...filtered.map(d => Math.abs(d.pnl)), 1);
@@ -576,7 +577,7 @@ function PnlBarChart({ data }) {
   const barWidth = 100 / filtered.length;
 
   return (
-    <div>
+    <div style={{ position: 'relative' }}>
       <svg width="100%" height={chartHeight} style={{ display: 'block' }}>
         {/* Zero line */}
         <line
@@ -606,11 +607,37 @@ function PnlBarChart({ data }) {
                 fill={isPositive ? colors.accent : colors.error}
                 rx="4"
                 opacity="0.8"
+                style={{ cursor: 'pointer' }}
+                onMouseEnter={(e) => setTooltip({ x: e.clientX, y: e.clientY, date: d.date, pnl })}
+                onMouseLeave={() => setTooltip(null)}
               />
             </g>
           );
         })}
       </svg>
+      {/* Tooltip */}
+      {tooltip && (
+        <div style={{
+          position: 'fixed',
+          left: tooltip.x + 10,
+          top: tooltip.y - 50,
+          background: colors.bgSecondary,
+          border: `1px solid ${colors.border}`,
+          padding: '8px 12px',
+          borderRadius: 8,
+          fontSize: 12,
+          pointerEvents: 'none',
+          zIndex: 100,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+        }}>
+          <div style={{ color: colors.textMuted, marginBottom: 4 }}>
+            {new Date(tooltip.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+          </div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: tooltip.pnl >= 0 ? colors.accent : colors.error }}>
+            {formatCurrency(tooltip.pnl, false)}
+          </div>
+        </div>
+      )}
       {/* Labels */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12 }}>
         {filtered.map((d, i) => (
@@ -627,7 +654,7 @@ function PnlBarChart({ data }) {
               fontWeight: 600,
               color: d.pnl > 0 ? colors.accent : d.pnl < 0 ? colors.error : colors.textMuted,
             }}>
-              ${d.pnl?.toFixed(0) ?? 0}
+              {formatCurrency(d.pnl, true)}
             </div>
           </div>
         ))}
@@ -639,11 +666,7 @@ function PnlBarChart({ data }) {
 // Top Tickers Horizontal Bar Chart
 function TopTickersChart({ data }) {
   if (!data || data.length === 0) {
-    return (
-      <div style={{ padding: 40, textAlign: 'center', color: colors.textMuted, fontSize: 15 }}>
-        No ticker data yet.
-      </div>
-    );
+    return <EmptyState message="No ticker data yet" icon="~" />;
   }
 
   const maxAbs = Math.max(...data.map(d => Math.abs(d.pnl)), 1);
@@ -697,7 +720,7 @@ function TopTickersChart({ data }) {
               fontWeight: 700,
               color: isPositive ? colors.accent : colors.error,
             }}>
-              ${pnl.toFixed(2)}
+              {formatCurrency(pnl)}
             </span>
           </div>
         );
@@ -724,7 +747,7 @@ function StatusBadge({ label, value, color = colors.textPrimary }) {
   );
 }
 
-function MetricCard({ title, value, subtitle, color = colors.textPrimary }) {
+function MetricCard({ title, value, subtitle, color = colors.textPrimary, trend, sparklineData }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -742,7 +765,19 @@ function MetricCard({ title, value, subtitle, color = colors.textPrimary }) {
       }}
     >
       <span style={{ color: colors.textMuted, fontSize: 14, fontWeight: 600 }}>{title}</span>
-      <span style={{ fontSize: 32, fontWeight: 900, color, marginTop: 6 }}>{value}</span>
+      <div style={{ display: 'flex', alignItems: 'center', marginTop: 6 }}>
+        <span style={{ fontSize: 32, fontWeight: 900, color }}>{value}</span>
+        {trend != null && (
+          <span style={{
+            marginLeft: 8,
+            fontSize: 18,
+            color: trend > 0 ? colors.accent : trend < 0 ? colors.error : colors.textMuted
+          }}>
+            {trend > 0 ? '↑' : trend < 0 ? '↓' : '→'}
+          </span>
+        )}
+      </div>
+      {sparklineData && <Sparkline data={sparklineData} color={color !== colors.textPrimary ? color : colors.accent} />}
       {subtitle && (
         <span style={{ color: colors.textMuted, fontSize: 13, marginTop: 6 }}>{subtitle}</span>
       )}
@@ -809,6 +844,68 @@ function SkeletonCard() {
       <Skeleton width="80%" height={28} />
       <Skeleton width="40%" height={12} />
     </div>
+  );
+}
+
+// Currency formatting helper
+function formatCurrency(val, compact = true) {
+  if (val == null) return '—';
+  const num = Number(val);
+  if (!compact || Math.abs(num) < 1000) {
+    return `$${num.toFixed(2)}`;
+  }
+  return `$${(num / 1000).toFixed(1)}K`;
+}
+
+// Sparkline component
+function Sparkline({ data, color = colors.accent }) {
+  if (!data || data.length < 2) return null;
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const points = data.map((v, i) =>
+    `${(i / (data.length - 1)) * 60},${20 - ((v - min) / range) * 18}`
+  ).join(' ');
+
+  return (
+    <svg width="60" height="20" style={{ marginTop: 8 }}>
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+// Empty state component
+function EmptyState({ message, icon = '~' }) {
+  return (
+    <div style={{
+      padding: '40px 20px',
+      textAlign: 'center',
+      color: colors.textMuted,
+    }}>
+      <div style={{ fontSize: 28, marginBottom: 12, opacity: 0.5 }}>{icon}</div>
+      <div style={{ fontSize: 14 }}>{message}</div>
+    </div>
+  );
+}
+
+// Color-coded row based on P&L
+function PnlRow({ children, pnl, style = {} }) {
+  const [hovered, setHovered] = useState(false);
+  const bgTint = pnl > 0 ? 'rgba(0, 255, 136, 0.05)'
+               : pnl < 0 ? 'rgba(255, 71, 87, 0.05)'
+               : 'transparent';
+  return (
+    <tr
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        ...style,
+        background: hovered ? tableRowHoverBg : bgTint,
+        transition: 'background 0.15s ease',
+      }}
+    >
+      {children}
+    </tr>
   );
 }
 
