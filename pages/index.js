@@ -20,6 +20,8 @@ import {
   buttonGhostStyle,
   toggleOnStyle,
   toggleOffStyle,
+  tableRowHoverBg,
+  skeletonStyle,
 } from '../lib/theme';
 import Layout from '../components/Layout';
 
@@ -124,8 +126,46 @@ export default function Home() {
     }
   }
 
+  // Show loading skeleton on initial load
+  if (status === null) {
+    return (
+      <Layout active="dashboard">
+        <style>{`
+          @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+          }
+        `}</style>
+        <div style={{ marginBottom: 24 }}>
+          <Skeleton width={180} height={32} />
+          <div style={{ marginTop: 8 }}><Skeleton width={280} height={14} /></div>
+        </div>
+        <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+          <Skeleton width={100} height={36} />
+          <Skeleton width={80} height={36} />
+          <Skeleton width={120} height={36} />
+          <Skeleton width={80} height={36} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout active="dashboard">
+      <style>{`
+        @keyframes shimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+      `}</style>
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0, color: colors.textPrimary }}>
@@ -306,7 +346,7 @@ export default function Home() {
             </thead>
             <tbody>
               {positions.map((p, i) => (
-                <tr key={i} style={{ borderTop: `1px solid ${colors.border}` }}>
+                <HoverRow key={i} style={{ borderTop: `1px solid ${colors.border}` }}>
                   <Td style={{ fontWeight: 700 }}>{p.symbol}</Td>
                   <Td>
                     <span style={{ color: p.side === 'LONG' ? colors.accent : colors.error }}>
@@ -323,7 +363,7 @@ export default function Home() {
                   }}>
                     ${Number(p.unrealized_pnl).toFixed(2)}
                   </Td>
-                </tr>
+                </HoverRow>
               ))}
             </tbody>
           </table>
@@ -363,7 +403,7 @@ export default function Home() {
               </tr>
             ) : (
               trades.map((t, i) => (
-                <tr key={i} style={{ borderTop: `1px solid ${colors.border}` }}>
+                <HoverRow key={i} style={{ borderTop: `1px solid ${colors.border}` }}>
                   <Td style={{ fontSize: 12, color: colors.textMuted }}>
                     {t.ts ? new Date(t.ts).toLocaleTimeString() : '—'}
                   </Td>
@@ -394,7 +434,7 @@ export default function Home() {
                   <Td style={{ fontSize: 12, color: colors.textMuted }}>
                     {t.exit_reason || '—'}
                   </Td>
-                </tr>
+                </HoverRow>
               ))
             )}
           </tbody>
@@ -434,7 +474,7 @@ export default function Home() {
               </tr>
             ) : (
               shadowLogs.map((s, i) => (
-                <tr key={i} style={{ borderTop: `1px solid ${colors.border}` }}>
+                <HoverRow key={i} style={{ borderTop: `1px solid ${colors.border}` }}>
                   <Td style={{ fontSize: 12, color: colors.textMuted }}>
                     {s.ts ? new Date(s.ts).toLocaleTimeString() : '—'}
                   </Td>
@@ -457,7 +497,7 @@ export default function Home() {
                       {s.bot_action || '—'}
                     </span>
                   </Td>
-                </tr>
+                </HoverRow>
               ))
             )}
           </tbody>
@@ -578,12 +618,22 @@ function StatusBadge({ label, value, color = colors.textPrimary }) {
 }
 
 function MetricCard({ title, value, subtitle, color = colors.textPrimary }) {
+  const [hovered, setHovered] = useState(false);
   return (
-    <div style={{
-      ...cardStyle,
-      display: 'flex',
-      flexDirection: 'column',
-    }}>
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        ...cardStyle,
+        display: 'flex',
+        flexDirection: 'column',
+        cursor: 'default',
+        ...(hovered ? {
+          borderColor: colors.borderAccent,
+          boxShadow: `0 0 20px ${colors.accentGlow}`,
+        } : {}),
+      }}
+    >
       <span style={{ color: colors.textMuted, fontSize: 12, fontWeight: 600 }}>{title}</span>
       <span style={{ fontSize: 24, fontWeight: 900, color, marginTop: 4 }}>{value}</span>
       {subtitle && (
@@ -614,6 +664,44 @@ function Td({ children, style = {} }) {
     <td style={{ padding: '12px 16px', ...style }}>
       {children}
     </td>
+  );
+}
+
+function HoverRow({ children, style = {} }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <tr
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        ...style,
+        background: hovered ? tableRowHoverBg : 'transparent',
+        transition: 'background 0.15s ease',
+      }}
+    >
+      {children}
+    </tr>
+  );
+}
+
+function Skeleton({ width = '100%', height = 20 }) {
+  return (
+    <div style={{
+      ...skeletonStyle,
+      width,
+      height,
+      animation: 'shimmer 1.5s infinite',
+    }} />
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <Skeleton width="60%" height={14} />
+      <Skeleton width="80%" height={28} />
+      <Skeleton width="40%" height={12} />
+    </div>
   );
 }
 
