@@ -79,9 +79,18 @@ export default function Layout({ children, active = 'dashboard' }) {
         </div>
 
         {/* Navigation */}
-        <nav style={{ display: 'flex', gap: 8 }}>
+        <nav style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <a href="/" style={linkStyle(active === 'dashboard')}>
             Dashboard
+          </a>
+          <a href="/analytics" style={linkStyle(active === 'analytics')}>
+            Analytics
+          </a>
+          <a href="/history" style={linkStyle(active === 'history')}>
+            History
+          </a>
+          <a href="/symbols" style={linkStyle(active === 'symbols')}>
+            Symbols
           </a>
           <a href="/settings" style={linkStyle(active === 'settings')}>
             Settings
