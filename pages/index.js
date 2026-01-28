@@ -554,7 +554,16 @@ export default function Home() {
 
 // P&L Bar Chart Component
 function PnlBarChart({ data }) {
-  if (!data || data.length === 0) {
+  // Filter out weekends and zero PnL days
+  const filtered = (data || []).filter(d => {
+    if (!d.date) return false;
+    const date = new Date(d.date + 'T00:00:00');
+    const day = date.getDay();
+    // Skip weekends (0 = Sunday, 6 = Saturday) and zero PnL
+    return day !== 0 && day !== 6 && d.pnl !== 0;
+  });
+
+  if (filtered.length === 0) {
     return (
       <div style={{ padding: 40, textAlign: 'center', color: colors.textMuted, fontSize: 15 }}>
         No P&L data yet.
@@ -562,9 +571,9 @@ function PnlBarChart({ data }) {
     );
   }
 
-  const maxAbs = Math.max(...data.map(d => Math.abs(d.pnl)), 1);
+  const maxAbs = Math.max(...filtered.map(d => Math.abs(d.pnl)), 1);
   const chartHeight = 220;
-  const barWidth = 100 / data.length;
+  const barWidth = 100 / filtered.length;
 
   return (
     <div>
@@ -579,7 +588,7 @@ function PnlBarChart({ data }) {
           strokeWidth="1"
         />
         {/* Bars */}
-        {data.map((d, i) => {
+        {filtered.map((d, i) => {
           const pnl = d.pnl || 0;
           const barHeight = Math.abs(pnl) / maxAbs * (chartHeight / 2 - 4);
           const isPositive = pnl >= 0;
@@ -604,7 +613,7 @@ function PnlBarChart({ data }) {
       </svg>
       {/* Labels */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12 }}>
-        {data.map((d, i) => (
+        {filtered.map((d, i) => (
           <div key={i} style={{ textAlign: 'center', flex: 1 }}>
             <div style={{
               fontSize: 12,
