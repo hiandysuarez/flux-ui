@@ -48,7 +48,7 @@ export default function Layout({ children, active = 'dashboard' }) {
           100% { background-position: -200% 0; }
         }
 
-        @keyframes slideIn {
+        @keyframes slideInFromLeft {
           from { transform: translateX(-100%); }
           to { transform: translateX(0); }
         }
@@ -190,7 +190,7 @@ export default function Layout({ children, active = 'dashboard' }) {
             background: colors.bgSecondary,
             borderRight: `1px solid ${colors.border}`,
             zIndex: 101,
-            animation: 'slideIn 0.25s ease',
+            animation: 'slideInFromLeft 0.25s ease',
             display: 'flex',
             flexDirection: 'column',
             boxShadow: shadows.xl,
