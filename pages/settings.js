@@ -108,6 +108,10 @@ export default function SettingsPage() {
         } else if (settingsRes.settings) {
           // fetchSettings returns { settings: {...} } directly
           setSettings(settingsRes.settings);
+        } else if (!userIsAdmin && settingsRes.error === 'no_settings') {
+          // User hasn't completed onboarding - redirect them
+          router.push('/onboarding');
+          return;
         }
 
         if (presetsRes.ok && presetsRes.presets) {
