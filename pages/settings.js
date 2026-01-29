@@ -4,7 +4,10 @@ import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import PresetSelector from '../components/PresetSelector';
 import GuardrailHint from '../components/GuardrailHint';
-import { fetchUserSettings, saveUserSettings, fetchPresets, applyPreset, fetchGuardrails } from '../lib/api';
+import {
+  fetchUserSettings, saveUserSettings, fetchPresets, applyPreset, fetchGuardrails,
+  fetchSettings, saveSettings  // Admin uses these (system-wide settings)
+} from '../lib/api';
 import { useAuth } from '../lib/auth';
 import {
   colors,
@@ -77,14 +80,24 @@ export default function SettingsPage() {
     async function load() {
       if (!user) return;
 
+      const userIsAdmin = user.id && ADMIN_USER_ID && user.id === ADMIN_USER_ID;
+
       try {
+        // Admin loads system settings, regular users load their personal settings
+        const settingsPromise = userIsAdmin
+          ? fetchSettings()  // System-wide settings (env vars / app_settings)
+          : fetchUserSettings();  // Per-user settings
+
         const [settingsRes, presetsRes, guardrailsRes] = await Promise.all([
-          fetchUserSettings(),
+          settingsPromise,
           fetchPresets(),
           fetchGuardrails().catch(() => ({ ok: true, guardrails: DEFAULT_GUARDRAILS })),
         ]);
 
         if (settingsRes.ok && settingsRes.settings) {
+          setSettings(settingsRes.settings);
+        } else if (settingsRes.settings) {
+          // fetchSettings returns { settings: {...} } directly
           setSettings(settingsRes.settings);
         }
 
@@ -178,8 +191,12 @@ export default function SettingsPage() {
 
     setSaving(true);
     try {
-      const res = await saveUserSettings(settings);
-      if (res.ok) {
+      // Admin saves to system settings, regular users save to their personal settings
+      const res = isAdmin
+        ? await saveSettings(settings)  // System-wide settings
+        : await saveUserSettings(settings);  // Per-user settings
+
+      if (res.ok || res.settings) {
         setSettings(res.settings ?? settings);
         addToast('Settings saved successfully', 'success');
       } else {
