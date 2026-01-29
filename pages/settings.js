@@ -9,8 +9,10 @@ import {
   fetchSettings, saveSettings  // Admin uses these (system-wide settings)
 } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useTheme } from '../lib/themeContext';
 import {
-  colors,
+  darkTheme,
+  lightTheme,
   borderRadius,
   cardStyle,
   buttonPrimaryStyle,
@@ -20,6 +22,7 @@ import {
   fontSize,
   fontWeight,
   transitions,
+  getGlassStyle,
 } from '../lib/theme';
 
 // Check if current user is admin
@@ -40,6 +43,7 @@ const DEFAULT_GUARDRAILS = {
 
 const TABS = [
   { id: 'profile', label: 'Profile' },
+  { id: 'appearance', label: 'Appearance' },
   { id: 'safety', label: 'Safety' },
   { id: 'trading', label: 'Trading' },
   { id: 'risk', label: 'Risk' },
@@ -50,6 +54,11 @@ const TABS = [
 export default function SettingsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+
+  // Get theme-aware colors
+  const colors = theme === 'light' ? lightTheme : darkTheme;
+  const glassStyle = getGlassStyle(theme);
 
   const [settings, setSettings] = useState(null);
   const [presets, setPresets] = useState([]);
@@ -319,7 +328,11 @@ export default function SettingsPage() {
       <div style={{ maxWidth: 700 }}>
         {/* Profile Tab */}
         {activeTab === 'profile' && (
-          <div style={cardStyle}>
+          <div style={{
+            ...cardStyle,
+            background: colors.bgCard,
+            borderColor: colors.border,
+          }}>
             <div style={{
               marginBottom: 20,
               paddingBottom: 12,
@@ -351,7 +364,7 @@ export default function SettingsPage() {
                     color: '#3b82f6',
                     fontSize: 13,
                   }}>
-                    Using a preset. Select "Custom" to modify individual values.
+                    Using <strong>{currentPreset?.name || 'preset'}</strong> profile. Editing any setting will switch to Custom mode.
                   </div>
                 )}
               </>
@@ -363,15 +376,38 @@ export default function SettingsPage() {
           </div>
         )}
 
+        {/* Appearance Tab */}
+        {activeTab === 'appearance' && (
+          <SettingsSection title="Appearance" colors={colors}>
+            <SettingRow label="Theme" description="Choose between light and dark mode" colors={colors}>
+              <ThemeToggle theme={theme} onToggle={toggleTheme} colors={colors} />
+            </SettingRow>
+
+            <div style={{
+              marginTop: 16,
+              padding: 16,
+              borderRadius: borderRadius.md,
+              background: colors.accentDark,
+              border: `1px solid ${colors.borderAccent}`,
+            }}>
+              <div style={{ fontSize: fontSize.sm, color: colors.accent, fontWeight: fontWeight.semibold, marginBottom: 8 }}>
+                Preview
+              </div>
+              <div style={{ fontSize: fontSize.xs, color: colors.textMuted }}>
+                Your theme preference is saved locally and will persist across sessions.
+              </div>
+            </div>
+          </SettingsSection>
+        )}
+
         {/* Safety Tab */}
         {activeTab === 'safety' && (
-          <SettingsSection title="Safety">
+          <SettingsSection title="Safety" colors={colors}>
             <SettingRow label="Kill Switch" description="When ON, all trading is blocked">
               {isAdmin ? (
                 <Toggle
                   value={get('kill_switch', 'off') === 'on'}
                   onChange={(v) => set('kill_switch', v ? 'on' : 'off')}
-                  disabled={isPresetMode}
                 />
               ) : (
                 <ReadOnlyToggle value={get('kill_switch', 'off') === 'on'} />
@@ -383,13 +419,10 @@ export default function SettingsPage() {
                 <select
                   value={get('mode', 'paper')}
                   onChange={(e) => set('mode', e.target.value)}
-                  disabled={isPresetMode}
                   style={{
                     ...inputStyle,
                     width: 'auto',
                     minWidth: 120,
-                    opacity: isPresetMode ? 0.5 : 1,
-                    cursor: isPresetMode ? 'not-allowed' : 'pointer',
                   }}
                 >
                   <option value="paper">Paper</option>
@@ -404,19 +437,16 @@ export default function SettingsPage() {
 
         {/* Trading Tab */}
         {activeTab === 'trading' && (
-          <SettingsSection title="Trading">
+          <SettingsSection title="Trading" colors={colors}>
             <SettingRow label="Symbols" description="Comma-separated list of symbols to trade">
               {isAdmin ? (
                 <input
                   type="text"
                   value={get('symbols', 'QQQ,SPY')}
                   onChange={(e) => set('symbols', e.target.value)}
-                  disabled={isPresetMode}
-                  style={{
+                                    style={{
                     ...inputStyle,
-                    opacity: isPresetMode ? 0.5 : 1,
-                    cursor: isPresetMode ? 'not-allowed' : 'text',
-                  }}
+                                                          }}
                   placeholder="QQQ,SPY"
                 />
               ) : (
@@ -431,26 +461,22 @@ export default function SettingsPage() {
                     type="text"
                     value={get('trading_window_start', '06:30')}
                     onChange={(e) => set('trading_window_start', e.target.value)}
-                    disabled={isPresetMode}
-                    style={{
+                                        style={{
                       ...inputStyle,
                       width: 80,
                       textAlign: 'center',
-                      opacity: isPresetMode ? 0.5 : 1,
-                    }}
+                                          }}
                   />
                   <span style={{ color: colors.textMuted }}>to</span>
                   <input
                     type="text"
                     value={get('trading_window_end', '10:30')}
                     onChange={(e) => set('trading_window_end', e.target.value)}
-                    disabled={isPresetMode}
-                    style={{
+                                        style={{
                       ...inputStyle,
                       width: 80,
                       textAlign: 'center',
-                      opacity: isPresetMode ? 0.5 : 1,
-                    }}
+                                          }}
                   />
                 </div>
               ) : (
@@ -473,8 +499,7 @@ export default function SettingsPage() {
                   step={0.01}
                   min={guardrails.conf_threshold?.min}
                   max={guardrails.conf_threshold?.max}
-                  disabled={isPresetMode}
-                  isPercent
+                                    isPercent
                 />
               ) : (
                 <ReadOnlyPercent value={get('conf_threshold', 0.60)} />
@@ -485,7 +510,7 @@ export default function SettingsPage() {
 
         {/* Risk Tab */}
         {activeTab === 'risk' && (
-          <SettingsSection title="Risk Management">
+          <SettingsSection title="Risk Management" colors={colors}>
             <SettingRow
               label="Stop Loss %"
               description="Percentage loss to trigger stop loss"
@@ -501,8 +526,7 @@ export default function SettingsPage() {
                   step={0.001}
                   min={guardrails.stop_loss_pct?.min}
                   max={guardrails.stop_loss_pct?.max}
-                  disabled={isPresetMode}
-                  isPercent
+                                    isPercent
                 />
               ) : (
                 <ReadOnlyPercent value={get('stop_loss_pct', 0.01)} />
@@ -524,8 +548,7 @@ export default function SettingsPage() {
                   step={0.001}
                   min={guardrails.take_profit_pct?.min}
                   max={guardrails.take_profit_pct?.max}
-                  disabled={isPresetMode}
-                  isPercent
+                                    isPercent
                 />
               ) : (
                 <ReadOnlyPercent value={get('take_profit_pct', 0.02)} />
@@ -547,8 +570,7 @@ export default function SettingsPage() {
                   step={0.001}
                   min={guardrails.risk_per_trade_pct?.min}
                   max={guardrails.risk_per_trade_pct?.max}
-                  disabled={isPresetMode}
-                  isPercent
+                                    isPercent
                 />
               ) : (
                 <ReadOnlyPercent value={get('risk_per_trade_pct', 0.005)} />
@@ -570,8 +592,7 @@ export default function SettingsPage() {
                   step={5}
                   min={guardrails.max_hold_min?.min}
                   max={guardrails.max_hold_min?.max}
-                  disabled={isPresetMode}
-                  suffix="min"
+                                    suffix="min"
                 />
               ) : (
                 <ReadOnlyValue value={`${get('max_hold_min', 120)} min`} />
@@ -583,8 +604,7 @@ export default function SettingsPage() {
                 <Toggle
                   value={get('mq_exit_enabled', true)}
                   onChange={(v) => set('mq_exit_enabled', v)}
-                  disabled={isPresetMode}
-                />
+                                  />
               ) : (
                 <ReadOnlyToggle value={get('mq_exit_enabled', true)} />
               )}
@@ -598,8 +618,7 @@ export default function SettingsPage() {
                   step={0.0001}
                   min={0}
                   max={0.01}
-                  disabled={isPresetMode}
-                  isPercent
+                                    isPercent
                 />
               ) : (
                 <ReadOnlyPercent value={get('mq_exit_loss_threshold', 0.001)} />
@@ -610,7 +629,7 @@ export default function SettingsPage() {
 
         {/* Limits Tab */}
         {activeTab === 'limits' && (
-          <SettingsSection title="Execution Limits">
+          <SettingsSection title="Execution Limits" colors={colors}>
             <SettingRow
               label="Trades per Ticker per Day"
               description="Maximum trades per symbol per day"
@@ -626,8 +645,7 @@ export default function SettingsPage() {
                   step={1}
                   min={guardrails.trades_per_ticker_per_day?.min}
                   max={guardrails.trades_per_ticker_per_day?.max}
-                  disabled={isPresetMode}
-                />
+                                  />
               ) : (
                 <ReadOnlyValue value={get('trades_per_ticker_per_day', 1)} />
               )}
@@ -648,8 +666,7 @@ export default function SettingsPage() {
                   step={1}
                   min={guardrails.max_open_positions?.min}
                   max={guardrails.max_open_positions?.max}
-                  disabled={isPresetMode}
-                />
+                                  />
               ) : (
                 <ReadOnlyValue value={get('max_open_positions', 5)} />
               )}
@@ -659,7 +676,7 @@ export default function SettingsPage() {
 
         {/* Strategy Tab */}
         {activeTab === 'strategy' && (
-          <SettingsSection title="Strategy Tuning">
+          <SettingsSection title="Strategy Tuning" colors={colors}>
             <SettingRow
               label="Momentum Entry %"
               description="Minimum momentum to trigger entry override"
@@ -675,8 +692,7 @@ export default function SettingsPage() {
                   step={0.0005}
                   min={guardrails.mom_entry_pct?.min}
                   max={guardrails.mom_entry_pct?.max}
-                  disabled={isPresetMode}
-                  isPercent
+                                    isPercent
                 />
               ) : (
                 <ReadOnlyPercent value={get('mom_entry_pct', 0.002)} />
@@ -698,8 +714,7 @@ export default function SettingsPage() {
                   step={1}
                   min={guardrails.mom_lookback?.min}
                   max={guardrails.mom_lookback?.max}
-                  disabled={isPresetMode}
-                  suffix="bars"
+                                    suffix="bars"
                 />
               ) : (
                 <ReadOnlyValue value={`${get('mom_lookback', 8)} bars`} />
@@ -766,9 +781,13 @@ function Toast({ message, type = 'success', onClose }) {
   );
 }
 
-function SettingsSection({ title, children }) {
+function SettingsSection({ title, children, colors = darkTheme }) {
   return (
-    <div style={cardStyle}>
+    <div style={{
+      ...cardStyle,
+      background: colors.bgCard,
+      borderColor: colors.border,
+    }}>
       <div style={{
         marginBottom: 20,
         paddingBottom: 12,
@@ -785,7 +804,7 @@ function SettingsSection({ title, children }) {
   );
 }
 
-function SettingRow({ label, description, guardrail, value, children }) {
+function SettingRow({ label, description, guardrail, value, children, colors = darkTheme }) {
   return (
     <div>
       <div style={{
@@ -893,6 +912,7 @@ function ValidatedNumberInput({
   suffix = '',
   isPercent = false,
   disabled = false,
+  colors = darkTheme,
 }) {
   const displayValue = isPercent ? (value * 100).toFixed(2) : value;
 
@@ -935,6 +955,59 @@ function ValidatedNumberInput({
           {error}
         </div>
       )}
+    </div>
+  );
+}
+
+function ThemeToggle({ theme, onToggle, colors }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      {/* Sun icon */}
+      <span style={{
+        fontSize: 18,
+        opacity: theme === 'light' ? 1 : 0.4,
+        transition: 'opacity 0.2s ease',
+      }}>
+        ☀️
+      </span>
+
+      {/* Toggle switch */}
+      <button
+        onClick={onToggle}
+        style={{
+          position: 'relative',
+          width: 56,
+          height: 28,
+          borderRadius: 14,
+          background: theme === 'dark' ? colors.accent : colors.bgTertiary,
+          border: `1px solid ${theme === 'dark' ? colors.accentMuted : colors.border}`,
+          cursor: 'pointer',
+          transition: 'all 0.3s ease',
+          padding: 0,
+        }}
+        aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      >
+        <span style={{
+          position: 'absolute',
+          top: 3,
+          left: theme === 'dark' ? 30 : 3,
+          width: 20,
+          height: 20,
+          borderRadius: '50%',
+          background: theme === 'dark' ? colors.bgPrimary : colors.textMuted,
+          transition: 'all 0.3s ease',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+        }} />
+      </button>
+
+      {/* Moon icon */}
+      <span style={{
+        fontSize: 18,
+        opacity: theme === 'dark' ? 1 : 0.4,
+        transition: 'opacity 0.2s ease',
+      }}>
+        🌙
+      </span>
     </div>
   );
 }

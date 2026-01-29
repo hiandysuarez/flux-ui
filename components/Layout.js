@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../lib/auth';
+import { useTheme } from '../lib/themeContext';
 import {
-  colors,
+  darkTheme,
+  lightTheme,
   borderRadius,
   spacing,
   fontSize,
@@ -10,12 +12,18 @@ import {
   fontFamily,
   shadows,
   transitions,
+  getGlassStyle,
 } from '../lib/theme';
 
 export default function Layout({ children, active = 'dashboard' }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
   const { signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+
+  // Get colors based on current theme
+  const colors = theme === 'light' ? lightTheme : darkTheme;
+  const glassStyle = getGlassStyle(theme);
 
   const navLinks = [
     { href: '/', label: 'Dashboard', key: 'dashboard' },
@@ -85,12 +93,10 @@ export default function Layout({ children, active = 'dashboard' }) {
         display: 'flex',
         alignItems: 'center',
         gap: 16,
-        background: 'rgba(13, 15, 18, 0.9)',
+        ...glassStyle,
         position: 'sticky',
         top: 0,
         zIndex: 50,
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
       }}>
         {/* Hamburger button - LEFT side */}
         <button
@@ -196,7 +202,7 @@ export default function Layout({ children, active = 'dashboard' }) {
             left: 0,
             bottom: 0,
             width: 280,
-            background: colors.bgSecondary,
+            ...glassStyle,
             borderRight: `1px solid ${colors.border}`,
             zIndex: 101,
             animation: 'slideInFromLeft 0.25s ease',
@@ -267,6 +273,50 @@ export default function Layout({ children, active = 'dashboard' }) {
 
             {/* Menu footer */}
             <div style={{ borderTop: `1px solid ${colors.border}` }}>
+              {/* Theme toggle */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '14px 20px',
+                  borderLeft: '3px solid transparent',
+                }}
+              >
+                <span style={{
+                  color: colors.textPrimary,
+                  fontSize: fontSize.base,
+                  fontWeight: fontWeight.medium,
+                }}>
+                  Theme
+                </span>
+                <button
+                  onClick={toggleTheme}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '6px 12px',
+                    borderRadius: borderRadius.full,
+                    background: colors.bgTertiary,
+                    border: `1px solid ${colors.border}`,
+                    cursor: 'pointer',
+                    transition: `all ${transitions.fast}`,
+                  }}
+                  aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                >
+                  <span style={{ fontSize: 14 }}>{theme === 'dark' ? '🌙' : '☀️'}</span>
+                  <span style={{
+                    fontSize: fontSize.xs,
+                    color: colors.textSecondary,
+                    fontWeight: fontWeight.semibold,
+                    textTransform: 'capitalize',
+                  }}>
+                    {theme}
+                  </span>
+                </button>
+              </div>
+
               {/* Settings link */}
               <a
                 href="/settings"

@@ -10,8 +10,10 @@ import {
   runDecisionCycle,
   forceExitAll,
 } from '../lib/api';
+import { useTheme } from '../lib/themeContext';
 import {
-  colors,
+  darkTheme,
+  lightTheme,
   borderRadius,
   cardStyle,
   buttonStyle,
@@ -28,10 +30,15 @@ import {
   shadows,
   spacing,
   transitions,
+  getGlassStyle,
 } from '../lib/theme';
 import Layout from '../components/Layout';
 
 export default function Home() {
+  const { theme } = useTheme();
+  const colors = theme === 'light' ? lightTheme : darkTheme;
+  const glassStyle = getGlassStyle(theme);
+
   const [status, setStatus] = useState(null);
   const [cycle, setCycle] = useState(null);
   const [err, setErr] = useState(null);
@@ -330,12 +337,16 @@ export default function Home() {
           title="Latest Cycle"
           value={fmtTime(ts)}
           subtitle={ts ? new Date(ts).toLocaleDateString() : '—'}
+          themeColors={colors}
+          glassStyle={glassStyle}
         />
         <MetricCard
           title="Unrealized P&L"
           value={formatCurrency(unrealized)}
           color={unrealized > 0 ? colors.accent : unrealized < 0 ? colors.error : colors.textPrimary}
           trend={unrealized != null ? (unrealized > 0 ? 1 : unrealized < 0 ? -1 : 0) : null}
+          themeColors={colors}
+          glassStyle={glassStyle}
         />
         <MetricCard
           title="Today's P&L"
@@ -344,23 +355,31 @@ export default function Home() {
           color={todayPnl > 0 ? colors.accent : todayPnl < 0 ? colors.error : colors.textPrimary}
           trend={todayPnl != null ? (todayPnl > 0 ? 1 : todayPnl < 0 ? -1 : 0) : null}
           sparklineData={dailyPnl.slice(-7).map(d => d.pnl || 0)}
+          themeColors={colors}
+          glassStyle={glassStyle}
         />
         <MetricCard
           title="Active Positions"
           value={`${activePositions}/${total}`}
           subtitle="symbols"
+          themeColors={colors}
+          glassStyle={glassStyle}
         />
         <MetricCard
           title="Data Health"
           value={`${candlesOkPct}%`}
           subtitle={`${total - noPrice}/${total} candles OK`}
           color={candlesOkPct >= 80 ? colors.accent : candlesOkPct >= 50 ? colors.warning : colors.error}
+          themeColors={colors}
+          glassStyle={glassStyle}
         />
         <MetricCard
           title="Win Rate"
           value={winRate != null ? `${winRate}%` : '—'}
           subtitle={`${trades.filter(t => t.win).length}/${trades.filter(t => t.win !== undefined).length} wins`}
           color={winRate >= 50 ? colors.accent : winRate != null ? colors.error : colors.textPrimary}
+          themeColors={colors}
+          glassStyle={glassStyle}
         />
       </div>
 
@@ -869,27 +888,28 @@ function StatusBadge({ label, value, color = colors.textPrimary }) {
   );
 }
 
-function MetricCard({ title, value, subtitle, color = colors.textPrimary, trend, sparklineData }) {
+function MetricCard({ title, value, subtitle, color, trend, sparklineData, themeColors = darkTheme, glassStyle }) {
   const [hovered, setHovered] = useState(false);
+  const effectiveColor = color || themeColors.textPrimary;
+
   return (
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
         ...cardStyle,
+        ...(glassStyle || {}),
         display: 'flex',
         flexDirection: 'column',
         cursor: 'default',
         transition: `all ${transitions.normal}`,
-        ...(hovered ? {
-          borderColor: colors.borderAccent,
-          boxShadow: `${shadows.md}, ${shadows.glow}`,
-          transform: 'translateY(-2px)',
-        } : {}),
+        borderColor: hovered ? themeColors.borderAccent : themeColors.border,
+        boxShadow: hovered ? `${shadows.md}, ${shadows.glow}` : shadows.md,
+        transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
       }}
     >
       <span style={{
-        color: colors.textMuted,
+        color: themeColors.textMuted,
         fontSize: fontSize.sm,
         fontWeight: fontWeight.semibold,
         textTransform: 'uppercase',
@@ -899,7 +919,7 @@ function MetricCard({ title, value, subtitle, color = colors.textPrimary, trend,
         <span style={{
           fontSize: fontSize['2xl'],
           fontWeight: fontWeight.black,
-          color,
+          color: effectiveColor,
           fontFamily: fontFamily.mono,
           letterSpacing: '-0.02em',
         }}>{value}</span>
@@ -907,15 +927,15 @@ function MetricCard({ title, value, subtitle, color = colors.textPrimary, trend,
           <span style={{
             marginLeft: spacing.sm,
             fontSize: fontSize.lg,
-            color: trend > 0 ? colors.accent : trend < 0 ? colors.error : colors.textMuted
+            color: trend > 0 ? themeColors.accent : trend < 0 ? themeColors.error : themeColors.textMuted
           }}>
             {trend > 0 ? '↑' : trend < 0 ? '↓' : '→'}
           </span>
         )}
       </div>
-      {sparklineData && <Sparkline data={sparklineData} color={color !== colors.textPrimary ? color : colors.accent} />}
+      {sparklineData && <Sparkline data={sparklineData} color={effectiveColor !== themeColors.textPrimary ? effectiveColor : themeColors.accent} />}
       {subtitle && (
-        <span style={{ color: colors.textMuted, fontSize: fontSize.xs, marginTop: spacing.sm }}>{subtitle}</span>
+        <span style={{ color: themeColors.textMuted, fontSize: fontSize.xs, marginTop: spacing.sm }}>{subtitle}</span>
       )}
     </div>
   );

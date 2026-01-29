@@ -47,7 +47,7 @@ export default function GuardrailHint({ min, max, value, recommended, isPercent 
           background: getColor(clampedPosition),
           borderRadius: '50%',
           transform: 'translateX(-50%)',
-          border: '2px solid #fff',
+          border: `2px solid ${colors.bgSecondary}`,
           boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
         }} />
 
