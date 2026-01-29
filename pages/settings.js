@@ -254,7 +254,7 @@ export default function SettingsPage() {
         gap: 8,
       }}>
         {toasts.map(t => (
-          <Toast key={t.id} message={t.message} type={t.type} onClose={() => setToasts(ts => ts.filter(x => x.id !== t.id))} />
+          <Toast key={t.id} message={t.message} type={t.type} colors={colors} onClose={() => setToasts(ts => ts.filter(x => x.id !== t.id))} />
         ))}
       </div>
 
@@ -750,7 +750,7 @@ export default function SettingsPage() {
 
 // Components
 
-function Toast({ message, type = 'success', onClose }) {
+function Toast({ message, type = 'success', onClose, colors = darkTheme }) {
   return (
     <div style={{
       display: 'flex',
