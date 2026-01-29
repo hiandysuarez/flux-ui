@@ -1,26 +1,22 @@
-// pages/settings.js
+// pages/settings.js - Read-only settings view
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
-import PresetSelector from '../components/PresetSelector';
 import GuardrailHint from '../components/GuardrailHint';
-import { fetchUserSettings, saveUserSettings, fetchPresets, applyPreset, fetchGuardrails } from '../lib/api';
+import { fetchUserSettings, fetchPresets, fetchGuardrails } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import {
   colors,
   borderRadius,
   cardStyle,
-  buttonPrimaryStyle,
-  buttonStyle,
   inputStyle,
   toggleOnStyle,
   toggleOffStyle,
-  fontSizes,
-  fontWeights,
-  transitions,
+  fontSize,
+  fontWeight,
 } from '../lib/theme';
 
-// Guardrails will be loaded from API, but have defaults as fallback
+// Guardrails for display
 const DEFAULT_GUARDRAILS = {
   conf_threshold: { min: 0.50, max: 0.80, default: 0.60, recommended: 0.60 },
   trades_per_ticker_per_day: { min: 1, max: 3, default: 1, recommended: 1 },
@@ -49,16 +45,8 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState(null);
   const [presets, setPresets] = useState([]);
   const [guardrails, setGuardrails] = useState(DEFAULT_GUARDRAILS);
-  const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
-  const [toasts, setToasts] = useState([]);
-  const [errors, setErrors] = useState({});
-
-  const addToast = (message, type = 'success') => {
-    const id = Date.now();
-    setToasts(t => [...t, { id, message, type }]);
-    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000);
-  };
+  const [error, setError] = useState('');
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -91,13 +79,13 @@ export default function SettingsPage() {
           setGuardrails(guardrailsRes.guardrails);
         }
       } catch (e) {
-        addToast(String(e?.message || e), 'error');
+        setError(String(e?.message || e));
       }
     }
     load();
   }, [user]);
 
-  // Helper to get/set nested values
+  // Helper to get values
   const get = (path, fallback) => {
     if (!settings) return fallback;
     const parts = path.split('.');
@@ -108,83 +96,8 @@ export default function SettingsPage() {
     return val ?? fallback;
   };
 
-  const set = (path, value) => {
-    setErrors(e => ({ ...e, [path]: null }));
-    setSettings((s) => {
-      const parts = path.split('.');
-      const newSettings = { ...s, preset_id: null }; // Clear preset when customizing
-      let current = newSettings;
-
-      for (let i = 0; i < parts.length - 1; i++) {
-        current[parts[i]] = { ...current[parts[i]] };
-        current = current[parts[i]];
-      }
-
-      current[parts[parts.length - 1]] = value;
-      return newSettings;
-    });
-  };
-
-  // Validation with guardrails
-  const validate = (path, value, field) => {
-    const guard = guardrails[field];
-    if (!guard) return true;
-
-    if (value < guard.min || value > guard.max) {
-      setErrors(e => ({ ...e, [path]: `Must be between ${guard.min} and ${guard.max}` }));
-      return false;
-    }
-    return true;
-  };
-
-  // Handle preset selection
-  const handlePresetSelect = async (presetId) => {
-    if (presetId === null) {
-      // Custom mode - just clear preset_id
-      setSettings(s => ({ ...s, preset_id: null }));
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const res = await applyPreset(presetId);
-      if (res.ok && res.settings) {
-        setSettings(res.settings);
-        addToast(`Applied ${presetId} preset`, 'success');
-      } else {
-        addToast(res.error || 'Failed to apply preset', 'error');
-      }
-    } catch (e) {
-      addToast(String(e?.message || e), 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  async function onSave() {
-    if (Object.values(errors).some(e => e)) {
-      addToast('Please fix validation errors', 'error');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const res = await saveUserSettings(settings);
-      if (res.ok) {
-        setSettings(res.settings ?? settings);
-        addToast('Settings saved successfully', 'success');
-      } else {
-        addToast(res.error || 'Failed to save settings', 'error');
-      }
-    } catch (e) {
-      addToast(String(e?.message || e), 'error');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  // Check if using a preset (settings are locked)
-  const isPresetMode = settings?.preset_id !== null && settings?.preset_id !== undefined;
+  // Find current preset name
+  const currentPreset = presets.find(p => p.id === settings?.preset_id);
 
   if (authLoading || !settings) {
     return (
@@ -196,37 +109,42 @@ export default function SettingsPage() {
 
   return (
     <Layout active="settings">
-      <style>{`
-        @keyframes slideIn {
-          from { transform: translateX(100%); opacity: 0; }
-          to { transform: translateX(0); opacity: 1; }
-        }
-      `}</style>
-
-      {/* Toast Notifications */}
-      <div style={{
-        position: 'fixed',
-        top: 80,
-        right: 20,
-        zIndex: 100,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-      }}>
-        {toasts.map(t => (
-          <Toast key={t.id} message={t.message} type={t.type} onClose={() => setToasts(ts => ts.filter(x => x.id !== t.id))} />
-        ))}
-      </div>
-
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0, color: colors.textPrimary }}>
           Settings
         </h1>
         <p style={{ margin: '8px 0 0', color: colors.textMuted, fontSize: 13 }}>
-          Configure your trading parameters and risk management
+          View your trading parameters and risk management
         </p>
       </div>
+
+      {/* Read-only banner */}
+      <div style={{
+        padding: '12px 16px',
+        background: 'rgba(59, 130, 246, 0.1)',
+        border: '1px solid rgba(59, 130, 246, 0.3)',
+        borderRadius: 8,
+        color: '#3b82f6',
+        fontSize: 13,
+        marginBottom: 24,
+      }}>
+        Settings are view-only. Contact support to make changes.
+      </div>
+
+      {error && (
+        <div style={{
+          padding: '12px 16px',
+          background: 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
+          borderRadius: 8,
+          color: '#ef4444',
+          fontSize: 13,
+          marginBottom: 24,
+        }}>
+          {error}
+        </div>
+      )}
 
       {/* Tab Navigation */}
       <div style={{
@@ -262,71 +180,44 @@ export default function SettingsPage() {
       </div>
 
       <div style={{ maxWidth: 700 }}>
-        {/* Profile Tab - Presets */}
+        {/* Profile Tab */}
         {activeTab === 'profile' && (
-          <div style={cardStyle}>
-            <div style={{
-              marginBottom: 20,
-              paddingBottom: 12,
-              borderBottom: `1px solid ${colors.border}`,
-            }}>
-              <span style={{ fontSize: 18, fontWeight: 800, color: colors.textPrimary }}>
-                Trading Profile
-              </span>
-              <p style={{ margin: '8px 0 0', color: colors.textMuted, fontSize: 13 }}>
-                Choose a preset or customize your own settings
-              </p>
-            </div>
-
-            <PresetSelector
-              presets={presets}
-              selected={settings.preset_id}
-              onSelect={handlePresetSelect}
-              disabled={saving}
-            />
-
-            {isPresetMode && (
+          <SettingsSection title="Trading Profile">
+            <SettingRow label="Current Preset" description="Your active trading profile">
+              <div style={{
+                padding: '8px 16px',
+                background: colors.bgTertiary,
+                borderRadius: 8,
+                color: colors.textPrimary,
+                fontSize: fontSize.base,
+                fontWeight: fontWeight.semibold,
+              }}>
+                {currentPreset ? currentPreset.name : 'Custom'}
+              </div>
+            </SettingRow>
+            {currentPreset && (
               <div style={{
                 padding: '12px 16px',
-                background: 'rgba(59, 130, 246, 0.1)',
-                border: '1px solid rgba(59, 130, 246, 0.3)',
+                background: colors.bgTertiary,
                 borderRadius: 8,
-                color: '#3b82f6',
+                color: colors.textSecondary,
                 fontSize: 13,
               }}>
-                You're using a preset. Settings are locked. Select "Custom" to modify individual values.
+                {currentPreset.description}
               </div>
             )}
-          </div>
+          </SettingsSection>
         )}
 
         {/* Safety Tab */}
         {activeTab === 'safety' && (
           <SettingsSection title="Safety">
             <SettingRow label="Kill Switch" description="When ON, all trading is blocked">
-              <Toggle
-                value={get('kill_switch', 'off') === 'on'}
-                onChange={(v) => set('kill_switch', v ? 'on' : 'off')}
-                disabled={isPresetMode}
-              />
+              <ReadOnlyToggle value={get('kill_switch', 'off') === 'on'} />
             </SettingRow>
 
             <SettingRow label="Mode" description="Paper trading or live trading">
-              <select
-                value={get('mode', 'paper')}
-                onChange={(e) => set('mode', e.target.value)}
-                disabled={isPresetMode}
-                style={{
-                  ...inputStyle,
-                  width: 'auto',
-                  minWidth: 120,
-                  opacity: isPresetMode ? 0.5 : 1,
-                  cursor: isPresetMode ? 'not-allowed' : 'pointer',
-                }}
-              >
-                <option value="paper">Paper</option>
-                <option value="live">Live</option>
-              </select>
+              <ReadOnlyValue value={get('mode', 'paper') === 'paper' ? 'Paper' : 'Live'} />
             </SettingRow>
           </SettingsSection>
         )}
@@ -334,51 +225,12 @@ export default function SettingsPage() {
         {/* Trading Tab */}
         {activeTab === 'trading' && (
           <SettingsSection title="Trading">
-            <SettingRow label="Symbols" description="Comma-separated list of symbols to trade">
-              <input
-                type="text"
-                value={get('symbols', 'QQQ,SPY')}
-                onChange={(e) => set('symbols', e.target.value)}
-                disabled={isPresetMode}
-                style={{
-                  ...inputStyle,
-                  opacity: isPresetMode ? 0.5 : 1,
-                  cursor: isPresetMode ? 'not-allowed' : 'text',
-                }}
-                placeholder="QQQ,SPY"
-              />
+            <SettingRow label="Symbols" description="Symbols being traded">
+              <ReadOnlyValue value={get('symbols', 'QQQ,SPY')} />
             </SettingRow>
 
             <SettingRow label="Trading Window" description="Time window for trading (PST)">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input
-                  type="text"
-                  value={get('trading_window_start', '06:30')}
-                  onChange={(e) => set('trading_window_start', e.target.value)}
-                  disabled={isPresetMode}
-                  style={{
-                    ...inputStyle,
-                    width: 80,
-                    textAlign: 'center',
-                    opacity: isPresetMode ? 0.5 : 1,
-                  }}
-                  placeholder="06:30"
-                />
-                <span style={{ color: colors.textMuted }}>to</span>
-                <input
-                  type="text"
-                  value={get('trading_window_end', '10:30')}
-                  onChange={(e) => set('trading_window_end', e.target.value)}
-                  disabled={isPresetMode}
-                  style={{
-                    ...inputStyle,
-                    width: 80,
-                    textAlign: 'center',
-                    opacity: isPresetMode ? 0.5 : 1,
-                  }}
-                  placeholder="10:30"
-                />
-              </div>
+              <ReadOnlyValue value={`${get('trading_window_start', '06:30')} - ${get('trading_window_end', '10:30')}`} />
             </SettingRow>
 
             <SettingRow
@@ -387,17 +239,7 @@ export default function SettingsPage() {
               guardrail={guardrails.conf_threshold}
               value={get('conf_threshold', 0.60)}
             >
-              <ValidatedNumberInput
-                value={get('conf_threshold', 0.60)}
-                onChange={(v) => set('conf_threshold', v)}
-                onValidate={(v) => validate('conf_threshold', v, 'conf_threshold')}
-                error={errors['conf_threshold']}
-                step={0.01}
-                min={guardrails.conf_threshold?.min}
-                max={guardrails.conf_threshold?.max}
-                disabled={isPresetMode}
-                isPercent
-              />
+              <ReadOnlyPercent value={get('conf_threshold', 0.60)} />
             </SettingRow>
           </SettingsSection>
         )}
@@ -411,17 +253,7 @@ export default function SettingsPage() {
               guardrail={guardrails.stop_loss_pct}
               value={get('stop_loss_pct', 0.01)}
             >
-              <ValidatedNumberInput
-                value={get('stop_loss_pct', 0.01)}
-                onChange={(v) => set('stop_loss_pct', v)}
-                onValidate={(v) => validate('stop_loss_pct', v, 'stop_loss_pct')}
-                error={errors['stop_loss_pct']}
-                step={0.001}
-                min={guardrails.stop_loss_pct?.min}
-                max={guardrails.stop_loss_pct?.max}
-                disabled={isPresetMode}
-                isPercent
-              />
+              <ReadOnlyPercent value={get('stop_loss_pct', 0.01)} />
             </SettingRow>
 
             <SettingRow
@@ -430,17 +262,7 @@ export default function SettingsPage() {
               guardrail={guardrails.take_profit_pct}
               value={get('take_profit_pct', 0.02)}
             >
-              <ValidatedNumberInput
-                value={get('take_profit_pct', 0.02)}
-                onChange={(v) => set('take_profit_pct', v)}
-                onValidate={(v) => validate('take_profit_pct', v, 'take_profit_pct')}
-                error={errors['take_profit_pct']}
-                step={0.001}
-                min={guardrails.take_profit_pct?.min}
-                max={guardrails.take_profit_pct?.max}
-                disabled={isPresetMode}
-                isPercent
-              />
+              <ReadOnlyPercent value={get('take_profit_pct', 0.02)} />
             </SettingRow>
 
             <SettingRow
@@ -449,17 +271,7 @@ export default function SettingsPage() {
               guardrail={guardrails.risk_per_trade_pct}
               value={get('risk_per_trade_pct', 0.005)}
             >
-              <ValidatedNumberInput
-                value={get('risk_per_trade_pct', 0.005)}
-                onChange={(v) => set('risk_per_trade_pct', v)}
-                onValidate={(v) => validate('risk_per_trade_pct', v, 'risk_per_trade_pct')}
-                error={errors['risk_per_trade_pct']}
-                step={0.001}
-                min={guardrails.risk_per_trade_pct?.min}
-                max={guardrails.risk_per_trade_pct?.max}
-                disabled={isPresetMode}
-                isPercent
-              />
+              <ReadOnlyPercent value={get('risk_per_trade_pct', 0.005)} />
             </SettingRow>
 
             <SettingRow
@@ -468,37 +280,15 @@ export default function SettingsPage() {
               guardrail={guardrails.max_hold_min}
               value={get('max_hold_min', 120)}
             >
-              <ValidatedNumberInput
-                value={get('max_hold_min', 120)}
-                onChange={(v) => set('max_hold_min', v)}
-                onValidate={(v) => validate('max_hold_min', v, 'max_hold_min')}
-                error={errors['max_hold_min']}
-                step={5}
-                min={guardrails.max_hold_min?.min}
-                max={guardrails.max_hold_min?.max}
-                disabled={isPresetMode}
-                suffix="min"
-              />
+              <ReadOnlyValue value={`${get('max_hold_min', 120)} min`} />
             </SettingRow>
 
-            <SettingRow label="MQ Exit Enabled" description="Exit early when market quality degrades while in a loss">
-              <Toggle
-                value={get('mq_exit_enabled', true)}
-                onChange={(v) => set('mq_exit_enabled', v)}
-                disabled={isPresetMode}
-              />
+            <SettingRow label="MQ Exit Enabled" description="Exit early when market quality degrades">
+              <ReadOnlyToggle value={get('mq_exit_enabled', true)} />
             </SettingRow>
 
             <SettingRow label="MQ Exit Threshold %" description="Min unrealized loss to trigger mq_exit">
-              <ValidatedNumberInput
-                value={get('mq_exit_loss_threshold', 0.001)}
-                onChange={(v) => set('mq_exit_loss_threshold', v)}
-                step={0.0001}
-                min={0}
-                max={0.01}
-                disabled={isPresetMode}
-                isPercent
-              />
+              <ReadOnlyPercent value={get('mq_exit_loss_threshold', 0.001)} />
             </SettingRow>
           </SettingsSection>
         )}
@@ -512,16 +302,7 @@ export default function SettingsPage() {
               guardrail={guardrails.trades_per_ticker_per_day}
               value={get('trades_per_ticker_per_day', 1)}
             >
-              <ValidatedNumberInput
-                value={get('trades_per_ticker_per_day', 1)}
-                onChange={(v) => set('trades_per_ticker_per_day', v)}
-                onValidate={(v) => validate('trades_per_ticker_per_day', v, 'trades_per_ticker_per_day')}
-                error={errors['trades_per_ticker_per_day']}
-                step={1}
-                min={guardrails.trades_per_ticker_per_day?.min}
-                max={guardrails.trades_per_ticker_per_day?.max}
-                disabled={isPresetMode}
-              />
+              <ReadOnlyValue value={get('trades_per_ticker_per_day', 1)} />
             </SettingRow>
 
             <SettingRow
@@ -530,16 +311,7 @@ export default function SettingsPage() {
               guardrail={guardrails.max_open_positions}
               value={get('max_open_positions', 5)}
             >
-              <ValidatedNumberInput
-                value={get('max_open_positions', 5)}
-                onChange={(v) => set('max_open_positions', v)}
-                onValidate={(v) => validate('max_open_positions', v, 'max_open_positions')}
-                error={errors['max_open_positions']}
-                step={1}
-                min={guardrails.max_open_positions?.min}
-                max={guardrails.max_open_positions?.max}
-                disabled={isPresetMode}
-              />
+              <ReadOnlyValue value={get('max_open_positions', 5)} />
             </SettingRow>
           </SettingsSection>
         )}
@@ -553,17 +325,7 @@ export default function SettingsPage() {
               guardrail={guardrails.mom_entry_pct}
               value={get('mom_entry_pct', 0.002)}
             >
-              <ValidatedNumberInput
-                value={get('mom_entry_pct', 0.002)}
-                onChange={(v) => set('mom_entry_pct', v)}
-                onValidate={(v) => validate('mom_entry_pct', v, 'mom_entry_pct')}
-                error={errors['mom_entry_pct']}
-                step={0.0005}
-                min={guardrails.mom_entry_pct?.min}
-                max={guardrails.mom_entry_pct?.max}
-                disabled={isPresetMode}
-                isPercent
-              />
+              <ReadOnlyPercent value={get('mom_entry_pct', 0.002)} />
             </SettingRow>
 
             <SettingRow
@@ -572,76 +334,16 @@ export default function SettingsPage() {
               guardrail={guardrails.mom_lookback}
               value={get('mom_lookback', 8)}
             >
-              <ValidatedNumberInput
-                value={get('mom_lookback', 8)}
-                onChange={(v) => set('mom_lookback', v)}
-                onValidate={(v) => validate('mom_lookback', v, 'mom_lookback')}
-                error={errors['mom_lookback']}
-                step={1}
-                min={guardrails.mom_lookback?.min}
-                max={guardrails.mom_lookback?.max}
-                disabled={isPresetMode}
-                suffix="bars"
-              />
+              <ReadOnlyValue value={`${get('mom_lookback', 8)} bars`} />
             </SettingRow>
           </SettingsSection>
         )}
-
-        {/* Save Button */}
-        <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-          <button
-            onClick={onSave}
-            disabled={saving}
-            style={{
-              ...buttonPrimaryStyle,
-              padding: '12px 24px',
-              fontSize: 14,
-            }}
-          >
-            {saving ? 'Saving...' : 'Save Settings'}
-          </button>
-        </div>
       </div>
     </Layout>
   );
 }
 
 // Components
-
-function Toast({ message, type = 'success', onClose }) {
-  return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: 12,
-      padding: '12px 16px',
-      borderRadius: borderRadius.md,
-      background: type === 'error' ? '#1a0a0a' : colors.accentDark,
-      border: `1px solid ${type === 'error' ? colors.error : colors.accentMuted}`,
-      color: type === 'error' ? colors.error : colors.accent,
-      boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-      animation: 'slideIn 0.3s ease',
-      minWidth: 250,
-    }}>
-      <span style={{ fontSize: 16 }}>{type === 'error' ? '!' : '+'}</span>
-      <span style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{message}</span>
-      <button
-        onClick={onClose}
-        style={{
-          background: 'none',
-          border: 'none',
-          color: 'inherit',
-          cursor: 'pointer',
-          padding: 4,
-          opacity: 0.7,
-          fontSize: 16,
-        }}
-      >
-        x
-      </button>
-    </div>
-  );
-}
 
 function SettingsSection({ title, children }) {
   return (
@@ -699,75 +401,46 @@ function SettingRow({ label, description, guardrail, value, children }) {
   );
 }
 
-function Toggle({ value, onChange, disabled }) {
+function ReadOnlyToggle({ value }) {
   return (
-    <button
-      onClick={() => !disabled && onChange(!value)}
-      disabled={disabled}
-      style={{
-        ...(value ? toggleOnStyle : toggleOffStyle),
-        opacity: disabled ? 0.5 : 1,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-      }}
-    >
+    <div style={{
+      ...(value ? toggleOnStyle : toggleOffStyle),
+      opacity: 0.7,
+      cursor: 'default',
+    }}>
       {value ? 'ON' : 'OFF'}
-    </button>
+    </div>
   );
 }
 
-function ValidatedNumberInput({
-  value,
-  onChange,
-  onValidate,
-  error,
-  step = 1,
-  min,
-  max,
-  suffix = '',
-  isPercent = false,
-  disabled = false,
-}) {
-  const displayValue = isPercent ? (value * 100).toFixed(2) : value;
-
-  const handleChange = (e) => {
-    if (disabled) return;
-    const raw = Number(e.target.value);
-    const actual = isPercent ? raw / 100 : raw;
-    onChange(actual);
-    if (onValidate) {
-      onValidate(actual);
-    }
-  };
-
+function ReadOnlyValue({ value }) {
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <input
-          type="number"
-          value={displayValue}
-          onChange={handleChange}
-          disabled={disabled}
-          step={isPercent ? step * 100 : step}
-          min={min != null ? (isPercent ? min * 100 : min) : undefined}
-          max={max != null ? (isPercent ? max * 100 : max) : undefined}
-          style={{
-            ...inputStyle,
-            width: 90,
-            textAlign: 'center',
-            borderColor: error ? colors.error : colors.border,
-            opacity: disabled ? 0.5 : 1,
-            cursor: disabled ? 'not-allowed' : 'text',
-          }}
-        />
-        <span style={{ color: colors.textMuted, fontSize: 13 }}>
-          {isPercent ? '%' : suffix}
-        </span>
-      </div>
-      {error && (
-        <div style={{ color: colors.error, fontSize: 11, marginTop: 4 }}>
-          {error}
-        </div>
-      )}
+    <div style={{
+      padding: '8px 16px',
+      background: colors.bgTertiary,
+      borderRadius: 8,
+      color: colors.textPrimary,
+      fontSize: fontSize.base,
+      minWidth: 80,
+      textAlign: 'center',
+    }}>
+      {value}
+    </div>
+  );
+}
+
+function ReadOnlyPercent({ value }) {
+  return (
+    <div style={{
+      padding: '8px 16px',
+      background: colors.bgTertiary,
+      borderRadius: 8,
+      color: colors.textPrimary,
+      fontSize: fontSize.base,
+      minWidth: 80,
+      textAlign: 'center',
+    }}>
+      {(value * 100).toFixed(2)}%
     </div>
   );
 }

@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useRouter } from 'next/router';
+import { useAuth } from '../lib/auth';
 import {
   colors,
   borderRadius,
@@ -12,6 +14,8 @@ import {
 
 export default function Layout({ children, active = 'dashboard' }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const router = useRouter();
+  const { signOut } = useAuth();
 
   const navLinks = [
     { href: '/', label: 'Dashboard', key: 'dashboard' },
@@ -19,8 +23,13 @@ export default function Layout({ children, active = 'dashboard' }) {
     { href: '/history', label: 'History', key: 'history' },
     { href: '/symbols', label: 'Symbols', key: 'symbols' },
     { href: '/timing', label: 'Timing', key: 'timing' },
-    { href: '/settings', label: 'Settings', key: 'settings' },
   ];
+
+  const handleLogout = async () => {
+    await signOut();
+    setMenuOpen(false);
+    router.push('/login');
+  };
 
   return (
     <div style={{
@@ -257,13 +266,60 @@ export default function Layout({ children, active = 'dashboard' }) {
             </nav>
 
             {/* Menu footer */}
-            <div style={{
-              padding: '16px 20px',
-              borderTop: `1px solid ${colors.border}`,
-              color: colors.textMuted,
-              fontSize: fontSize.xs,
-            }}>
-              Flux Trading Platform v1.0
+            <div style={{ borderTop: `1px solid ${colors.border}` }}>
+              {/* Settings link */}
+              <a
+                href="/settings"
+                className="menu-link"
+                onClick={() => setMenuOpen(false)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '14px 20px',
+                  color: active === 'settings' ? colors.accent : colors.textPrimary,
+                  fontSize: fontSize.base,
+                  fontWeight: active === 'settings' ? fontWeight.bold : fontWeight.medium,
+                  textDecoration: 'none',
+                  background: active === 'settings' ? colors.accentDark : 'transparent',
+                  borderLeft: active === 'settings' ? `3px solid ${colors.accent}` : '3px solid transparent',
+                }}
+              >
+                Settings
+              </a>
+
+              {/* Logout button */}
+              <button
+                onClick={handleLogout}
+                className="menu-link"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '14px 20px',
+                  width: '100%',
+                  color: colors.textSecondary,
+                  fontSize: fontSize.base,
+                  fontWeight: fontWeight.medium,
+                  background: 'transparent',
+                  border: 'none',
+                  borderLeft: '3px solid transparent',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                Logout
+              </button>
+
+              {/* Version footer */}
+              <div style={{
+                padding: '12px 20px',
+                borderTop: `1px solid ${colors.border}`,
+                color: colors.textMuted,
+                fontSize: fontSize.xs,
+              }}>
+                Flux Trading Platform v1.0
+              </div>
             </div>
           </div>
         </>
