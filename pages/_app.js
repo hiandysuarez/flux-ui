@@ -1,8 +1,9 @@
 import { colors, fontFamily } from '../lib/theme';
+import { AuthProvider } from '../lib/auth';
 
 export default function App({ Component, pageProps }) {
   return (
-    <>
+    <AuthProvider>
       <style jsx global>{`
         * {
           box-sizing: border-box;
@@ -70,6 +71,6 @@ export default function App({ Component, pageProps }) {
         }
       `}</style>
       <Component {...pageProps} />
-    </>
+    </AuthProvider>
   );
 }
