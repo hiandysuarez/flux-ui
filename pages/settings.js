@@ -374,7 +374,7 @@ export default function SettingsPage() {
               </>
             ) : (
               <SettingRow label="Current Preset" description="Your active trading profile">
-                <ReadOnlyValue value={currentPreset ? currentPreset.name : 'Custom'} />
+                <ReadOnlyValue colors={colors} value={currentPreset ? currentPreset.name : 'Custom'} />
               </SettingRow>
             )}
           </div>
@@ -433,7 +433,7 @@ export default function SettingsPage() {
                   <option value="live">Live</option>
                 </select>
               ) : (
-                <ReadOnlyValue value={get('mode', 'paper') === 'paper' ? 'Paper' : 'Live'} />
+                <ReadOnlyValue colors={colors} value={get('mode', 'paper') === 'paper' ? 'Paper' : 'Live'} />
               )}
             </SettingRow>
           </SettingsSection>
@@ -454,7 +454,7 @@ export default function SettingsPage() {
                   placeholder="QQQ,SPY"
                 />
               ) : (
-                <ReadOnlyValue value={get('symbols', 'QQQ,SPY')} />
+                <ReadOnlyValue colors={colors} value={get('symbols', 'QQQ,SPY')} />
               )}
             </SettingRow>
 
@@ -484,7 +484,7 @@ export default function SettingsPage() {
                   />
                 </div>
               ) : (
-                <ReadOnlyValue value={`${get('trading_window_start', '06:30')} - ${get('trading_window_end', '10:30')}`} />
+                <ReadOnlyValue colors={colors} value={`${get('trading_window_start', '06:30')} - ${get('trading_window_end', '10:30')}`} />
               )}
             </SettingRow>
 
@@ -506,7 +506,7 @@ export default function SettingsPage() {
                                     isPercent
                 />
               ) : (
-                <ReadOnlyPercent value={get('conf_threshold', 0.60)} />
+                <ReadOnlyPercent colors={colors} value={get('conf_threshold', 0.60)} />
               )}
             </SettingRow>
           </SettingsSection>
@@ -533,7 +533,7 @@ export default function SettingsPage() {
                                     isPercent
                 />
               ) : (
-                <ReadOnlyPercent value={get('stop_loss_pct', 0.01)} />
+                <ReadOnlyPercent colors={colors} value={get('stop_loss_pct', 0.01)} />
               )}
             </SettingRow>
 
@@ -555,7 +555,7 @@ export default function SettingsPage() {
                                     isPercent
                 />
               ) : (
-                <ReadOnlyPercent value={get('take_profit_pct', 0.02)} />
+                <ReadOnlyPercent colors={colors} value={get('take_profit_pct', 0.02)} />
               )}
             </SettingRow>
 
@@ -577,7 +577,7 @@ export default function SettingsPage() {
                                     isPercent
                 />
               ) : (
-                <ReadOnlyPercent value={get('risk_per_trade_pct', 0.005)} />
+                <ReadOnlyPercent colors={colors} value={get('risk_per_trade_pct', 0.005)} />
               )}
             </SettingRow>
 
@@ -599,7 +599,7 @@ export default function SettingsPage() {
                                     suffix="min"
                 />
               ) : (
-                <ReadOnlyValue value={`${get('max_hold_min', 120)} min`} />
+                <ReadOnlyValue colors={colors} value={`${get('max_hold_min', 120)} min`} />
               )}
             </SettingRow>
 
@@ -625,7 +625,7 @@ export default function SettingsPage() {
                                     isPercent
                 />
               ) : (
-                <ReadOnlyPercent value={get('mq_exit_loss_threshold', 0.001)} />
+                <ReadOnlyPercent colors={colors} value={get('mq_exit_loss_threshold', 0.001)} />
               )}
             </SettingRow>
           </SettingsSection>
@@ -651,7 +651,7 @@ export default function SettingsPage() {
                   max={guardrails.trades_per_ticker_per_day?.max}
                                   />
               ) : (
-                <ReadOnlyValue value={get('trades_per_ticker_per_day', 1)} />
+                <ReadOnlyValue colors={colors} value={get('trades_per_ticker_per_day', 1)} />
               )}
             </SettingRow>
 
@@ -672,7 +672,7 @@ export default function SettingsPage() {
                   max={guardrails.max_open_positions?.max}
                                   />
               ) : (
-                <ReadOnlyValue value={get('max_open_positions', 5)} />
+                <ReadOnlyValue colors={colors} value={get('max_open_positions', 5)} />
               )}
             </SettingRow>
           </SettingsSection>
@@ -699,7 +699,7 @@ export default function SettingsPage() {
                                     isPercent
                 />
               ) : (
-                <ReadOnlyPercent value={get('mom_entry_pct', 0.002)} />
+                <ReadOnlyPercent colors={colors} value={get('mom_entry_pct', 0.002)} />
               )}
             </SettingRow>
 
@@ -721,7 +721,7 @@ export default function SettingsPage() {
                                     suffix="bars"
                 />
               ) : (
-                <ReadOnlyValue value={`${get('mom_lookback', 8)} bars`} />
+                <ReadOnlyValue colors={colors} value={`${get('mom_lookback', 8)} bars`} />
               )}
             </SettingRow>
           </SettingsSection>
@@ -873,7 +873,7 @@ function ReadOnlyToggle({ value }) {
   );
 }
 
-function ReadOnlyValue({ value }) {
+function ReadOnlyValue({ value, colors = darkTheme }) {
   return (
     <div style={{
       padding: '8px 16px',
@@ -889,7 +889,7 @@ function ReadOnlyValue({ value }) {
   );
 }
 
-function ReadOnlyPercent({ value }) {
+function ReadOnlyPercent({ value, colors = darkTheme }) {
   return (
     <div style={{
       padding: '8px 16px',
