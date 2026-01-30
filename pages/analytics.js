@@ -90,17 +90,6 @@ export default function AnalyticsPage() {
         }
       `}</style>
 
-      {/* Grid pattern background overlay */}
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: effects.gridPattern,
-        pointerEvents: 'none',
-        zIndex: 0,
-      }} />
 
       {/* Header */}
       <div style={{ marginBottom: spacing.xl }}>
@@ -659,26 +648,49 @@ function SkeletonCard({ colors }) {
 
 function CumulativePnlChart({ data, themeColors = darkTheme }) {
   const [tooltip, setTooltip] = useState(null);
+  const [hoverIdx, setHoverIdx] = useState(null);
 
   if (!data || data.length < 2) return null;
 
   const max = Math.max(...data, 0);
   const min = Math.min(...data, 0);
   const range = max - min || 1;
-  const chartHeight = 200;
+  const chartHeight = 220;
   const chartWidth = 100;
+  const padding = 10;
 
-  // Generate SVG path
-  const points = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * chartWidth;
-    const y = chartHeight - ((v - min) / range) * (chartHeight - 20);
-    return `${x},${y}`;
-  }).join(' ');
+  // Generate smooth curve path using bezier curves
+  const getPoint = (i) => {
+    const x = padding + ((i / (data.length - 1)) * (chartWidth - padding * 2));
+    const y = padding + ((1 - (data[i] - min) / range) * (chartHeight - padding * 2));
+    return { x, y };
+  };
+
+  // Create smooth bezier path
+  let pathD = `M ${getPoint(0).x},${getPoint(0).y}`;
+  for (let i = 0; i < data.length - 1; i++) {
+    const p0 = getPoint(Math.max(0, i - 1));
+    const p1 = getPoint(i);
+    const p2 = getPoint(i + 1);
+    const p3 = getPoint(Math.min(data.length - 1, i + 2));
+
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+    pathD += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
+  }
 
   // Zero line position
-  const zeroY = chartHeight - ((0 - min) / range) * (chartHeight - 20);
+  const zeroY = padding + ((1 - (0 - min) / range) * (chartHeight - padding * 2));
 
   const finalPnl = data[data.length - 1];
+  const lastPoint = getPoint(data.length - 1);
+  const lineColor = finalPnl >= 0 ? themeColors.accent : themeColors.error;
+
+  // Area path for gradient fill
+  const areaPath = pathD + ` L ${lastPoint.x},${zeroY} L ${getPoint(0).x},${zeroY} Z`;
 
   return (
     <div style={{ position: 'relative' }}>
@@ -687,12 +699,13 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
         height={chartHeight}
         viewBox={`0 0 ${chartWidth} ${chartHeight}`}
         preserveAspectRatio="none"
-        style={{ cursor: 'crosshair' }}
+        style={{ cursor: 'crosshair', borderRadius: 8 }}
         onMouseMove={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
           const x = (e.clientX - rect.left) / rect.width;
           const idx = Math.round(x * (data.length - 1));
           if (idx >= 0 && idx < data.length) {
+            setHoverIdx(idx);
             setTooltip({
               x: e.clientX,
               y: e.clientY,
@@ -701,49 +714,114 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
             });
           }
         }}
-        onMouseLeave={() => setTooltip(null)}
+        onMouseLeave={() => { setTooltip(null); setHoverIdx(null); }}
       >
-        {/* Grid lines */}
-        {[0.25, 0.5, 0.75].map(pct => (
+        {/* Background gradient */}
+        <defs>
+          <linearGradient id="chartBgGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={themeColors.bgSecondary} stopOpacity="0.5" />
+            <stop offset="100%" stopColor={themeColors.bgPrimary} stopOpacity="0.8" />
+          </linearGradient>
+          <linearGradient id="pnlAreaGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={lineColor} stopOpacity="0.25" />
+            <stop offset="50%" stopColor={lineColor} stopOpacity="0.1" />
+            <stop offset="100%" stopColor={lineColor} stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor={lineColor} stopOpacity="0.6" />
+            <stop offset="50%" stopColor={lineColor} stopOpacity="1" />
+            <stop offset="100%" stopColor={lineColor} stopOpacity="1" />
+          </linearGradient>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+
+        {/* Chart background */}
+        <rect x="0" y="0" width={chartWidth} height={chartHeight} fill="url(#chartBgGradient)" rx="2" />
+
+        {/* Subtle horizontal grid lines */}
+        {[0.2, 0.4, 0.6, 0.8].map(pct => (
           <line
             key={pct}
-            x1="0"
-            y1={chartHeight * pct}
-            x2={chartWidth}
-            y2={chartHeight * pct}
+            x1={padding}
+            y1={padding + pct * (chartHeight - padding * 2)}
+            x2={chartWidth - padding}
+            y2={padding + pct * (chartHeight - padding * 2)}
             stroke={themeColors.border}
-            strokeWidth="0.3"
+            strokeWidth="0.2"
+            strokeOpacity="0.5"
           />
         ))}
+
         {/* Zero line */}
         <line
-          x1="0"
+          x1={padding}
           y1={zeroY}
-          x2={chartWidth}
+          x2={chartWidth - padding}
           y2={zeroY}
-          stroke={themeColors.border}
+          stroke={themeColors.textMuted}
           strokeWidth="0.5"
-          strokeDasharray="2,2"
+          strokeDasharray="3,3"
+          strokeOpacity="0.5"
         />
-        {/* Gradient fill */}
-        <defs>
-          <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={finalPnl >= 0 ? themeColors.accent : themeColors.error} stopOpacity="0.3" />
-            <stop offset="100%" stopColor={finalPnl >= 0 ? themeColors.accent : themeColors.error} stopOpacity="0.05" />
-          </linearGradient>
-        </defs>
+
         {/* Area fill */}
-        <polygon
-          points={`0,${zeroY} ${points} ${chartWidth},${zeroY}`}
-          fill="url(#pnlGradient)"
+        <path
+          d={areaPath}
+          fill="url(#pnlAreaGradient)"
         />
-        {/* Line */}
-        <polyline
-          points={points}
+
+        {/* Main line with glow */}
+        <path
+          d={pathD}
           fill="none"
-          stroke={finalPnl >= 0 ? themeColors.accent : themeColors.error}
-          strokeWidth="1.5"
-          style={{ filter: `drop-shadow(0 0 4px ${finalPnl >= 0 ? themeColors.accent : themeColors.error}60)` }}
+          stroke={lineColor}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          filter="url(#glow)"
+        />
+
+        {/* Hover vertical line */}
+        {hoverIdx !== null && (
+          <line
+            x1={getPoint(hoverIdx).x}
+            y1={padding}
+            x2={getPoint(hoverIdx).x}
+            y2={chartHeight - padding}
+            stroke={themeColors.textMuted}
+            strokeWidth="0.5"
+            strokeDasharray="2,2"
+            strokeOpacity="0.5"
+          />
+        )}
+
+        {/* Hover point */}
+        {hoverIdx !== null && (
+          <circle
+            cx={getPoint(hoverIdx).x}
+            cy={getPoint(hoverIdx).y}
+            r="3"
+            fill={lineColor}
+            stroke={themeColors.bgCard}
+            strokeWidth="1.5"
+          />
+        )}
+
+        {/* End point marker */}
+        <circle
+          cx={lastPoint.x}
+          cy={lastPoint.y}
+          r="4"
+          fill={lineColor}
+          stroke={themeColors.bgCard}
+          strokeWidth="2"
+          filter="url(#glow)"
         />
       </svg>
 
@@ -751,24 +829,26 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
       {tooltip && (
         <div style={{
           position: 'fixed',
-          left: tooltip.x + 10,
-          top: tooltip.y - 50,
-          background: themeColors.bgSecondary,
+          left: tooltip.x + 12,
+          top: tooltip.y - 60,
+          background: themeColors.bgCard,
           border: `1px solid ${themeColors.border}`,
-          padding: '8px 12px',
-          borderRadius: 8,
+          padding: '10px 14px',
+          borderRadius: 10,
           fontSize: 12,
           pointerEvents: 'none',
           zIndex: 100,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+          boxShadow: `0 8px 24px rgba(0,0,0,0.4), 0 0 0 1px ${themeColors.border}`,
+          backdropFilter: 'blur(8px)',
         }}>
-          <div style={{ color: themeColors.textMuted, marginBottom: 4 }}>
+          <div style={{ color: themeColors.textMuted, marginBottom: 6, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             Trade #{tooltip.trade}
           </div>
           <div style={{
-            fontWeight: 700,
-            fontSize: 14,
+            fontWeight: 800,
+            fontSize: 18,
             color: tooltip.pnl >= 0 ? themeColors.accent : themeColors.error,
+            fontFamily: fontFamily.mono,
           }}>
             {formatCurrency(tooltip.pnl)}
           </div>
@@ -779,18 +859,31 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
-        marginTop: 8,
-        fontSize: 12,
-        color: themeColors.textMuted,
+        alignItems: 'center',
+        marginTop: 12,
+        padding: '0 4px',
       }}>
-        <span>Trade 1</span>
-        <span style={{
-          color: finalPnl >= 0 ? themeColors.accent : themeColors.error,
-          fontWeight: 700,
+        <span style={{ fontSize: 11, color: themeColors.textMuted }}>Trade 1</span>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '6px 12px',
+          background: finalPnl >= 0 ? `${themeColors.accent}15` : `${themeColors.error}15`,
+          borderRadius: 6,
+          border: `1px solid ${finalPnl >= 0 ? themeColors.accent : themeColors.error}30`,
         }}>
-          Final: {formatCurrency(finalPnl)}
-        </span>
-        <span>Trade {data.length}</span>
+          <span style={{ fontSize: 11, color: themeColors.textMuted }}>Final P&L</span>
+          <span style={{
+            color: finalPnl >= 0 ? themeColors.accent : themeColors.error,
+            fontWeight: 800,
+            fontSize: 14,
+            fontFamily: fontFamily.mono,
+          }}>
+            {formatCurrency(finalPnl)}
+          </span>
+        </div>
+        <span style={{ fontSize: 11, color: themeColors.textMuted }}>Trade {data.length}</span>
       </div>
     </div>
   );

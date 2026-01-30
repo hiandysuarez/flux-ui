@@ -289,17 +289,6 @@ export default function Home() {
         }
       `}</style>
 
-      {/* Grid pattern background overlay */}
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: effects.gridPattern,
-        pointerEvents: 'none',
-        zIndex: 0,
-      }} />
       {/* Header */}
       <div style={{ marginBottom: spacing.xxl }}>
         <h1 style={{
@@ -632,6 +621,8 @@ export default function Home() {
           borderColor: colors.border,
           padding: 0,
           overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
         }}>
           <div style={{
             padding: '12px 16px',
@@ -639,6 +630,7 @@ export default function Home() {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
+            flexShrink: 0,
           }}>
             <span style={{ fontWeight: 800, fontSize: 16, color: colors.textPrimary }}>Recent Trades</span>
             <LookbackSelector
@@ -648,59 +640,66 @@ export default function Home() {
               themeColors={colors}
             />
           </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: colors.bgSecondary }}>
-                <Th themeColors={colors}>Time</Th>
-                <Th themeColors={colors}>Symbol</Th>
-                <Th themeColors={colors}>Side</Th>
-                <Th themeColors={colors}>P&L</Th>
-                <Th themeColors={colors}>Result</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {trades.length === 0 ? (
-                <tr>
-                  <td colSpan={5}>
-                    <EmptyState message="No completed trades yet" icon="~" themeColors={colors} />
-                  </td>
+          {/* Scrollable table container - shows 15 rows max when 25+ selected */}
+          <div style={{
+            maxHeight: (typeof tradeLookback === 'number' && tradeLookback >= 25) ? 540 : 'none',
+            overflowY: (typeof tradeLookback === 'number' && tradeLookback >= 25) ? 'auto' : 'visible',
+            WebkitOverflowScrolling: 'touch',
+          }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                <tr style={{ background: colors.bgSecondary }}>
+                  <Th themeColors={colors}>Time</Th>
+                  <Th themeColors={colors}>Symbol</Th>
+                  <Th themeColors={colors}>Side</Th>
+                  <Th themeColors={colors}>P&L</Th>
+                  <Th themeColors={colors}>Result</Th>
                 </tr>
-              ) : (
-                trades.map((t, i) => (
-                  <PnlRow key={i} pnl={t.pnl} style={{ borderTop: `1px solid ${colors.border}` }} themeColors={colors}>
-                    <Td style={{ fontSize: 13, color: colors.textMuted }}>
-                      {t.ts ? new Date(t.ts).toLocaleTimeString() : '—'}
-                    </Td>
-                    <Td style={{ fontWeight: 700, fontSize: 14 }}>{t.symbol}</Td>
-                    <Td style={{ fontSize: 14 }}>
-                      <span style={{ color: t.side === 'BUY' ? colors.accent : colors.error }}>
-                        {t.side}
-                      </span>
-                    </Td>
-                    <Td style={{
-                      fontFamily: fontFamily.mono,
-                      fontSize: 14,
-                      color: t.pnl > 0 ? colors.accent : t.pnl < 0 ? colors.error : colors.textPrimary,
-                    }}>
-                      {formatCurrency(t.pnl)}
-                    </Td>
-                    <Td>
-                      <span style={{
-                        padding: '2px 8px',
-                        borderRadius: 4,
-                        background: t.win ? colors.accentDark : colors.errorDark,
-                        color: t.win ? colors.accent : colors.error,
-                        fontWeight: 700,
-                        fontSize: 13,
+              </thead>
+              <tbody>
+                {trades.length === 0 ? (
+                  <tr>
+                    <td colSpan={5}>
+                      <EmptyState message="No completed trades yet" icon="~" themeColors={colors} />
+                    </td>
+                  </tr>
+                ) : (
+                  trades.map((t, i) => (
+                    <PnlRow key={i} pnl={t.pnl} style={{ borderTop: `1px solid ${colors.border}` }} themeColors={colors}>
+                      <Td style={{ fontSize: 13, color: colors.textMuted }}>
+                        {t.ts ? new Date(t.ts).toLocaleTimeString() : '—'}
+                      </Td>
+                      <Td style={{ fontWeight: 700, fontSize: 14 }}>{t.symbol}</Td>
+                      <Td style={{ fontSize: 14 }}>
+                        <span style={{ color: t.side === 'BUY' ? colors.accent : colors.error }}>
+                          {t.side}
+                        </span>
+                      </Td>
+                      <Td style={{
+                        fontFamily: fontFamily.mono,
+                        fontSize: 14,
+                        color: t.pnl > 0 ? colors.accent : t.pnl < 0 ? colors.error : colors.textPrimary,
                       }}>
-                        {t.win ? 'WIN' : 'LOSS'}
-                      </span>
-                    </Td>
-                  </PnlRow>
-                ))
-              )}
-            </tbody>
-          </table>
+                        {formatCurrency(t.pnl)}
+                      </Td>
+                      <Td>
+                        <span style={{
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          background: t.win ? colors.accentDark : colors.errorDark,
+                          color: t.win ? colors.accent : colors.error,
+                          fontWeight: 700,
+                          fontSize: 13,
+                        }}>
+                          {t.win ? 'WIN' : 'LOSS'}
+                        </span>
+                      </Td>
+                    </PnlRow>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Shadow Logs Table */}
@@ -710,6 +709,8 @@ export default function Home() {
           borderColor: colors.border,
           padding: 0,
           overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
         }}>
           <div style={{
             padding: '12px 16px',
@@ -717,6 +718,7 @@ export default function Home() {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
+            flexShrink: 0,
           }}>
             <div>
               <span style={{ fontWeight: 800, fontSize: 16, color: colors.textPrimary }}>Shadow Logs</span>
@@ -727,61 +729,67 @@ export default function Home() {
                 { value: 10, label: '10' },
                 { value: 25, label: '25' },
                 { value: 50, label: '50' },
-                { value: 'all', label: 'All' },
               ]}
               value={shadowLookback}
               onChange={setShadowLookback}
               themeColors={colors}
             />
           </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: colors.bgSecondary }}>
-                <Th themeColors={colors}>Time</Th>
-                <Th themeColors={colors}>Symbol</Th>
-                <Th themeColors={colors}>Label</Th>
-                <Th themeColors={colors}>Win %</Th>
-                <Th themeColors={colors}>Action</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {shadowLogs.length === 0 ? (
-                <tr>
-                  <td colSpan={5}>
-                    <EmptyState message="No shadow logs yet" icon="~" themeColors={colors} />
-                  </td>
+          {/* Scrollable table container - shows 15 rows max when 25+ selected */}
+          <div style={{
+            maxHeight: (typeof shadowLookback === 'number' && shadowLookback >= 25) ? 540 : 'none',
+            overflowY: (typeof shadowLookback === 'number' && shadowLookback >= 25) ? 'auto' : 'visible',
+            WebkitOverflowScrolling: 'touch',
+          }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                <tr style={{ background: colors.bgSecondary }}>
+                  <Th themeColors={colors}>Time</Th>
+                  <Th themeColors={colors}>Symbol</Th>
+                  <Th themeColors={colors}>Label</Th>
+                  <Th themeColors={colors}>Win %</Th>
+                  <Th themeColors={colors}>Action</Th>
                 </tr>
-              ) : (
-                shadowLogs.map((s, i) => (
-                  <HoverRow key={i} style={{ borderTop: `1px solid ${colors.border}` }} themeColors={colors}>
-                    <Td style={{ fontSize: 13, color: colors.textMuted }}>
-                      {s.ts ? new Date(s.ts).toLocaleTimeString() : '—'}
-                    </Td>
-                    <Td style={{ fontWeight: 700, fontSize: 14 }}>{s.symbol}</Td>
-                    <Td style={{ fontSize: 14 }}>
-                      <span style={{
-                        color: s.ml_label === 'BUY' ? colors.accent : s.ml_label === 'SELL' ? colors.error : colors.textMuted,
-                        fontWeight: 700,
-                      }}>
-                        {s.ml_label || '—'}
-                      </span>
-                    </Td>
-                    <Td style={{ fontFamily: fontFamily.mono, fontSize: 14 }}>
-                      {s.ml_win_prob != null ? `${(s.ml_win_prob * 100).toFixed(0)}%` : '—'}
-                    </Td>
-                    <Td style={{ fontSize: 14 }}>
-                      <span style={{
-                        color: s.bot_action === 'BUY' ? colors.accent : s.bot_action === 'SELL' ? colors.error : colors.textMuted,
-                      }}>
-                        {s.bot_action || '—'}
-                      </span>
-                    </Td>
-                  </HoverRow>
+              </thead>
+              <tbody>
+                {shadowLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={5}>
+                      <EmptyState message="No shadow logs yet" icon="~" themeColors={colors} />
+                    </td>
+                  </tr>
+                ) : (
+                  shadowLogs.map((s, i) => (
+                    <HoverRow key={i} style={{ borderTop: `1px solid ${colors.border}` }} themeColors={colors}>
+                      <Td style={{ fontSize: 13, color: colors.textMuted }}>
+                        {s.ts ? new Date(s.ts).toLocaleTimeString() : '—'}
+                      </Td>
+                      <Td style={{ fontWeight: 700, fontSize: 14 }}>{s.symbol}</Td>
+                      <Td style={{ fontSize: 14 }}>
+                        <span style={{
+                          color: s.ml_label === 'BUY' ? colors.accent : s.ml_label === 'SELL' ? colors.error : colors.textMuted,
+                          fontWeight: 700,
+                        }}>
+                          {s.ml_label || '—'}
+                        </span>
+                      </Td>
+                      <Td style={{ fontFamily: fontFamily.mono, fontSize: 14 }}>
+                        {s.ml_win_prob != null ? `${(s.ml_win_prob * 100).toFixed(0)}%` : '—'}
+                      </Td>
+                      <Td style={{ fontSize: 14 }}>
+                        <span style={{
+                          color: s.bot_action === 'BUY' ? colors.accent : s.bot_action === 'SELL' ? colors.error : colors.textMuted,
+                        }}>
+                          {s.bot_action || '—'}
+                        </span>
+                      </Td>
+                    </HoverRow>
                 ))
               )}
             </tbody>
           </table>
         </div>
+      </div>
       </div>
       )}
 

@@ -45,11 +45,11 @@ const DEFAULT_GUARDRAILS = {
 
 // Consolidated tabs for cleaner organization
 const TABS = [
-  { id: 'profile', label: 'Profile', icon: '👤' },
-  { id: 'schedule', label: 'Schedule', icon: '🕐' },
-  { id: 'entry', label: 'Entry Rules', icon: '📈' },
-  { id: 'risk', label: 'Risk', icon: '🛡️' },
-  { id: 'limits', label: 'Limits', icon: '⚡' },
+  { id: 'profile', label: 'Profile' },
+  { id: 'schedule', label: 'Schedule' },
+  { id: 'entry', label: 'Entry Rules' },
+  { id: 'risk', label: 'Risk' },
+  { id: 'limits', label: 'Limits' },
 ];
 
 export default function SettingsPage() {
@@ -205,9 +205,17 @@ export default function SettingsPage() {
 
     setSaving(true);
     try {
-      // Admin saves to system settings, regular users save to their personal settings
+      let payload = settings;
+
+      // Admin saves to system settings - filter out user-specific fields
+      // that don't exist in app_settings table
+      if (isAdmin) {
+        const { preset_id, user_id, theme, created_at, ...systemSettings } = settings;
+        payload = systemSettings;
+      }
+
       const res = isAdmin
-        ? await saveSettings(settings)  // System-wide settings
+        ? await saveSettings(payload)  // System-wide settings
         : await saveUserSettings(settings);  // Per-user settings
 
       if (res.ok || res.settings) {
