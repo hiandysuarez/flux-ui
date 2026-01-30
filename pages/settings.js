@@ -1754,7 +1754,7 @@ function PositionCapacityVisual({ maxPositions, riskPerTrade, colors = darkTheme
                 aspectRatio: '1',
                 borderRadius: 8,
                 background: isActive
-                  ? `linear-gradient(135deg, ${colors.accent}20, ${colors.accent}10)`
+                  ? `${colors.accent}15`
                   : colors.bgSecondary,
                 border: `2px solid ${isActive ? colors.accent : colors.border}`,
                 display: 'flex',
@@ -1857,10 +1857,10 @@ function RiskRewardCard({ stopLoss, takeProfit, colors = darkTheme }) {
         overflow: 'hidden',
         marginBottom: 12,
       }}>
-        {/* Stop loss (left - red) */}
+        {/* Stop loss (left - red) - solid background */}
         <div style={{
           flex: 1,
-          background: `linear-gradient(135deg, ${colors.error}30, ${colors.error}15)`,
+          background: `${colors.error}18`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -1874,10 +1874,10 @@ function RiskRewardCard({ stopLoss, takeProfit, colors = darkTheme }) {
           </div>
         </div>
 
-        {/* Take profit (right - green) */}
+        {/* Take profit (right - green) - solid background */}
         <div style={{
           flex: ratio,
-          background: `linear-gradient(135deg, ${colors.success}15, ${colors.success}30)`,
+          background: `${colors.success}18`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',

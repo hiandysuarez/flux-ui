@@ -1158,11 +1158,7 @@ function MetricCard({ title, value, subtitle, color, trend, sparklineData, theme
         cursor: 'default',
         transition: `all ${transitions.normal}`,
         borderColor: hovered ? themeColors.borderAccent : themeColors.border,
-        boxShadow: hovered
-          ? `${shadows.md}, ${shadows.glow}`
-          : glow && effectiveColor !== themeColors.textPrimary
-            ? `${shadows.md}, 0 0 15px ${effectiveColor}20`
-            : shadows.md,
+        boxShadow: hovered ? shadows.lg : shadows.md,
         transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
       }}
     >

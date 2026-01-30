@@ -515,11 +515,7 @@ function MetricCard({ title, value, subtitle, color, themeColors = darkTheme, gl
         borderColor: hovered ? themeColors.borderAccent : themeColors.border,
         transition: `all ${transitions.normal}`,
         transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
-        boxShadow: hovered
-          ? `${shadows.md}, ${shadows.glow}`
-          : glow && effectiveColor !== themeColors.textPrimary
-            ? `${shadows.md}, 0 0 15px ${effectiveColor}20`
-            : shadows.md,
+        boxShadow: hovered ? shadows.lg : shadows.md,
       }}
     >
       <div style={{ color: themeColors.textMuted, fontSize: 13, fontWeight: 600, marginBottom: 4 }}>

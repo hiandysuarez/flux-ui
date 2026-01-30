@@ -1,4 +1,4 @@
-import { darkTheme, fontSize, visualEffects, fontFamily } from '../lib/theme';
+import { darkTheme, fontSize, fontFamily } from '../lib/theme';
 
 export default function GuardrailHint({
   min,
@@ -10,7 +10,6 @@ export default function GuardrailHint({
   showTooltip = true,
 }) {
   const colors = darkTheme;
-  const effects = visualEffects;
 
   // Calculate position of current value on the scale (0-100%)
   const range = max - min;
@@ -51,52 +50,51 @@ export default function GuardrailHint({
 
   return (
     <div style={{ marginTop: '10px' }}>
-      {/* Track with gradient */}
+      {/* Track - simplified solid background */}
       <div style={{
         position: 'relative',
         height: '6px',
-        background: effects.safeZoneGradient,
+        background: colors.bgTertiary,
         borderRadius: '3px',
-        boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.3)',
+        border: `1px solid ${colors.border}`,
       }}>
-        {/* Optimal zone highlight */}
+        {/* Optimal zone highlight - subtle */}
         <div style={{
           position: 'absolute',
           left: '25%',
           right: '25%',
           top: 0,
           bottom: 0,
-          background: 'rgba(63, 185, 80, 0.2)',
+          background: `${colors.success}15`,
           borderRadius: '3px',
         }} />
 
-        {/* Recommended marker - gold */}
+        {/* Recommended marker - clean */}
         {recommended !== undefined && (
           <div style={{
             position: 'absolute',
             left: `${recommendedPosition}%`,
             top: '-2px',
-            width: '3px',
+            width: '2px',
             height: '10px',
             background: colors.accent,
             transform: 'translateX(-50%)',
-            borderRadius: '2px',
-            boxShadow: `0 0 8px ${colors.accent}`,
+            borderRadius: '1px',
           }} />
         )}
 
-        {/* Current value indicator */}
+        {/* Current value indicator - simplified */}
         <div style={{
           position: 'absolute',
           left: `${clampedPosition}%`,
           top: '-5px',
-          width: '16px',
-          height: '16px',
+          width: '14px',
+          height: '14px',
           background: indicatorColor,
           borderRadius: '50%',
           transform: 'translateX(-50%)',
           border: `2px solid ${colors.bgSecondary}`,
-          boxShadow: `0 2px 6px rgba(0,0,0,0.4), 0 0 10px ${indicatorColor}50`,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
           transition: 'all 0.25s ease',
         }} />
       </div>
@@ -132,11 +130,10 @@ export default function GuardrailHint({
               gap: '5px',
             }}>
               <span style={{
-                width: '8px',
-                height: '8px',
+                width: '6px',
+                height: '6px',
                 background: colors.accent,
-                borderRadius: '2px',
-                boxShadow: `0 0 4px ${colors.accent}`,
+                borderRadius: '1px',
               }} />
               <span style={{ fontFamily: fontFamily.mono }}>
                 {formatValue(recommended)}
@@ -148,7 +145,7 @@ export default function GuardrailHint({
               color: indicatorColor,
               fontWeight: 600,
               padding: '2px 8px',
-              background: `${indicatorColor}15`,
+              background: `${indicatorColor}12`,
               borderRadius: '4px',
               fontSize: '10px',
             }}>
