@@ -1,4 +1,4 @@
-// pages/settings.js - Settings with admin edit access
+// pages/settings.js - Dark Luxe Settings UI
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
@@ -6,13 +6,11 @@ import PresetSelector from '../components/PresetSelector';
 import GuardrailHint from '../components/GuardrailHint';
 import {
   fetchUserSettings, saveUserSettings, fetchPresets, applyPreset, fetchGuardrails,
-  fetchSettings, saveSettings  // Admin uses these (system-wide settings)
+  fetchSettings, saveSettings
 } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import { useTheme } from '../lib/themeContext';
 import {
   darkTheme,
-  lightTheme,
   borderRadius,
   cardStyle,
   buttonPrimaryStyle,
@@ -21,10 +19,10 @@ import {
   toggleOffStyle,
   fontSize,
   fontWeight,
+  fontFamily,
   transitions,
-  getGlassStyle,
-  getVisualEffects,
   shadows,
+  visualEffects,
 } from '../lib/theme';
 
 // Check if current user is admin
@@ -195,11 +193,9 @@ const TABS = [
 export default function SettingsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { theme, toggleTheme } = useTheme();
 
-  // Get theme-aware colors
-  const colors = theme === 'light' ? lightTheme : darkTheme;
-  const glassStyle = getGlassStyle(theme);
+  // Dark Luxe theme only
+  const colors = darkTheme;
 
   const [settings, setSettings] = useState(null);
   const [presets, setPresets] = useState([]);
@@ -560,7 +556,12 @@ export default function SettingsPage() {
                       alignItems: 'center',
                       gap: 10,
                     }}>
-                      <span style={{ fontSize: 16 }}>📋</span>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                      </svg>
                       <span>
                         Using <strong>{currentPreset?.name || 'preset'}</strong> profile. Editing any setting will switch to Custom mode.
                       </span>
@@ -636,29 +637,6 @@ export default function SettingsPage() {
               )}
             </SettingsSection>
 
-            {/* Theme */}
-            <SettingsSection
-              title="Appearance"
-              subtitle="Customize how Flux looks and feels."
-              colors={colors}
-              icon={
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="5"/>
-                  <line x1="12" y1="1" x2="12" y2="3"/>
-                  <line x1="12" y1="21" x2="12" y2="23"/>
-                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                  <line x1="1" y1="12" x2="3" y2="12"/>
-                  <line x1="21" y1="12" x2="23" y2="12"/>
-                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-                </svg>
-              }
-            >
-              <SettingRow label="Theme" description="Choose between light and dark mode." colors={colors}>
-                <ThemeToggle theme={theme} onToggle={toggleTheme} colors={colors} />
-              </SettingRow>
-            </SettingsSection>
           </div>
         )}
 
@@ -755,7 +733,10 @@ export default function SettingsPage() {
                   gap: 12,
                   marginTop: 8,
                 }}>
-                  <span style={{ fontSize: 20 }}>🛑</span>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={colors.error} strokeWidth="2" style={{ flexShrink: 0 }}>
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                  </svg>
                   <div>
                     <div style={{ fontWeight: 600, marginBottom: 4 }}>Trading is paused</div>
                     <div style={{ opacity: 0.9 }}>No new trades will be placed. Existing positions are not affected.</div>
@@ -1554,59 +1535,6 @@ function ValidatedNumberInput({
   );
 }
 
-function ThemeToggle({ theme, onToggle, colors }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-      {/* Sun icon */}
-      <span style={{
-        fontSize: 18,
-        opacity: theme === 'light' ? 1 : 0.4,
-        transition: 'opacity 0.2s ease',
-      }}>
-        ☀️
-      </span>
-
-      {/* Toggle switch */}
-      <button
-        onClick={onToggle}
-        style={{
-          position: 'relative',
-          width: 56,
-          height: 28,
-          borderRadius: 14,
-          background: theme === 'dark' ? colors.accent : colors.bgTertiary,
-          border: `1px solid ${theme === 'dark' ? colors.accentMuted : colors.border}`,
-          cursor: 'pointer',
-          transition: 'all 0.3s ease',
-          padding: 0,
-        }}
-        aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-      >
-        <span style={{
-          position: 'absolute',
-          top: 3,
-          left: theme === 'dark' ? 30 : 3,
-          width: 20,
-          height: 20,
-          borderRadius: '50%',
-          background: theme === 'dark' ? colors.bgPrimary : colors.textMuted,
-          transition: 'all 0.3s ease',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-        }} />
-      </button>
-
-      {/* Moon icon */}
-      <span style={{
-        fontSize: 18,
-        opacity: theme === 'dark' ? 1 : 0.4,
-        transition: 'opacity 0.2s ease',
-      }}>
-        🌙
-      </span>
-    </div>
-  );
-}
-
 // Info icon component
 function InfoIcon({ size = 14, color }) {
   return (
@@ -1688,7 +1616,10 @@ function ExplanationBox({ explanation, isExpanded, onToggle, colors = darkTheme 
                   borderRadius: 8,
                   borderLeft: `3px solid ${colors.warning}`,
                 }}>
-                  <span style={{ fontSize: 14 }}>📉</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={colors.warning} strokeWidth="2" style={{ flexShrink: 0 }}>
+                    <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/>
+                    <polyline points="17 18 23 18 23 12"/>
+                  </svg>
                   <span style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 1.5 }}>
                     {explanation.lowImpact}
                   </span>
@@ -1704,7 +1635,10 @@ function ExplanationBox({ explanation, isExpanded, onToggle, colors = darkTheme 
                   borderRadius: 8,
                   borderLeft: `3px solid ${colors.info}`,
                 }}>
-                  <span style={{ fontSize: 14 }}>📈</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={colors.info} strokeWidth="2" style={{ flexShrink: 0 }}>
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                    <polyline points="17 6 23 6 23 12"/>
+                  </svg>
                   <span style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 1.5 }}>
                     {explanation.highImpact}
                   </span>
@@ -1724,7 +1658,10 @@ function ExplanationBox({ explanation, isExpanded, onToggle, colors = darkTheme 
               alignItems: 'flex-start',
               gap: 10,
             }}>
-              <span style={{ fontSize: 14 }}>💡</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={colors.accent} strokeWidth="2" style={{ flexShrink: 0 }}>
+                <path d="M9 18h6"/><path d="M10 22h4"/>
+                <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/>
+              </svg>
               <span style={{ fontSize: 12, color: colors.accent, lineHeight: 1.5, fontWeight: 500 }}>
                 {explanation.tip}
               </span>
@@ -1772,7 +1709,10 @@ function WarningBanner({ text, colors = darkTheme }) {
       gap: 10,
       border: `1px solid rgba(255, 179, 71, 0.3)`,
     }}>
-      <span style={{ fontSize: 14, flexShrink: 0 }}>⚠️</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={colors.warning} strokeWidth="2" style={{ flexShrink: 0 }}>
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
       <span>{text}</span>
     </div>
   );
@@ -1904,15 +1844,16 @@ function RiskRewardCard({ stopLoss, takeProfit, colors = darkTheme }) {
           alignItems: 'center',
           gap: 8,
           padding: '6px 12px',
-          background: isGreatRatio ? colors.accentDark : isGoodRatio ? colors.warningDark : colors.errorDark,
+          background: isGreatRatio ? colors.successDark : isGoodRatio ? colors.warningDark : colors.errorDark,
           borderRadius: 20,
-          border: `1px solid ${isGreatRatio ? colors.accent : isGoodRatio ? colors.warning : colors.error}40`,
+          border: `1px solid ${isGreatRatio ? colors.success : isGoodRatio ? colors.warning : colors.error}40`,
         }}>
-          <span style={{ fontSize: 12 }}>{isGreatRatio ? '✓' : isGoodRatio ? '~' : '!'}</span>
+          <span style={{ fontSize: 12, color: isGreatRatio ? colors.success : isGoodRatio ? colors.warning : colors.error }}>{isGreatRatio ? '✓' : isGoodRatio ? '~' : '!'}</span>
           <span style={{
             fontSize: 13,
             fontWeight: 600,
-            color: isGreatRatio ? colors.accent : isGoodRatio ? colors.warning : colors.error,
+            fontFamily: fontFamily.mono,
+            color: isGreatRatio ? colors.success : isGoodRatio ? colors.warning : colors.error,
           }}>
             1:{ratio.toFixed(1)}
           </span>
@@ -1938,7 +1879,7 @@ function RiskRewardCard({ stopLoss, takeProfit, colors = darkTheme }) {
         }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 11, color: colors.error, opacity: 0.8 }}>RISK</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: colors.error, fontFamily: 'JetBrains Mono, monospace' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: colors.error, fontFamily: fontFamily.mono }}>
               -{(stopLoss * 100).toFixed(1)}%
             </div>
           </div>
@@ -1947,14 +1888,14 @@ function RiskRewardCard({ stopLoss, takeProfit, colors = darkTheme }) {
         {/* Take profit (right - green) */}
         <div style={{
           flex: ratio,
-          background: `linear-gradient(135deg, ${colors.accent}15, ${colors.accent}30)`,
+          background: `linear-gradient(135deg, ${colors.success}15, ${colors.success}30)`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
         }}>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 11, color: colors.accent, opacity: 0.8 }}>REWARD</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: colors.accent, fontFamily: 'JetBrains Mono, monospace' }}>
+            <div style={{ fontSize: 11, color: colors.success, opacity: 0.8 }}>REWARD</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: colors.success, fontFamily: fontFamily.mono }}>
               +{(takeProfit * 100).toFixed(1)}%
             </div>
           </div>
@@ -1969,7 +1910,7 @@ function RiskRewardCard({ stopLoss, takeProfit, colors = darkTheme }) {
       }}>
         {isGreatRatio ? (
           <span style={{ color: colors.textSecondary }}>
-            <strong style={{ color: colors.accent }}>Excellent ratio.</strong> You need to win just {Math.round(100 / (ratio + 1))}% of trades to break even.
+            <strong style={{ color: colors.success }}>Excellent ratio.</strong> You need to win just {Math.round(100 / (ratio + 1))}% of trades to break even.
           </span>
         ) : isGoodRatio ? (
           <span style={{ color: colors.textSecondary }}>

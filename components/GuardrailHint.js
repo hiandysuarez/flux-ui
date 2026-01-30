@@ -1,4 +1,4 @@
-import { darkTheme, lightTheme, fontSize, getVisualEffects } from '../lib/theme';
+import { darkTheme, fontSize, visualEffects, fontFamily } from '../lib/theme';
 
 export default function GuardrailHint({
   min,
@@ -7,11 +7,10 @@ export default function GuardrailHint({
   recommended,
   isPercent = false,
   decimals = 2,
-  theme = 'dark',
   showTooltip = true,
 }) {
-  const colors = theme === 'light' ? lightTheme : darkTheme;
-  const effects = getVisualEffects(theme);
+  const colors = darkTheme;
+  const effects = visualEffects;
 
   // Calculate position of current value on the scale (0-100%)
   const range = max - min;
@@ -42,23 +41,23 @@ export default function GuardrailHint({
   // Get zone description
   const getZoneDescription = (pos) => {
     const distance = Math.abs(pos - recommendedPosition);
-    if (distance > 40) return 'High risk zone';
-    if (distance > 25) return 'Moderate risk';
-    return 'Optimal range';
+    if (distance > 40) return 'High risk';
+    if (distance > 25) return 'Moderate';
+    return 'Optimal';
   };
 
   const indicatorColor = getColor(clampedPosition);
   const zoneText = getZoneDescription(clampedPosition);
 
   return (
-    <div style={{ marginTop: '8px' }}>
+    <div style={{ marginTop: '10px' }}>
       {/* Track with gradient */}
       <div style={{
         position: 'relative',
         height: '6px',
         background: effects.safeZoneGradient,
         borderRadius: '3px',
-        boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)',
+        boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.3)',
       }}>
         {/* Optimal zone highlight */}
         <div style={{
@@ -67,11 +66,11 @@ export default function GuardrailHint({
           right: '25%',
           top: 0,
           bottom: 0,
-          background: 'rgba(0, 255, 136, 0.15)',
+          background: 'rgba(63, 185, 80, 0.2)',
           borderRadius: '3px',
         }} />
 
-        {/* Recommended marker */}
+        {/* Recommended marker - gold */}
         {recommended !== undefined && (
           <div style={{
             position: 'absolute',
@@ -81,8 +80,8 @@ export default function GuardrailHint({
             height: '10px',
             background: colors.accent,
             transform: 'translateX(-50%)',
-            borderRadius: '1px',
-            boxShadow: `0 0 6px ${colors.accent}`,
+            borderRadius: '2px',
+            boxShadow: `0 0 8px ${colors.accent}`,
           }} />
         )}
 
@@ -90,15 +89,15 @@ export default function GuardrailHint({
         <div style={{
           position: 'absolute',
           left: `${clampedPosition}%`,
-          top: '-4px',
-          width: '14px',
-          height: '14px',
+          top: '-5px',
+          width: '16px',
+          height: '16px',
           background: indicatorColor,
           borderRadius: '50%',
           transform: 'translateX(-50%)',
           border: `2px solid ${colors.bgSecondary}`,
-          boxShadow: `0 2px 4px rgba(0,0,0,0.3), 0 0 8px ${indicatorColor}`,
-          transition: 'all 0.2s ease',
+          boxShadow: `0 2px 6px rgba(0,0,0,0.4), 0 0 10px ${indicatorColor}50`,
+          transition: 'all 0.25s ease',
         }} />
       </div>
 
@@ -107,10 +106,14 @@ export default function GuardrailHint({
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginTop: '6px',
+        marginTop: '8px',
         fontSize: fontSize.xs,
       }}>
-        <span style={{ color: colors.textMuted, fontFamily: 'monospace' }}>
+        <span style={{
+          color: colors.textMuted,
+          fontFamily: fontFamily.mono,
+          fontSize: '11px',
+        }}>
           {formatValue(min)}
         </span>
 
@@ -118,36 +121,47 @@ export default function GuardrailHint({
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '8px',
-          fontSize: '10px',
+          gap: '10px',
+          fontSize: '11px',
         }}>
           {recommended !== undefined && (
             <span style={{
               color: colors.accent,
               display: 'flex',
               alignItems: 'center',
-              gap: '4px',
+              gap: '5px',
             }}>
               <span style={{
-                width: '6px',
-                height: '6px',
+                width: '8px',
+                height: '8px',
                 background: colors.accent,
-                borderRadius: '1px',
+                borderRadius: '2px',
+                boxShadow: `0 0 4px ${colors.accent}`,
               }} />
-              {formatValue(recommended)}
+              <span style={{ fontFamily: fontFamily.mono }}>
+                {formatValue(recommended)}
+              </span>
             </span>
           )}
           {showTooltip && (
             <span style={{
               color: indicatorColor,
-              fontWeight: 500,
+              fontWeight: 600,
+              padding: '2px 8px',
+              background: `${indicatorColor}15`,
+              borderRadius: '4px',
+              fontSize: '10px',
             }}>
               {zoneText}
             </span>
           )}
         </div>
 
-        <span style={{ color: colors.textMuted, fontFamily: 'monospace' }}>
+        <span style={{
+          color: colors.textMuted,
+          fontFamily: fontFamily.mono,
+          fontSize: '11px',
+        }}>
           {formatValue(max)}
         </span>
       </div>

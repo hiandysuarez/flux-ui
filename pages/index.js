@@ -11,11 +11,8 @@ import {
   runDecisionCycle,
   forceExitAll,
 } from '../lib/api';
-import { useTheme } from '../lib/themeContext';
 import {
-  colors,
   darkTheme,
-  lightTheme,
   borderRadius,
   cardStyle,
   buttonStyle,
@@ -32,18 +29,16 @@ import {
   shadows,
   spacing,
   transitions,
-  getGlassStyle,
-  getVisualEffects,
+  glassStyle,
+  visualEffects,
   freshnessColors,
   lookbackOptions,
 } from '../lib/theme';
 import Layout from '../components/Layout';
 
 export default function Home() {
-  const { theme } = useTheme();
-  const colors = theme === 'light' ? lightTheme : darkTheme;
-  const glassStyle = getGlassStyle(theme);
-  const effects = getVisualEffects(theme);
+  const colors = darkTheme;
+  const effects = visualEffects;
 
   const [status, setStatus] = useState(null);
   const [cycle, setCycle] = useState(null);

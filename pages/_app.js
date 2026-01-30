@@ -1,13 +1,11 @@
-import { fontFamily, darkTheme, lightTheme } from '../lib/theme';
+import { fontFamily, darkTheme } from '../lib/theme';
 import { AuthProvider } from '../lib/auth';
-import { ThemeProvider, useTheme } from '../lib/themeContext';
 
-function ThemedApp({ Component, pageProps }) {
-  const { theme } = useTheme();
-  const colors = theme === 'light' ? lightTheme : darkTheme;
+export default function App({ Component, pageProps }) {
+  const colors = darkTheme;
 
   return (
-    <>
+    <AuthProvider>
       <style jsx global>{`
         * {
           box-sizing: border-box;
@@ -25,10 +23,9 @@ function ThemedApp({ Component, pageProps }) {
           background: ${colors.bgPrimary};
           color: ${colors.textPrimary};
           line-height: 1.5;
-          transition: background 0.3s ease, color 0.3s ease;
         }
 
-        /* CSS Variables for dynamic theming */
+        /* CSS Variables */
         :root {
           --bg-primary: ${colors.bgPrimary};
           --bg-secondary: ${colors.bgSecondary};
@@ -71,45 +68,38 @@ function ThemedApp({ Component, pageProps }) {
           background: ${colors.borderLight};
         }
 
-        /* Selection styling */
+        /* Selection styling - gold */
         ::selection {
           background: ${colors.accentDark};
           color: ${colors.textPrimary};
         }
 
-        /* Focus outline for accessibility */
+        /* Focus outline - gold for accessibility */
         :focus-visible {
           outline: 2px solid ${colors.accent};
           outline-offset: 2px;
         }
 
-        /* Remove default button styling */
         button {
           font-family: inherit;
         }
 
-        /* Input styling */
         input, select, textarea {
           font-family: inherit;
         }
 
-        /* Link styling */
         a {
           color: inherit;
           text-decoration: none;
         }
+
+        /* Smooth animations */
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
       `}</style>
       <Component {...pageProps} />
-    </>
-  );
-}
-
-export default function App(props) {
-  return (
-    <ThemeProvider>
-      <AuthProvider>
-        <ThemedApp {...props} />
-      </AuthProvider>
-    </ThemeProvider>
+    </AuthProvider>
   );
 }

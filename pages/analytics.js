@@ -2,10 +2,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import Layout from '../components/Layout';
 import { fetchPerformanceMetrics } from '../lib/api';
-import { useTheme } from '../lib/themeContext';
 import {
   darkTheme,
-  lightTheme,
   borderRadius,
   cardStyle,
   buttonStyle,
@@ -16,16 +14,14 @@ import {
   spacing,
   transitions,
   skeletonStyle,
-  getVisualEffects,
+  visualEffects,
   lookbackOptions,
-  getGlassStyle,
+  glassStyle,
 } from '../lib/theme';
 
 export default function AnalyticsPage() {
-  const { theme } = useTheme();
-  const colors = theme === 'light' ? lightTheme : darkTheme;
-  const effects = getVisualEffects(theme);
-  const glassStyle = getGlassStyle(theme);
+  const colors = darkTheme;
+  const effects = visualEffects;
 
   const [metrics, setMetrics] = useState(null);
   const [days, setDays] = useState(30);
