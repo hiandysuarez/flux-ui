@@ -1,5 +1,5 @@
 // pages/index.js
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   fetchStatus,
   fetchLatestCycle,
@@ -32,6 +32,9 @@ import {
   spacing,
   transitions,
   getGlassStyle,
+  getVisualEffects,
+  freshnessColors,
+  lookbackOptions,
 } from '../lib/theme';
 import Layout from '../components/Layout';
 
@@ -39,6 +42,7 @@ export default function Home() {
   const { theme } = useTheme();
   const colors = theme === 'light' ? lightTheme : darkTheme;
   const glassStyle = getGlassStyle(theme);
+  const effects = getVisualEffects(theme);
 
   const [status, setStatus] = useState(null);
   const [cycle, setCycle] = useState(null);
@@ -53,6 +57,11 @@ export default function Home() {
   const [positions, setPositions] = useState([]);
   const [dailyPnl, setDailyPnl] = useState([]);
 
+  // Lookback controls
+  const [tradeLookback, setTradeLookback] = useState(10);
+  const [chartDays, setChartDays] = useState(14);
+  const [shadowLookback, setShadowLookback] = useState(10);
+
   // Toast notifications
   const [toasts, setToasts] = useState([]);
   const addToast = (message, type = 'success') => {
@@ -65,29 +74,65 @@ export default function Home() {
   const [chartsOpen, setChartsOpen] = useState(true);
   const [tablesOpen, setTablesOpen] = useState(true);
 
-  async function load({ silent = false } = {}) {
+  // Calculate data freshness
+  const getFreshnessColor = useCallback((lastUpdate) => {
+    if (!lastUpdate) return freshnessColors.old;
+    const elapsed = Date.now() - new Date(lastUpdate).getTime();
+    if (elapsed < 30000) return freshnessColors.fresh;
+    if (elapsed < 120000) return freshnessColors.stale;
+    return freshnessColors.old;
+  }, []);
+
+  const getFreshnessLabel = useCallback((lastUpdate) => {
+    if (!lastUpdate) return 'No data';
+    const elapsed = Math.floor((Date.now() - new Date(lastUpdate).getTime()) / 1000);
+    if (elapsed < 60) return `${elapsed}s ago`;
+    if (elapsed < 3600) return `${Math.floor(elapsed / 60)}m ago`;
+    return `${Math.floor(elapsed / 3600)}h ago`;
+  }, []);
+
+  const load = useCallback(async ({ silent = false } = {}) => {
     try {
       if (!silent) setErr(null);
       const s = await fetchStatus();
       setStatus(s);
       const latest = await fetchLatestCycle();
       setCycle(latest?.cycle ?? null);
-      const tradesRes = await fetchRecentTrades(10);
-      setTrades(tradesRes?.trades || []);
+
+      // Use lookback values for fetches
+      const tradesLimit = tradeLookback === 'today' ? 100 : tradeLookback === 'week' ? 500 : tradeLookback;
+      const tradesRes = await fetchRecentTrades(tradesLimit);
+      let filteredTrades = tradesRes?.trades || [];
+
+      // Filter by date if needed
+      if (tradeLookback === 'today') {
+        const today = new Date().toDateString();
+        filteredTrades = filteredTrades.filter(t => t.ts && new Date(t.ts).toDateString() === today);
+      } else if (tradeLookback === 'week') {
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        filteredTrades = filteredTrades.filter(t => t.ts && new Date(t.ts) >= weekAgo);
+      }
+
+      setTrades(filteredTrades);
       setTodayPnl(tradesRes?.today_pnl ?? null);
-      const shadowRes = await fetchRecentShadowLogs(10);
+
+      const shadowLimit = shadowLookback === 'all' ? 100 : shadowLookback;
+      const shadowRes = await fetchRecentShadowLogs(shadowLimit);
       setShadowLogs(shadowRes?.logs || []);
+
       const posRes = await fetchActivePositions();
       setPositions(posRes?.positions || []);
-      const pnlRes = await fetchDailyPnl(14);
+
+      const pnlRes = await fetchDailyPnl(chartDays);
       setDailyPnl(pnlRes?.data || []);
       setLastRefresh(new Date().toISOString());
     } catch (e) {
       setErr(String(e?.message || e));
     }
-  }
+  }, [tradeLookback, chartDays, shadowLookback]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
     if (!autoRefresh) return;
@@ -98,7 +143,7 @@ export default function Home() {
     const ms = Math.max(3, Number(refreshSec || 10)) * 1000;
     const id = setInterval(tick, ms);
     return () => clearInterval(id);
-  }, [autoRefresh, refreshSec]);
+  }, [autoRefresh, refreshSec, load]);
 
   const rawRows = Array.isArray(cycle?.rows) ? cycle.rows : [];
   const ts = cycle?.ts ?? null;
@@ -117,6 +162,36 @@ export default function Home() {
     if (!completed.length) return null;
     const wins = completed.filter(t => t.win).length;
     return Math.round((wins / completed.length) * 100);
+  }, [trades]);
+
+  // Calculate consecutive losses (current streak)
+  const consecutiveLosses = useMemo(() => {
+    const completed = trades.filter(t => t.win !== undefined);
+    if (!completed.length) return 0;
+    // Trades should be sorted newest first
+    let streak = 0;
+    for (const t of completed) {
+      if (!t.win) streak++;
+      else break;
+    }
+    return streak;
+  }, [trades]);
+
+  // Calculate max consecutive losses
+  const maxConsecutiveLosses = useMemo(() => {
+    const completed = trades.filter(t => t.win !== undefined);
+    if (!completed.length) return 0;
+    let maxStreak = 0;
+    let currentStreak = 0;
+    for (const t of completed) {
+      if (!t.win) {
+        currentStreak++;
+        maxStreak = Math.max(maxStreak, currentStreak);
+      } else {
+        currentStreak = 0;
+      }
+    }
+    return maxStreak;
   }, [trades]);
 
   // Calculate top performing tickers from trades
@@ -204,7 +279,27 @@ export default function Home() {
           from { transform: translateX(100%); opacity: 0; }
           to { transform: translateX(0); opacity: 1; }
         }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        @keyframes glow {
+          0%, 100% { box-shadow: 0 0 5px rgba(0, 255, 136, 0.3); }
+          50% { box-shadow: 0 0 15px rgba(0, 255, 136, 0.5); }
+        }
       `}</style>
+
+      {/* Grid pattern background overlay */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: effects.gridPattern,
+        pointerEvents: 'none',
+        zIndex: 0,
+      }} />
       {/* Header */}
       <div style={{ marginBottom: spacing.xxl }}>
         <h1 style={{
@@ -312,9 +407,28 @@ export default function Home() {
           />
           <span style={{ color: colors.textMuted, fontSize: 13 }}>sec</span>
         </div>
-        <span style={{ color: colors.textMuted, fontSize: 12 }}>
-          Last: {lastRefresh ? new Date(lastRefresh).toLocaleTimeString() : '—'}
-        </span>
+        {/* Data freshness indicator */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '6px 12px',
+          borderRadius: borderRadius.full,
+          background: colors.bgCard,
+          border: `1px solid ${colors.border}`,
+        }}>
+          <div style={{
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
+            background: getFreshnessColor(lastRefresh),
+            animation: autoRefresh ? 'pulse 2s infinite' : 'none',
+            boxShadow: `0 0 6px ${getFreshnessColor(lastRefresh)}`,
+          }} />
+          <span style={{ color: colors.textMuted, fontSize: 12 }}>
+            {getFreshnessLabel(lastRefresh)}
+          </span>
+        </div>
       </div>
 
       {/* Toast Notifications */}
@@ -348,6 +462,7 @@ export default function Home() {
           trend={unrealized != null ? (unrealized > 0 ? 1 : unrealized < 0 ? -1 : 0) : null}
           themeColors={colors}
           glassStyle={glassStyle}
+          glow={unrealized !== 0}
         />
         <MetricCard
           title="Today's P&L"
@@ -358,6 +473,7 @@ export default function Home() {
           sparklineData={dailyPnl.slice(-7).map(d => d.pnl || 0)}
           themeColors={colors}
           glassStyle={glassStyle}
+          glow={todayPnl !== 0}
         />
         <MetricCard
           title="Active Positions"
@@ -382,14 +498,30 @@ export default function Home() {
           themeColors={colors}
           glassStyle={glassStyle}
         />
+        <MetricCard
+          title="Loss Streak"
+          value={consecutiveLosses}
+          subtitle={`max: ${maxConsecutiveLosses}`}
+          color={consecutiveLosses >= 3 ? colors.error : consecutiveLosses >= 2 ? colors.warning : colors.textPrimary}
+          themeColors={colors}
+          glassStyle={glassStyle}
+          icon={consecutiveLosses >= 3 ? '⚠' : null}
+        />
+        <MetricCard
+          title="Total Trades"
+          value={trades.length}
+          subtitle={tradeLookback === 'today' ? 'today' : tradeLookback === 'week' ? 'this week' : `last ${tradeLookback}`}
+          themeColors={colors}
+          glassStyle={glassStyle}
+        />
       </div>
 
       {/* Charts Section */}
-      <SectionHeader title="Charts" isOpen={chartsOpen} onToggle={() => setChartsOpen(!chartsOpen)} />
+      <SectionHeader title="Charts" isOpen={chartsOpen} onToggle={() => setChartsOpen(!chartsOpen)} themeColors={colors} />
       {chartsOpen && (
         <div className="responsive-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24, marginBottom: 24 }}>
           {/* P&L History Chart */}
-          <div style={cardStyle}>
+          <div style={{ ...cardStyle, background: colors.bgCard, borderColor: colors.border }}>
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -397,13 +529,18 @@ export default function Home() {
               marginBottom: 20,
             }}>
               <span style={{ fontWeight: 800, fontSize: 18, color: colors.textPrimary }}>P&L History</span>
-              <span style={{ fontSize: 14, color: colors.textMuted }}>Last 14 days</span>
+              <LookbackSelector
+                options={lookbackOptions.charts}
+                value={chartDays}
+                onChange={setChartDays}
+                themeColors={colors}
+              />
             </div>
-            <PnlBarChart data={dailyPnl} />
+            <PnlBarChart data={dailyPnl} themeColors={colors} />
           </div>
 
           {/* Top Tickers Chart */}
-          <div style={cardStyle}>
+          <div style={{ ...cardStyle, background: colors.bgCard, borderColor: colors.border }}>
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -413,7 +550,7 @@ export default function Home() {
               <span style={{ fontWeight: 800, fontSize: 18, color: colors.textPrimary }}>Top Performers</span>
               <span style={{ fontSize: 14, color: colors.textMuted }}>By P&L</span>
             </div>
-            <TopTickersChart data={topTickers} />
+            <TopTickersChart data={topTickers} themeColors={colors} />
           </div>
         </div>
       )}
@@ -422,31 +559,45 @@ export default function Home() {
       {positions.length > 0 && (
         <div style={{
           ...cardStyle,
+          background: colors.bgCard,
+          borderColor: colors.border,
           padding: 0,
           overflow: 'hidden',
           marginTop: 24,
+          boxShadow: `${shadows.md}, 0 0 20px rgba(0, 255, 136, 0.1)`,
         }}>
           <div style={{
             padding: '12px 16px',
             borderBottom: `1px solid ${colors.border}`,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
           }}>
+            <div style={{
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              background: colors.accent,
+              animation: 'pulse 2s infinite',
+              boxShadow: `0 0 8px ${colors.accent}`,
+            }} />
             <span style={{ fontWeight: 800, color: colors.textPrimary }}>Active Positions</span>
-            <span style={{ marginLeft: 8, fontSize: 12, color: colors.textMuted }}>Live from Alpaca</span>
+            <span style={{ fontSize: 12, color: colors.textMuted }}>Live from Alpaca</span>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: colors.bgSecondary }}>
-                <Th>Symbol</Th>
-                <Th>Side</Th>
-                <Th>Qty</Th>
-                <Th>Entry</Th>
-                <Th>Current</Th>
-                <Th>Unrealized P&L</Th>
+                <Th themeColors={colors}>Symbol</Th>
+                <Th themeColors={colors}>Side</Th>
+                <Th themeColors={colors}>Qty</Th>
+                <Th themeColors={colors}>Entry</Th>
+                <Th themeColors={colors}>Current</Th>
+                <Th themeColors={colors}>Unrealized P&L</Th>
               </tr>
             </thead>
             <tbody>
               {positions.map((p, i) => (
-                <PnlRow key={i} pnl={p.unrealized_pnl} style={{ borderTop: `1px solid ${colors.border}` }}>
+                <PnlRow key={i} pnl={p.unrealized_pnl} style={{ borderTop: `1px solid ${colors.border}` }} themeColors={colors}>
                   <Td style={{ fontWeight: 700 }}>{p.symbol}</Td>
                   <Td>
                     <span style={{ color: p.side === 'LONG' ? colors.accent : colors.error }}>
@@ -471,41 +622,52 @@ export default function Home() {
       )}
 
       {/* Tables Section */}
-      <SectionHeader title="Activity" isOpen={tablesOpen} onToggle={() => setTablesOpen(!tablesOpen)} />
+      <SectionHeader title="Activity" isOpen={tablesOpen} onToggle={() => setTablesOpen(!tablesOpen)} themeColors={colors} />
       {tablesOpen && (
       <div className="responsive-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24 }}>
         {/* Recent Trades Table */}
         <div style={{
           ...cardStyle,
+          background: colors.bgCard,
+          borderColor: colors.border,
           padding: 0,
           overflow: 'hidden',
         }}>
           <div style={{
             padding: '12px 16px',
             borderBottom: `1px solid ${colors.border}`,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
           }}>
             <span style={{ fontWeight: 800, fontSize: 16, color: colors.textPrimary }}>Recent Trades</span>
+            <LookbackSelector
+              options={lookbackOptions.trades}
+              value={tradeLookback}
+              onChange={setTradeLookback}
+              themeColors={colors}
+            />
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: colors.bgSecondary }}>
-                <Th>Time</Th>
-                <Th>Symbol</Th>
-                <Th>Side</Th>
-                <Th>P&L</Th>
-                <Th>Result</Th>
+                <Th themeColors={colors}>Time</Th>
+                <Th themeColors={colors}>Symbol</Th>
+                <Th themeColors={colors}>Side</Th>
+                <Th themeColors={colors}>P&L</Th>
+                <Th themeColors={colors}>Result</Th>
               </tr>
             </thead>
             <tbody>
               {trades.length === 0 ? (
                 <tr>
                   <td colSpan={5}>
-                    <EmptyState message="No completed trades yet" icon="~" />
+                    <EmptyState message="No completed trades yet" icon="~" themeColors={colors} />
                   </td>
                 </tr>
               ) : (
                 trades.map((t, i) => (
-                  <PnlRow key={i} pnl={t.pnl} style={{ borderTop: `1px solid ${colors.border}` }}>
+                  <PnlRow key={i} pnl={t.pnl} style={{ borderTop: `1px solid ${colors.border}` }} themeColors={colors}>
                     <Td style={{ fontSize: 13, color: colors.textMuted }}>
                       {t.ts ? new Date(t.ts).toLocaleTimeString() : '—'}
                     </Td>
@@ -526,7 +688,7 @@ export default function Home() {
                       <span style={{
                         padding: '2px 8px',
                         borderRadius: 4,
-                        background: t.win ? colors.accentDark : '#1a0a0a',
+                        background: t.win ? colors.accentDark : colors.errorDark,
                         color: t.win ? colors.accent : colors.error,
                         fontWeight: 700,
                         fontSize: 13,
@@ -544,36 +706,54 @@ export default function Home() {
         {/* Shadow Logs Table */}
         <div style={{
           ...cardStyle,
+          background: colors.bgCard,
+          borderColor: colors.border,
           padding: 0,
           overflow: 'hidden',
         }}>
           <div style={{
             padding: '12px 16px',
             borderBottom: `1px solid ${colors.border}`,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
           }}>
-            <span style={{ fontWeight: 800, fontSize: 16, color: colors.textPrimary }}>Shadow Logs</span>
-            <span style={{ marginLeft: 8, fontSize: 13, color: colors.textMuted }}>ML Predictions</span>
+            <div>
+              <span style={{ fontWeight: 800, fontSize: 16, color: colors.textPrimary }}>Shadow Logs</span>
+              <span style={{ marginLeft: 8, fontSize: 13, color: colors.textMuted }}>ML Predictions</span>
+            </div>
+            <LookbackSelector
+              options={[
+                { value: 10, label: '10' },
+                { value: 25, label: '25' },
+                { value: 50, label: '50' },
+                { value: 'all', label: 'All' },
+              ]}
+              value={shadowLookback}
+              onChange={setShadowLookback}
+              themeColors={colors}
+            />
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: colors.bgSecondary }}>
-                <Th>Time</Th>
-                <Th>Symbol</Th>
-                <Th>Label</Th>
-                <Th>Win %</Th>
-                <Th>Action</Th>
+                <Th themeColors={colors}>Time</Th>
+                <Th themeColors={colors}>Symbol</Th>
+                <Th themeColors={colors}>Label</Th>
+                <Th themeColors={colors}>Win %</Th>
+                <Th themeColors={colors}>Action</Th>
               </tr>
             </thead>
             <tbody>
               {shadowLogs.length === 0 ? (
                 <tr>
                   <td colSpan={5}>
-                    <EmptyState message="No shadow logs yet" icon="~" />
+                    <EmptyState message="No shadow logs yet" icon="~" themeColors={colors} />
                   </td>
                 </tr>
               ) : (
                 shadowLogs.map((s, i) => (
-                  <HoverRow key={i} style={{ borderTop: `1px solid ${colors.border}` }}>
+                  <HoverRow key={i} style={{ borderTop: `1px solid ${colors.border}` }} themeColors={colors}>
                     <Td style={{ fontSize: 13, color: colors.textMuted }}>
                       {s.ts ? new Date(s.ts).toLocaleTimeString() : '—'}
                     </Td>
@@ -609,8 +789,42 @@ export default function Home() {
   );
 }
 
+// Lookback Selector Component
+function LookbackSelector({ options, value, onChange, themeColors = darkTheme }) {
+  return (
+    <div style={{
+      display: 'flex',
+      gap: 4,
+      background: themeColors.bgSecondary,
+      padding: 3,
+      borderRadius: borderRadius.md,
+      border: `1px solid ${themeColors.border}`,
+    }}>
+      {options.map(opt => (
+        <button
+          key={opt.value}
+          onClick={() => onChange(opt.value)}
+          style={{
+            padding: '4px 10px',
+            fontSize: fontSize.xs,
+            fontWeight: fontWeight.semibold,
+            borderRadius: borderRadius.sm,
+            border: 'none',
+            cursor: 'pointer',
+            background: value === opt.value ? themeColors.accent : 'transparent',
+            color: value === opt.value ? themeColors.bgPrimary : themeColors.textMuted,
+            transition: `all ${transitions.fast}`,
+          }}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // P&L Bar Chart Component with Tooltips
-function PnlBarChart({ data }) {
+function PnlBarChart({ data, themeColors = darkTheme }) {
   const [tooltip, setTooltip] = useState(null);
 
   // Filter out weekends and zero PnL days
@@ -623,7 +837,7 @@ function PnlBarChart({ data }) {
   });
 
   if (filtered.length === 0) {
-    return <EmptyState message="No P&L data yet" icon="~" />;
+    return <EmptyState message="No P&L data yet" icon="~" themeColors={themeColors} />;
   }
 
   const maxAbs = Math.max(...filtered.map(d => Math.abs(d.pnl)), 1);
@@ -639,7 +853,7 @@ function PnlBarChart({ data }) {
           y1={chartHeight / 2}
           x2="100%"
           y2={chartHeight / 2}
-          stroke={colors.border}
+          stroke={themeColors.border}
           strokeWidth="1"
         />
         {/* Bars */}
@@ -658,10 +872,10 @@ function PnlBarChart({ data }) {
                 y={y}
                 width={width}
                 height={Math.max(barHeight, 2)}
-                fill={isPositive ? colors.accent : colors.error}
+                fill={isPositive ? themeColors.accent : themeColors.error}
                 rx="4"
                 opacity="0.8"
-                style={{ cursor: 'pointer' }}
+                style={{ cursor: 'pointer', filter: `drop-shadow(0 0 4px ${isPositive ? themeColors.accent : themeColors.error}40)` }}
                 onMouseEnter={(e) => setTooltip({ x: e.clientX, y: e.clientY, date: d.date, pnl })}
                 onMouseLeave={() => setTooltip(null)}
               />
@@ -675,8 +889,8 @@ function PnlBarChart({ data }) {
           position: 'fixed',
           left: tooltip.x + 10,
           top: tooltip.y - 50,
-          background: colors.bgSecondary,
-          border: `1px solid ${colors.border}`,
+          background: themeColors.bgSecondary,
+          border: `1px solid ${themeColors.border}`,
           padding: '8px 12px',
           borderRadius: 8,
           fontSize: 12,
@@ -684,10 +898,10 @@ function PnlBarChart({ data }) {
           zIndex: 100,
           boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
         }}>
-          <div style={{ color: colors.textMuted, marginBottom: 4 }}>
+          <div style={{ color: themeColors.textMuted, marginBottom: 4 }}>
             {new Date(tooltip.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
           </div>
-          <div style={{ fontWeight: 700, fontSize: 14, color: tooltip.pnl >= 0 ? colors.accent : colors.error }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: tooltip.pnl >= 0 ? themeColors.accent : themeColors.error }}>
             {formatCurrency(tooltip.pnl, false)}
           </div>
         </div>
@@ -698,7 +912,7 @@ function PnlBarChart({ data }) {
           <div key={i} style={{ textAlign: 'center', flex: 1 }}>
             <div style={{
               fontSize: 12,
-              color: colors.textMuted,
+              color: themeColors.textMuted,
             }}>
               {d.date ? new Date(d.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' }) : '—'}
             </div>
@@ -706,7 +920,7 @@ function PnlBarChart({ data }) {
               fontSize: 13,
               fontFamily: fontFamily.mono,
               fontWeight: 600,
-              color: d.pnl > 0 ? colors.accent : d.pnl < 0 ? colors.error : colors.textMuted,
+              color: d.pnl > 0 ? themeColors.accent : d.pnl < 0 ? themeColors.error : themeColors.textMuted,
             }}>
               {formatCurrency(d.pnl, true)}
             </div>
@@ -718,14 +932,13 @@ function PnlBarChart({ data }) {
 }
 
 // Top Tickers Horizontal Bar Chart
-function TopTickersChart({ data }) {
+function TopTickersChart({ data, themeColors = darkTheme }) {
   if (!data || data.length === 0) {
-    return <EmptyState message="No ticker data yet" icon="~" />;
+    return <EmptyState message="No ticker data yet" icon="~" themeColors={themeColors} />;
   }
 
   const maxAbs = Math.max(...data.map(d => Math.abs(d.pnl)), 1);
   const barHeight = 36;
-  const chartHeight = data.length * (barHeight + 12);
 
   return (
     <div style={{ minHeight: 220 }}>
@@ -745,14 +958,14 @@ function TopTickersChart({ data }) {
               width: 60,
               fontWeight: 700,
               fontSize: 15,
-              color: colors.textPrimary,
+              color: themeColors.textPrimary,
             }}>
               {d.symbol}
             </span>
             <div style={{
               flex: 1,
               height: barHeight,
-              background: colors.bgSecondary,
+              background: themeColors.bgSecondary,
               borderRadius: 6,
               overflow: 'hidden',
               position: 'relative',
@@ -760,10 +973,11 @@ function TopTickersChart({ data }) {
               <div style={{
                 width: `${Math.max(barWidth, 2)}%`,
                 height: '100%',
-                background: isPositive ? colors.accent : colors.error,
+                background: isPositive ? themeColors.accent : themeColors.error,
                 opacity: 0.8,
                 borderRadius: 6,
                 transition: 'width 0.3s ease',
+                boxShadow: `0 0 10px ${isPositive ? themeColors.accent : themeColors.error}40`,
               }} />
             </div>
             <span style={{
@@ -772,7 +986,7 @@ function TopTickersChart({ data }) {
               fontFamily: fontFamily.mono,
               fontSize: 15,
               fontWeight: 700,
-              color: isPositive ? colors.accent : colors.error,
+              color: isPositive ? themeColors.accent : themeColors.error,
             }}>
               {formatCurrency(pnl)}
             </span>
@@ -824,7 +1038,7 @@ function Toast({ message, type = 'success', onClose }) {
 }
 
 // Collapsible section header
-function SectionHeader({ title, isOpen, onToggle }) {
+function SectionHeader({ title, isOpen, onToggle, themeColors = darkTheme }) {
   return (
     <button
       onClick={onToggle}
@@ -837,14 +1051,14 @@ function SectionHeader({ title, isOpen, onToggle }) {
         marginBottom: 12,
         background: 'none',
         border: 'none',
-        borderBottom: `1px solid ${colors.border}`,
+        borderBottom: `1px solid ${themeColors.border}`,
         cursor: 'pointer',
-        color: colors.textPrimary,
+        color: themeColors.textPrimary,
       }}
     >
       <span style={{
         fontSize: 12,
-        color: colors.textMuted,
+        color: themeColors.textMuted,
         transition: 'transform 0.2s ease',
         transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
       }}>
@@ -853,7 +1067,7 @@ function SectionHeader({ title, isOpen, onToggle }) {
       <span style={{ fontWeight: 700, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
         {title}
       </span>
-      <span style={{ fontSize: 12, color: colors.textMuted, marginLeft: 4 }}>
+      <span style={{ fontSize: 12, color: themeColors.textMuted, marginLeft: 4 }}>
         {isOpen ? 'collapse' : 'expand'}
       </span>
     </button>
@@ -889,7 +1103,7 @@ function StatusBadge({ label, value, color = colors.textPrimary }) {
   );
 }
 
-function MetricCard({ title, value, subtitle, color, trend, sparklineData, themeColors = darkTheme, glassStyle }) {
+function MetricCard({ title, value, subtitle, color, trend, sparklineData, themeColors = darkTheme, glassStyle, glow = false, icon = null }) {
   const [hovered, setHovered] = useState(false);
   const effectiveColor = color || themeColors.textPrimary;
 
@@ -900,22 +1114,32 @@ function MetricCard({ title, value, subtitle, color, trend, sparklineData, theme
       style={{
         ...cardStyle,
         ...(glassStyle || {}),
+        background: themeColors.bgCard,
         display: 'flex',
         flexDirection: 'column',
         cursor: 'default',
         transition: `all ${transitions.normal}`,
         borderColor: hovered ? themeColors.borderAccent : themeColors.border,
-        boxShadow: hovered ? `${shadows.md}, ${shadows.glow}` : shadows.md,
+        boxShadow: hovered
+          ? `${shadows.md}, ${shadows.glow}`
+          : glow && effectiveColor !== themeColors.textPrimary
+            ? `${shadows.md}, 0 0 15px ${effectiveColor}20`
+            : shadows.md,
         transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
       }}
     >
-      <span style={{
-        color: themeColors.textMuted,
-        fontSize: fontSize.sm,
-        fontWeight: fontWeight.semibold,
-        textTransform: 'uppercase',
-        letterSpacing: '0.03em',
-      }}>{title}</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <span style={{
+          color: themeColors.textMuted,
+          fontSize: fontSize.sm,
+          fontWeight: fontWeight.semibold,
+          textTransform: 'uppercase',
+          letterSpacing: '0.03em',
+        }}>{title}</span>
+        {icon && (
+          <span style={{ fontSize: fontSize.md }}>{icon}</span>
+        )}
+      </div>
       <div style={{ display: 'flex', alignItems: 'center', marginTop: spacing.sm }}>
         <span style={{
           fontSize: fontSize['2xl'],
@@ -942,14 +1166,14 @@ function MetricCard({ title, value, subtitle, color, trend, sparklineData, theme
   );
 }
 
-function Th({ children }) {
+function Th({ children, themeColors = darkTheme }) {
   return (
     <th style={{
       textAlign: 'left',
       padding: '14px 16px',
       fontSize: fontSize.xs,
       fontWeight: fontWeight.semibold,
-      color: colors.textMuted,
+      color: themeColors.textMuted,
       textTransform: 'uppercase',
       letterSpacing: '0.05em',
     }}>
@@ -966,7 +1190,7 @@ function Td({ children, style = {} }) {
   );
 }
 
-function HoverRow({ children, style = {} }) {
+function HoverRow({ children, style = {}, themeColors = darkTheme }) {
   const [hovered, setHovered] = useState(false);
   return (
     <tr
@@ -974,7 +1198,7 @@ function HoverRow({ children, style = {} }) {
       onMouseLeave={() => setHovered(false)}
       style={{
         ...style,
-        background: hovered ? tableRowHoverBg : 'transparent',
+        background: hovered ? themeColors.bgHover : 'transparent',
         transition: 'background 0.15s ease',
       }}
     >
@@ -1032,12 +1256,12 @@ function Sparkline({ data, color = colors.accent }) {
 }
 
 // Empty state component
-function EmptyState({ message, icon = '~' }) {
+function EmptyState({ message, icon = '~', themeColors = darkTheme }) {
   return (
     <div style={{
       padding: '40px 20px',
       textAlign: 'center',
-      color: colors.textMuted,
+      color: themeColors.textMuted,
     }}>
       <div style={{ fontSize: 28, marginBottom: 12, opacity: 0.5 }}>{icon}</div>
       <div style={{ fontSize: 14 }}>{message}</div>
@@ -1046,10 +1270,10 @@ function EmptyState({ message, icon = '~' }) {
 }
 
 // Color-coded row based on P&L
-function PnlRow({ children, pnl, style = {} }) {
+function PnlRow({ children, pnl, style = {}, themeColors = darkTheme }) {
   const [hovered, setHovered] = useState(false);
-  const bgTint = pnl > 0 ? 'rgba(0, 255, 136, 0.05)'
-               : pnl < 0 ? 'rgba(255, 71, 87, 0.05)'
+  const bgTint = pnl > 0 ? themeColors.accentDark
+               : pnl < 0 ? themeColors.errorDark
                : 'transparent';
   return (
     <tr
@@ -1057,7 +1281,7 @@ function PnlRow({ children, pnl, style = {} }) {
       onMouseLeave={() => setHovered(false)}
       style={{
         ...style,
-        background: hovered ? tableRowHoverBg : bgTint,
+        background: hovered ? themeColors.bgHover : bgTint,
         transition: 'background 0.15s ease',
       }}
     >

@@ -23,6 +23,8 @@ import {
   fontWeight,
   transitions,
   getGlassStyle,
+  getVisualEffects,
+  shadows,
 } from '../lib/theme';
 
 // Check if current user is admin
@@ -41,14 +43,13 @@ const DEFAULT_GUARDRAILS = {
   mom_lookback: { min: 3, max: 20, default: 8, recommended: 8 },
 };
 
+// Consolidated tabs for cleaner organization
 const TABS = [
-  { id: 'profile', label: 'Profile' },
-  { id: 'appearance', label: 'Appearance' },
-  { id: 'safety', label: 'Safety' },
-  { id: 'trading', label: 'Trading' },
-  { id: 'risk', label: 'Risk' },
-  { id: 'limits', label: 'Limits' },
-  { id: 'strategy', label: 'Strategy' },
+  { id: 'profile', label: 'Profile', icon: '👤' },
+  { id: 'schedule', label: 'Schedule', icon: '🕐' },
+  { id: 'entry', label: 'Entry Rules', icon: '📈' },
+  { id: 'risk', label: 'Risk', icon: '🛡️' },
+  { id: 'limits', label: 'Limits', icon: '⚡' },
 ];
 
 export default function SettingsPage() {
@@ -296,13 +297,14 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Tab Navigation */}
+      {/* Tab Navigation - Pill style */}
       <div style={{
         display: 'flex',
-        gap: 4,
+        gap: 8,
         marginBottom: 24,
-        borderBottom: `1px solid ${colors.border}`,
-        paddingBottom: 0,
+        padding: 6,
+        background: colors.bgSecondary,
+        borderRadius: borderRadius.lg,
         overflowX: 'auto',
       }}>
         {TABS.map(tab => (
@@ -310,421 +312,535 @@ export default function SettingsPage() {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             style={{
-              padding: '12px 20px',
+              padding: '10px 16px',
               background: activeTab === tab.id ? colors.bgCard : 'transparent',
-              border: `1px solid ${activeTab === tab.id ? colors.border : 'transparent'}`,
-              borderBottom: activeTab === tab.id ? `1px solid ${colors.bgCard}` : 'none',
-              borderRadius: `${borderRadius.md}px ${borderRadius.md}px 0 0`,
+              border: activeTab === tab.id ? `1px solid ${colors.border}` : '1px solid transparent',
+              borderRadius: borderRadius.md,
               color: activeTab === tab.id ? colors.accent : colors.textMuted,
-              fontWeight: 700,
-              fontSize: 14,
+              fontWeight: 600,
+              fontSize: 13,
               cursor: 'pointer',
-              marginBottom: -1,
               transition: 'all 0.2s ease',
               whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              boxShadow: activeTab === tab.id ? shadows.sm : 'none',
             }}
           >
+            <span style={{ fontSize: 14 }}>{tab.icon}</span>
             {tab.label}
           </button>
         ))}
       </div>
 
       <div style={{ maxWidth: 700 }}>
-        {/* Profile Tab */}
+        {/* Profile Tab - Preset selection + Mode */}
         {activeTab === 'profile' && (
-          <div style={{
-            ...cardStyle,
-            background: colors.bgCard,
-            borderColor: colors.border,
-          }}>
-            <div style={{
-              marginBottom: 20,
-              paddingBottom: 12,
-              borderBottom: `1px solid ${colors.border}`,
-            }}>
-              <span style={{ fontSize: 18, fontWeight: 800, color: colors.textPrimary }}>
-                Trading Profile
-              </span>
-              <p style={{ margin: '8px 0 0', color: colors.textMuted, fontSize: 13 }}>
-                {isAdmin ? 'Choose a preset or customize your own settings' : 'Your active trading profile'}
-              </p>
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* Trading Profile Card */}
+            <SettingsSection title="Trading Profile" subtitle="Choose a preset or customize your own settings" colors={colors}>
+              {isAdmin ? (
+                <>
+                  <PresetSelector
+                    presets={presets}
+                    selected={settings.preset_id}
+                    onSelect={handlePresetSelect}
+                    disabled={saving}
+                  />
 
-            {isAdmin ? (
-              <>
-                <PresetSelector
-                  presets={presets}
-                  selected={settings.preset_id}
-                  onSelect={handlePresetSelect}
-                  disabled={saving}
-                />
+                  {isPresetMode && (
+                    <div style={{
+                      padding: '12px 16px',
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      border: '1px solid rgba(59, 130, 246, 0.3)',
+                      borderRadius: 8,
+                      color: '#3b82f6',
+                      fontSize: 13,
+                    }}>
+                      Using <strong>{currentPreset?.name || 'preset'}</strong> profile. Editing any setting will switch to Custom mode.
+                    </div>
+                  )}
+                </>
+              ) : (
+                <SettingRow label="Current Preset" description="Your active trading profile" colors={colors}>
+                  <ReadOnlyValue colors={colors} value={currentPreset ? currentPreset.name : 'Custom'} />
+                </SettingRow>
+              )}
+            </SettingsSection>
 
-                {isPresetMode && (
-                  <div style={{
-                    padding: '12px 16px',
-                    background: 'rgba(59, 130, 246, 0.1)',
-                    border: '1px solid rgba(59, 130, 246, 0.3)',
-                    borderRadius: 8,
-                    color: '#3b82f6',
-                    fontSize: 13,
-                  }}>
-                    Using <strong>{currentPreset?.name || 'preset'}</strong> profile. Editing any setting will switch to Custom mode.
+            {/* Mode Selection */}
+            <SettingsSection title="Trading Mode" subtitle="Paper trading is recommended for testing" colors={colors}>
+              <SettingRow label="Mode" description="Paper trades are simulated, Live trades use real money" colors={colors}>
+                {isAdmin ? (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {['paper', 'live'].map(mode => (
+                      <button
+                        key={mode}
+                        onClick={() => set('mode', mode)}
+                        style={{
+                          padding: '8px 16px',
+                          borderRadius: borderRadius.md,
+                          border: `1px solid ${get('mode', 'paper') === mode ? (mode === 'live' ? colors.error : colors.accent) : colors.border}`,
+                          background: get('mode', 'paper') === mode ? (mode === 'live' ? colors.errorDark : colors.accentDark) : 'transparent',
+                          color: get('mode', 'paper') === mode ? (mode === 'live' ? colors.error : colors.accent) : colors.textMuted,
+                          fontWeight: 600,
+                          fontSize: 13,
+                          cursor: 'pointer',
+                          textTransform: 'capitalize',
+                        }}
+                      >
+                        {mode}
+                      </button>
+                    ))}
                   </div>
+                ) : (
+                  <ReadOnlyValue colors={colors} value={get('mode', 'paper') === 'paper' ? 'Paper' : 'Live'} />
                 )}
-              </>
-            ) : (
-              <SettingRow label="Current Preset" description="Your active trading profile">
-                <ReadOnlyValue colors={colors} value={currentPreset ? currentPreset.name : 'Custom'} />
               </SettingRow>
-            )}
+            </SettingsSection>
+
+            {/* Theme */}
+            <SettingsSection title="Appearance" subtitle="Customize how Flux looks" colors={colors}>
+              <SettingRow label="Theme" description="Choose between light and dark mode" colors={colors}>
+                <ThemeToggle theme={theme} onToggle={toggleTheme} colors={colors} />
+              </SettingRow>
+            </SettingsSection>
           </div>
         )}
 
-        {/* Appearance Tab */}
-        {activeTab === 'appearance' && (
-          <SettingsSection title="Appearance" colors={colors}>
-            <SettingRow label="Theme" description="Choose between light and dark mode" colors={colors}>
-              <ThemeToggle theme={theme} onToggle={toggleTheme} colors={colors} />
-            </SettingRow>
+        {/* Schedule Tab - Trading window + Kill switch */}
+        {activeTab === 'schedule' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <SettingsSection title="Trading Window" subtitle="When the bot is allowed to trade (PST timezone)" colors={colors}>
+              <SettingRow label="Active Hours" description="Trades will only be placed during this window" colors={colors}>
+                {isAdmin ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      type="time"
+                      value={get('trading_window_start', '06:30')}
+                      onChange={(e) => set('trading_window_start', e.target.value)}
+                      style={{
+                        ...inputStyle,
+                        width: 100,
+                        textAlign: 'center',
+                      }}
+                    />
+                    <span style={{ color: colors.textMuted, fontSize: 13 }}>to</span>
+                    <input
+                      type="time"
+                      value={get('trading_window_end', '10:30')}
+                      onChange={(e) => set('trading_window_end', e.target.value)}
+                      style={{
+                        ...inputStyle,
+                        width: 100,
+                        textAlign: 'center',
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <ReadOnlyValue colors={colors} value={`${get('trading_window_start', '06:30')} - ${get('trading_window_end', '10:30')}`} />
+                )}
+              </SettingRow>
+            </SettingsSection>
 
-            <div style={{
-              marginTop: 16,
-              padding: 16,
-              borderRadius: borderRadius.md,
-              background: colors.accentDark,
-              border: `1px solid ${colors.borderAccent}`,
-            }}>
-              <div style={{ fontSize: fontSize.sm, color: colors.accent, fontWeight: fontWeight.semibold, marginBottom: 8 }}>
-                Preview
-              </div>
-              <div style={{ fontSize: fontSize.xs, color: colors.textMuted }}>
-                Your theme preference is saved locally and will persist across sessions.
-              </div>
-            </div>
-          </SettingsSection>
-        )}
-
-        {/* Safety Tab */}
-        {activeTab === 'safety' && (
-          <SettingsSection title="Safety" colors={colors}>
-            <SettingRow label="Kill Switch" description="When ON, all trading is blocked">
-              {isAdmin ? (
-                <Toggle
-                  value={get('kill_switch', 'off') === 'on'}
-                  onChange={(v) => set('kill_switch', v ? 'on' : 'off')}
-                />
-              ) : (
-                <ReadOnlyToggle value={get('kill_switch', 'off') === 'on'} />
-              )}
-            </SettingRow>
-
-            <SettingRow label="Mode" description="Paper trading or live trading">
-              {isAdmin ? (
-                <select
-                  value={get('mode', 'paper')}
-                  onChange={(e) => set('mode', e.target.value)}
-                  style={{
-                    ...inputStyle,
-                    width: 'auto',
-                    minWidth: 120,
-                  }}
-                >
-                  <option value="paper">Paper</option>
-                  <option value="live">Live</option>
-                </select>
-              ) : (
-                <ReadOnlyValue colors={colors} value={get('mode', 'paper') === 'paper' ? 'Paper' : 'Live'} />
-              )}
-            </SettingRow>
-          </SettingsSection>
-        )}
-
-        {/* Trading Tab */}
-        {activeTab === 'trading' && (
-          <SettingsSection title="Trading" colors={colors}>
-            <SettingRow label="Symbols" description="Comma-separated list of symbols to trade">
-              {isAdmin ? (
-                <input
-                  type="text"
-                  value={get('symbols', 'QQQ,SPY')}
-                  onChange={(e) => set('symbols', e.target.value)}
-                                    style={{
-                    ...inputStyle,
-                                                          }}
-                  placeholder="QQQ,SPY"
-                />
-              ) : (
-                <ReadOnlyValue colors={colors} value={get('symbols', 'QQQ,SPY')} />
-              )}
-            </SettingRow>
-
-            <SettingRow label="Trading Window" description="Time window for trading (PST)">
-              {isAdmin ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <input
-                    type="text"
-                    value={get('trading_window_start', '06:30')}
-                    onChange={(e) => set('trading_window_start', e.target.value)}
-                                        style={{
-                      ...inputStyle,
-                      width: 80,
-                      textAlign: 'center',
-                                          }}
+            <SettingsSection title="Emergency Controls" subtitle="Stop trading immediately if needed" colors={colors}>
+              <SettingRow label="Kill Switch" description="When ON, all trading is immediately blocked" colors={colors}>
+                {isAdmin ? (
+                  <Toggle
+                    value={get('kill_switch', 'off') === 'on'}
+                    onChange={(v) => set('kill_switch', v ? 'on' : 'off')}
                   />
-                  <span style={{ color: colors.textMuted }}>to</span>
-                  <input
-                    type="text"
-                    value={get('trading_window_end', '10:30')}
-                    onChange={(e) => set('trading_window_end', e.target.value)}
-                                        style={{
-                      ...inputStyle,
-                      width: 80,
-                      textAlign: 'center',
-                                          }}
-                  />
+                ) : (
+                  <ReadOnlyToggle value={get('kill_switch', 'off') === 'on'} />
+                )}
+              </SettingRow>
+
+              {get('kill_switch', 'off') === 'on' && (
+                <div style={{
+                  padding: '12px 16px',
+                  background: colors.errorDark,
+                  border: `1px solid ${colors.error}`,
+                  borderRadius: 8,
+                  color: colors.error,
+                  fontSize: 13,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}>
+                  <span style={{ fontSize: 18 }}>⚠️</span>
+                  Trading is currently disabled. Turn off kill switch to resume.
                 </div>
-              ) : (
-                <ReadOnlyValue colors={colors} value={`${get('trading_window_start', '06:30')} - ${get('trading_window_end', '10:30')}`} />
               )}
-            </SettingRow>
-
-            <SettingRow
-              label="Confidence Threshold"
-              description="Minimum confidence to enter a trade"
-              guardrail={guardrails.conf_threshold}
-              value={get('conf_threshold', 0.60)}
-            >
-              {isAdmin ? (
-                <ValidatedNumberInput
-                  value={get('conf_threshold', 0.60)}
-                  onChange={(v) => set('conf_threshold', v)}
-                  onValidate={(v) => validate('conf_threshold', v, 'conf_threshold')}
-                  error={errors['conf_threshold']}
-                  step={0.01}
-                  min={guardrails.conf_threshold?.min}
-                  max={guardrails.conf_threshold?.max}
-                                    isPercent
-                />
-              ) : (
-                <ReadOnlyPercent colors={colors} value={get('conf_threshold', 0.60)} />
-              )}
-            </SettingRow>
-          </SettingsSection>
+            </SettingsSection>
+          </div>
         )}
 
-        {/* Risk Tab */}
+        {/* Entry Rules Tab - Confidence, Momentum, Symbols */}
+        {activeTab === 'entry' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <SettingsSection title="Symbols" subtitle="Which tickers to trade" colors={colors}>
+              <SettingRow label="Trading Symbols" description="Comma-separated list of symbols" colors={colors}>
+                {isAdmin ? (
+                  <input
+                    type="text"
+                    value={get('symbols', 'QQQ,SPY')}
+                    onChange={(e) => set('symbols', e.target.value)}
+                    style={{
+                      ...inputStyle,
+                      maxWidth: 200,
+                    }}
+                    placeholder="QQQ,SPY"
+                  />
+                ) : (
+                  <ReadOnlyValue colors={colors} value={get('symbols', 'QQQ,SPY')} />
+                )}
+              </SettingRow>
+            </SettingsSection>
+
+            <SettingsSection title="Entry Conditions" subtitle="Requirements for opening a position" colors={colors}>
+              <SettingRow
+                label="Confidence Threshold"
+                description="Minimum AI confidence to enter a trade"
+                guardrail={guardrails.conf_threshold}
+                value={get('conf_threshold', 0.60)}
+                colors={colors}
+                theme={theme}
+              >
+                {isAdmin ? (
+                  <ValidatedNumberInput
+                    value={get('conf_threshold', 0.60)}
+                    onChange={(v) => set('conf_threshold', v)}
+                    onValidate={(v) => validate('conf_threshold', v, 'conf_threshold')}
+                    error={errors['conf_threshold']}
+                    step={0.01}
+                    min={guardrails.conf_threshold?.min}
+                    max={guardrails.conf_threshold?.max}
+                    isPercent
+                    colors={colors}
+                  />
+                ) : (
+                  <ReadOnlyPercent colors={colors} value={get('conf_threshold', 0.60)} />
+                )}
+              </SettingRow>
+
+              <SettingRow
+                label="Momentum Entry %"
+                description="Minimum price momentum to trigger entry"
+                guardrail={guardrails.mom_entry_pct}
+                value={get('mom_entry_pct', 0.002)}
+                colors={colors}
+                theme={theme}
+              >
+                {isAdmin ? (
+                  <ValidatedNumberInput
+                    value={get('mom_entry_pct', 0.002)}
+                    onChange={(v) => set('mom_entry_pct', v)}
+                    onValidate={(v) => validate('mom_entry_pct', v, 'mom_entry_pct')}
+                    error={errors['mom_entry_pct']}
+                    step={0.0005}
+                    min={guardrails.mom_entry_pct?.min}
+                    max={guardrails.mom_entry_pct?.max}
+                    isPercent
+                    colors={colors}
+                  />
+                ) : (
+                  <ReadOnlyPercent colors={colors} value={get('mom_entry_pct', 0.002)} />
+                )}
+              </SettingRow>
+
+              <SettingRow
+                label="Momentum Lookback"
+                description="Number of 1-minute bars to calculate momentum"
+                guardrail={guardrails.mom_lookback}
+                value={get('mom_lookback', 8)}
+                colors={colors}
+                theme={theme}
+              >
+                {isAdmin ? (
+                  <ValidatedNumberInput
+                    value={get('mom_lookback', 8)}
+                    onChange={(v) => set('mom_lookback', v)}
+                    onValidate={(v) => validate('mom_lookback', v, 'mom_lookback')}
+                    error={errors['mom_lookback']}
+                    step={1}
+                    min={guardrails.mom_lookback?.min}
+                    max={guardrails.mom_lookback?.max}
+                    suffix="bars"
+                    colors={colors}
+                  />
+                ) : (
+                  <ReadOnlyValue colors={colors} value={`${get('mom_lookback', 8)} bars`} />
+                )}
+              </SettingRow>
+
+              {/* Lookback explanation */}
+              <div style={{
+                padding: '12px 16px',
+                background: colors.bgTertiary,
+                borderRadius: 8,
+                fontSize: 12,
+                color: colors.textSecondary,
+                lineHeight: 1.5,
+              }}>
+                <strong style={{ color: colors.textPrimary }}>How lookback affects signals:</strong>
+                <br />
+                Lower values (3-5) = More signals, more noise, faster reactions
+                <br />
+                Higher values (12-20) = Fewer signals, more confidence, slower reactions
+              </div>
+            </SettingsSection>
+          </div>
+        )}
+
+        {/* Risk Tab - Stop/Take profit, position sizing, exit rules */}
         {activeTab === 'risk' && (
-          <SettingsSection title="Risk Management" colors={colors}>
-            <SettingRow
-              label="Stop Loss %"
-              description="Percentage loss to trigger stop loss"
-              guardrail={guardrails.stop_loss_pct}
-              value={get('stop_loss_pct', 0.01)}
-            >
-              {isAdmin ? (
-                <ValidatedNumberInput
-                  value={get('stop_loss_pct', 0.01)}
-                  onChange={(v) => set('stop_loss_pct', v)}
-                  onValidate={(v) => validate('stop_loss_pct', v, 'stop_loss_pct')}
-                  error={errors['stop_loss_pct']}
-                  step={0.001}
-                  min={guardrails.stop_loss_pct?.min}
-                  max={guardrails.stop_loss_pct?.max}
-                                    isPercent
-                />
-              ) : (
-                <ReadOnlyPercent colors={colors} value={get('stop_loss_pct', 0.01)} />
-              )}
-            </SettingRow>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <SettingsSection title="Exit Targets" subtitle="When to close positions" colors={colors}>
+              <SettingRow
+                label="Stop Loss %"
+                description="Exit when position loses this much"
+                guardrail={guardrails.stop_loss_pct}
+                value={get('stop_loss_pct', 0.01)}
+                colors={colors}
+                theme={theme}
+              >
+                {isAdmin ? (
+                  <ValidatedNumberInput
+                    value={get('stop_loss_pct', 0.01)}
+                    onChange={(v) => set('stop_loss_pct', v)}
+                    onValidate={(v) => validate('stop_loss_pct', v, 'stop_loss_pct')}
+                    error={errors['stop_loss_pct']}
+                    step={0.001}
+                    min={guardrails.stop_loss_pct?.min}
+                    max={guardrails.stop_loss_pct?.max}
+                    isPercent
+                    colors={colors}
+                  />
+                ) : (
+                  <ReadOnlyPercent colors={colors} value={get('stop_loss_pct', 0.01)} />
+                )}
+              </SettingRow>
 
-            <SettingRow
-              label="Take Profit %"
-              description="Percentage gain to trigger take profit"
-              guardrail={guardrails.take_profit_pct}
-              value={get('take_profit_pct', 0.02)}
-            >
-              {isAdmin ? (
-                <ValidatedNumberInput
-                  value={get('take_profit_pct', 0.02)}
-                  onChange={(v) => set('take_profit_pct', v)}
-                  onValidate={(v) => validate('take_profit_pct', v, 'take_profit_pct')}
-                  error={errors['take_profit_pct']}
-                  step={0.001}
-                  min={guardrails.take_profit_pct?.min}
-                  max={guardrails.take_profit_pct?.max}
-                                    isPercent
-                />
-              ) : (
-                <ReadOnlyPercent colors={colors} value={get('take_profit_pct', 0.02)} />
-              )}
-            </SettingRow>
+              <SettingRow
+                label="Take Profit %"
+                description="Exit when position gains this much"
+                guardrail={guardrails.take_profit_pct}
+                value={get('take_profit_pct', 0.02)}
+                colors={colors}
+                theme={theme}
+              >
+                {isAdmin ? (
+                  <ValidatedNumberInput
+                    value={get('take_profit_pct', 0.02)}
+                    onChange={(v) => set('take_profit_pct', v)}
+                    onValidate={(v) => validate('take_profit_pct', v, 'take_profit_pct')}
+                    error={errors['take_profit_pct']}
+                    step={0.001}
+                    min={guardrails.take_profit_pct?.min}
+                    max={guardrails.take_profit_pct?.max}
+                    isPercent
+                    colors={colors}
+                  />
+                ) : (
+                  <ReadOnlyPercent colors={colors} value={get('take_profit_pct', 0.02)} />
+                )}
+              </SettingRow>
 
-            <SettingRow
-              label="Risk per Trade %"
-              description="Percentage of account to risk per trade"
-              guardrail={guardrails.risk_per_trade_pct}
-              value={get('risk_per_trade_pct', 0.005)}
-            >
-              {isAdmin ? (
-                <ValidatedNumberInput
-                  value={get('risk_per_trade_pct', 0.005)}
-                  onChange={(v) => set('risk_per_trade_pct', v)}
-                  onValidate={(v) => validate('risk_per_trade_pct', v, 'risk_per_trade_pct')}
-                  error={errors['risk_per_trade_pct']}
-                  step={0.001}
-                  min={guardrails.risk_per_trade_pct?.min}
-                  max={guardrails.risk_per_trade_pct?.max}
-                                    isPercent
-                />
-              ) : (
-                <ReadOnlyPercent colors={colors} value={get('risk_per_trade_pct', 0.005)} />
-              )}
-            </SettingRow>
+              {/* Risk/Reward visual */}
+              <div style={{
+                padding: '12px 16px',
+                background: colors.bgTertiary,
+                borderRadius: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}>
+                <span style={{ fontSize: 12, color: colors.textMuted }}>Risk/Reward Ratio</span>
+                <span style={{
+                  fontSize: 16,
+                  fontWeight: 700,
+                  fontFamily: 'JetBrains Mono, monospace',
+                  color: (get('take_profit_pct', 0.02) / get('stop_loss_pct', 0.01)) >= 2 ? colors.accent : colors.warning,
+                }}>
+                  1:{(get('take_profit_pct', 0.02) / get('stop_loss_pct', 0.01)).toFixed(1)}
+                </span>
+              </div>
+            </SettingsSection>
 
-            <SettingRow
-              label="Max Hold (minutes)"
-              description="Maximum time to hold a position"
-              guardrail={guardrails.max_hold_min}
-              value={get('max_hold_min', 120)}
-            >
-              {isAdmin ? (
-                <ValidatedNumberInput
-                  value={get('max_hold_min', 120)}
-                  onChange={(v) => set('max_hold_min', v)}
-                  onValidate={(v) => validate('max_hold_min', v, 'max_hold_min')}
-                  error={errors['max_hold_min']}
-                  step={5}
-                  min={guardrails.max_hold_min?.min}
-                  max={guardrails.max_hold_min?.max}
-                                    suffix="min"
-                />
-              ) : (
-                <ReadOnlyValue colors={colors} value={`${get('max_hold_min', 120)} min`} />
-              )}
-            </SettingRow>
+            <SettingsSection title="Position Sizing" subtitle="How much to risk per trade" colors={colors}>
+              <SettingRow
+                label="Risk per Trade %"
+                description="Maximum account percentage at risk per trade"
+                guardrail={guardrails.risk_per_trade_pct}
+                value={get('risk_per_trade_pct', 0.005)}
+                colors={colors}
+                theme={theme}
+              >
+                {isAdmin ? (
+                  <ValidatedNumberInput
+                    value={get('risk_per_trade_pct', 0.005)}
+                    onChange={(v) => set('risk_per_trade_pct', v)}
+                    onValidate={(v) => validate('risk_per_trade_pct', v, 'risk_per_trade_pct')}
+                    error={errors['risk_per_trade_pct']}
+                    step={0.001}
+                    min={guardrails.risk_per_trade_pct?.min}
+                    max={guardrails.risk_per_trade_pct?.max}
+                    isPercent
+                    colors={colors}
+                  />
+                ) : (
+                  <ReadOnlyPercent colors={colors} value={get('risk_per_trade_pct', 0.005)} />
+                )}
+              </SettingRow>
 
-            <SettingRow label="MQ Exit Enabled" description="Exit early when market quality degrades">
-              {isAdmin ? (
-                <Toggle
-                  value={get('mq_exit_enabled', true)}
-                  onChange={(v) => set('mq_exit_enabled', v)}
-                                  />
-              ) : (
-                <ReadOnlyToggle value={get('mq_exit_enabled', true)} />
-              )}
-            </SettingRow>
+              <SettingRow
+                label="Max Hold Time"
+                description="Force exit after this duration"
+                guardrail={guardrails.max_hold_min}
+                value={get('max_hold_min', 120)}
+                colors={colors}
+                theme={theme}
+              >
+                {isAdmin ? (
+                  <ValidatedNumberInput
+                    value={get('max_hold_min', 120)}
+                    onChange={(v) => set('max_hold_min', v)}
+                    onValidate={(v) => validate('max_hold_min', v, 'max_hold_min')}
+                    error={errors['max_hold_min']}
+                    step={5}
+                    min={guardrails.max_hold_min?.min}
+                    max={guardrails.max_hold_min?.max}
+                    suffix="min"
+                    colors={colors}
+                  />
+                ) : (
+                  <ReadOnlyValue colors={colors} value={`${get('max_hold_min', 120)} min`} />
+                )}
+              </SettingRow>
+            </SettingsSection>
 
-            <SettingRow label="MQ Exit Threshold %" description="Min unrealized loss to trigger mq_exit">
-              {isAdmin ? (
-                <ValidatedNumberInput
-                  value={get('mq_exit_loss_threshold', 0.001)}
-                  onChange={(v) => set('mq_exit_loss_threshold', v)}
-                  step={0.0001}
-                  min={0}
-                  max={0.01}
-                                    isPercent
-                />
-              ) : (
-                <ReadOnlyPercent colors={colors} value={get('mq_exit_loss_threshold', 0.001)} />
+            <SettingsSection title="Market Quality Exit" subtitle="Exit early when conditions degrade" colors={colors}>
+              <SettingRow label="MQ Exit Enabled" description="Automatically exit if market quality drops" colors={colors}>
+                {isAdmin ? (
+                  <Toggle
+                    value={get('mq_exit_enabled', true)}
+                    onChange={(v) => set('mq_exit_enabled', v)}
+                  />
+                ) : (
+                  <ReadOnlyToggle value={get('mq_exit_enabled', true)} />
+                )}
+              </SettingRow>
+
+              {get('mq_exit_enabled', true) && (
+                <SettingRow label="MQ Loss Threshold" description="Minimum loss before MQ exit triggers" colors={colors}>
+                  {isAdmin ? (
+                    <ValidatedNumberInput
+                      value={get('mq_exit_loss_threshold', 0.001)}
+                      onChange={(v) => set('mq_exit_loss_threshold', v)}
+                      step={0.0001}
+                      min={0}
+                      max={0.01}
+                      isPercent
+                      colors={colors}
+                    />
+                  ) : (
+                    <ReadOnlyPercent colors={colors} value={get('mq_exit_loss_threshold', 0.001)} />
+                  )}
+                </SettingRow>
               )}
-            </SettingRow>
-          </SettingsSection>
+            </SettingsSection>
+          </div>
         )}
 
-        {/* Limits Tab */}
+        {/* Limits Tab - Position and trade limits */}
         {activeTab === 'limits' && (
-          <SettingsSection title="Execution Limits" colors={colors}>
-            <SettingRow
-              label="Trades per Ticker per Day"
-              description="Maximum trades per symbol per day"
-              guardrail={guardrails.trades_per_ticker_per_day}
-              value={get('trades_per_ticker_per_day', 1)}
-            >
-              {isAdmin ? (
-                <ValidatedNumberInput
-                  value={get('trades_per_ticker_per_day', 1)}
-                  onChange={(v) => set('trades_per_ticker_per_day', v)}
-                  onValidate={(v) => validate('trades_per_ticker_per_day', v, 'trades_per_ticker_per_day')}
-                  error={errors['trades_per_ticker_per_day']}
-                  step={1}
-                  min={guardrails.trades_per_ticker_per_day?.min}
-                  max={guardrails.trades_per_ticker_per_day?.max}
-                                  />
-              ) : (
-                <ReadOnlyValue colors={colors} value={get('trades_per_ticker_per_day', 1)} />
-              )}
-            </SettingRow>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <SettingsSection title="Daily Limits" subtitle="Prevent overtrading" colors={colors}>
+              <SettingRow
+                label="Trades per Symbol per Day"
+                description="Maximum entries per ticker per day"
+                guardrail={guardrails.trades_per_ticker_per_day}
+                value={get('trades_per_ticker_per_day', 1)}
+                colors={colors}
+                theme={theme}
+              >
+                {isAdmin ? (
+                  <ValidatedNumberInput
+                    value={get('trades_per_ticker_per_day', 1)}
+                    onChange={(v) => set('trades_per_ticker_per_day', v)}
+                    onValidate={(v) => validate('trades_per_ticker_per_day', v, 'trades_per_ticker_per_day')}
+                    error={errors['trades_per_ticker_per_day']}
+                    step={1}
+                    min={guardrails.trades_per_ticker_per_day?.min}
+                    max={guardrails.trades_per_ticker_per_day?.max}
+                    colors={colors}
+                  />
+                ) : (
+                  <ReadOnlyValue colors={colors} value={get('trades_per_ticker_per_day', 1)} />
+                )}
+              </SettingRow>
+            </SettingsSection>
 
-            <SettingRow
-              label="Max Open Positions"
-              description="Maximum concurrent open positions"
-              guardrail={guardrails.max_open_positions}
-              value={get('max_open_positions', 5)}
-            >
-              {isAdmin ? (
-                <ValidatedNumberInput
-                  value={get('max_open_positions', 5)}
-                  onChange={(v) => set('max_open_positions', v)}
-                  onValidate={(v) => validate('max_open_positions', v, 'max_open_positions')}
-                  error={errors['max_open_positions']}
-                  step={1}
-                  min={guardrails.max_open_positions?.min}
-                  max={guardrails.max_open_positions?.max}
-                                  />
-              ) : (
-                <ReadOnlyValue colors={colors} value={get('max_open_positions', 5)} />
-              )}
-            </SettingRow>
-          </SettingsSection>
-        )}
+            <SettingsSection title="Position Limits" subtitle="Control exposure" colors={colors}>
+              <SettingRow
+                label="Max Open Positions"
+                description="Maximum concurrent positions at any time"
+                guardrail={guardrails.max_open_positions}
+                value={get('max_open_positions', 5)}
+                colors={colors}
+                theme={theme}
+              >
+                {isAdmin ? (
+                  <ValidatedNumberInput
+                    value={get('max_open_positions', 5)}
+                    onChange={(v) => set('max_open_positions', v)}
+                    onValidate={(v) => validate('max_open_positions', v, 'max_open_positions')}
+                    error={errors['max_open_positions']}
+                    step={1}
+                    min={guardrails.max_open_positions?.min}
+                    max={guardrails.max_open_positions?.max}
+                    colors={colors}
+                  />
+                ) : (
+                  <ReadOnlyValue colors={colors} value={get('max_open_positions', 5)} />
+                )}
+              </SettingRow>
 
-        {/* Strategy Tab */}
-        {activeTab === 'strategy' && (
-          <SettingsSection title="Strategy Tuning" colors={colors}>
-            <SettingRow
-              label="Momentum Entry %"
-              description="Minimum momentum to trigger entry override"
-              guardrail={guardrails.mom_entry_pct}
-              value={get('mom_entry_pct', 0.002)}
-            >
-              {isAdmin ? (
-                <ValidatedNumberInput
-                  value={get('mom_entry_pct', 0.002)}
-                  onChange={(v) => set('mom_entry_pct', v)}
-                  onValidate={(v) => validate('mom_entry_pct', v, 'mom_entry_pct')}
-                  error={errors['mom_entry_pct']}
-                  step={0.0005}
-                  min={guardrails.mom_entry_pct?.min}
-                  max={guardrails.mom_entry_pct?.max}
-                                    isPercent
-                />
-              ) : (
-                <ReadOnlyPercent colors={colors} value={get('mom_entry_pct', 0.002)} />
-              )}
-            </SettingRow>
-
-            <SettingRow
-              label="Momentum Lookback"
-              description="Number of bars to calculate momentum"
-              guardrail={guardrails.mom_lookback}
-              value={get('mom_lookback', 8)}
-            >
-              {isAdmin ? (
-                <ValidatedNumberInput
-                  value={get('mom_lookback', 8)}
-                  onChange={(v) => set('mom_lookback', v)}
-                  onValidate={(v) => validate('mom_lookback', v, 'mom_lookback')}
-                  error={errors['mom_lookback']}
-                  step={1}
-                  min={guardrails.mom_lookback?.min}
-                  max={guardrails.mom_lookback?.max}
-                                    suffix="bars"
-                />
-              ) : (
-                <ReadOnlyValue colors={colors} value={`${get('mom_lookback', 8)} bars`} />
-              )}
-            </SettingRow>
-          </SettingsSection>
+              {/* Visual representation */}
+              <div style={{
+                padding: '16px',
+                background: colors.bgTertiary,
+                borderRadius: 8,
+              }}>
+                <div style={{ fontSize: 12, color: colors.textMuted, marginBottom: 12 }}>
+                  Position capacity
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {Array.from({ length: 10 }).map((_, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 4,
+                        background: i < get('max_open_positions', 5) ? colors.accentDark : colors.bgSecondary,
+                        border: `1px solid ${i < get('max_open_positions', 5) ? colors.accent : colors.border}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 10,
+                        color: i < get('max_open_positions', 5) ? colors.accent : colors.textMuted,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {i + 1}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </SettingsSection>
+          </div>
         )}
 
         {/* Save Button (admin only) */}
@@ -785,7 +901,7 @@ function Toast({ message, type = 'success', onClose, colors = darkTheme }) {
   );
 }
 
-function SettingsSection({ title, children, colors = darkTheme }) {
+function SettingsSection({ title, subtitle, children, colors = darkTheme }) {
   return (
     <div style={{
       ...cardStyle,
@@ -800,6 +916,11 @@ function SettingsSection({ title, children, colors = darkTheme }) {
         <span style={{ fontSize: 18, fontWeight: 800, color: colors.textPrimary }}>
           {title}
         </span>
+        {subtitle && (
+          <p style={{ margin: '6px 0 0', color: colors.textMuted, fontSize: 13 }}>
+            {subtitle}
+          </p>
+        )}
       </div>
       <div style={{ display: 'grid', gap: 20 }}>
         {children}
@@ -808,7 +929,7 @@ function SettingsSection({ title, children, colors = darkTheme }) {
   );
 }
 
-function SettingRow({ label, description, guardrail, value, children, colors = darkTheme }) {
+function SettingRow({ label, description, guardrail, value, children, colors = darkTheme, theme = 'dark' }) {
   return (
     <div>
       <div style={{
@@ -839,6 +960,7 @@ function SettingRow({ label, description, guardrail, value, children, colors = d
           recommended={guardrail.recommended || guardrail.default}
           isPercent={guardrail.min < 1}
           decimals={guardrail.min < 0.01 ? 2 : 1}
+          theme={theme}
         />
       )}
     </div>
