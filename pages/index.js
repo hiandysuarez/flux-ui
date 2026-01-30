@@ -7,6 +7,7 @@ import {
   fetchRecentShadowLogs,
   fetchActivePositions,
   fetchDailyPnl,
+  fetchUserSettings,
   runDecisionCycle,
   forceExitAll,
 } from '../lib/api';
@@ -49,13 +50,23 @@ export default function Home() {
   const [err, setErr] = useState(null);
   const [acting, setActing] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [refreshSec, setRefreshSec] = useState(10);
+  const [refreshSec, setRefreshSec] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('flux_refresh_sec');
+      return saved ? parseInt(saved, 10) : 10;
+    }
+    return 10;
+  });
   const [lastRefresh, setLastRefresh] = useState(null);
   const [trades, setTrades] = useState([]);
   const [todayPnl, setTodayPnl] = useState(null);
   const [shadowLogs, setShadowLogs] = useState([]);
   const [positions, setPositions] = useState([]);
   const [dailyPnl, setDailyPnl] = useState([]);
+  const [activeProfile, setActiveProfile] = useState(null);
+
+  // Starting funds for % calculation (default $10,000)
+  const STARTING_FUNDS = 10000;
 
   // Lookback controls
   const [tradeLookback, setTradeLookback] = useState(10);
@@ -127,6 +138,14 @@ export default function Home() {
       const pnlRes = await fetchDailyPnl(chartDays);
       setDailyPnl(pnlRes?.data || []);
       setLastRefresh(new Date().toISOString());
+
+      // Fetch active profile (non-critical)
+      try {
+        const userSettings = await fetchUserSettings();
+        setActiveProfile(userSettings?.preset_id || 'custom');
+      } catch (profileErr) {
+        console.log('Could not fetch profile:', profileErr);
+      }
     } catch (e) {
       setErr(String(e?.message || e));
     }
@@ -144,6 +163,13 @@ export default function Home() {
     const id = setInterval(tick, ms);
     return () => clearInterval(id);
   }, [autoRefresh, refreshSec, load]);
+
+  // Persist refresh interval to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('flux_refresh_sec', String(refreshSec));
+    }
+  }, [refreshSec]);
 
   const rawRows = Array.isArray(cycle?.rows) ? cycle.rows : [];
   const ts = cycle?.ts ?? null;
@@ -331,6 +357,11 @@ export default function Home() {
           value={status?.has_positions ? 'ACTIVE' : 'NONE'}
           color={status?.has_positions ? colors.warning : colors.textMuted}
         />
+        <StatusBadge
+          label="PROFILE"
+          value={activeProfile ? activeProfile.toUpperCase() : '—'}
+          color={colors.accent}
+        />
       </div>
 
       {/* Controls */}
@@ -456,7 +487,9 @@ export default function Home() {
         <MetricCard
           title="Today's P&L"
           value={formatCurrency(todayPnl)}
-          subtitle="realized"
+          subtitle={todayPnl != null
+            ? `realized • ${((todayPnl / STARTING_FUNDS) * 100) >= 0 ? '+' : ''}${((todayPnl / STARTING_FUNDS) * 100).toFixed(2)}%`
+            : "realized"}
           color={todayPnl > 0 ? colors.accent : todayPnl < 0 ? colors.error : colors.textPrimary}
           trend={todayPnl != null ? (todayPnl > 0 ? 1 : todayPnl < 0 ? -1 : 0) : null}
           sparklineData={dailyPnl.slice(-7).map(d => d.pnl || 0)}
@@ -509,6 +542,20 @@ export default function Home() {
       <SectionHeader title="Charts" isOpen={chartsOpen} onToggle={() => setChartsOpen(!chartsOpen)} themeColors={colors} />
       {chartsOpen && (
         <div className="responsive-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24, marginBottom: 24 }}>
+          {/* Top Tickers Chart */}
+          <div style={{ ...cardStyle, background: colors.bgCard, borderColor: colors.border }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 20,
+            }}>
+              <span style={{ fontWeight: 800, fontSize: 18, color: colors.textPrimary }}>Top Performers</span>
+              <span style={{ fontSize: 14, color: colors.textMuted }}>By P&L</span>
+            </div>
+            <TopTickersChart data={topTickers} themeColors={colors} />
+          </div>
+
           {/* P&L History Chart */}
           <div style={{ ...cardStyle, background: colors.bgCard, borderColor: colors.border }}>
             <div style={{
@@ -526,20 +573,6 @@ export default function Home() {
               />
             </div>
             <PnlBarChart data={dailyPnl} themeColors={colors} />
-          </div>
-
-          {/* Top Tickers Chart */}
-          <div style={{ ...cardStyle, background: colors.bgCard, borderColor: colors.border }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: 20,
-            }}>
-              <span style={{ fontWeight: 800, fontSize: 18, color: colors.textPrimary }}>Top Performers</span>
-              <span style={{ fontSize: 14, color: colors.textMuted }}>By P&L</span>
-            </div>
-            <TopTickersChart data={topTickers} themeColors={colors} />
           </div>
         </div>
       )}
