@@ -7,7 +7,7 @@ import {
   fetchRecentShadowLogs,
   fetchActivePositions,
   fetchDailyPnl,
-  fetchUserSettings,
+  fetchSettings,
   runDecisionCycle,
   forceExitAll,
 } from '../lib/api';
@@ -139,10 +139,11 @@ export default function Home() {
       setDailyPnl(pnlRes?.data || []);
       setLastRefresh(new Date().toISOString());
 
-      // Fetch active profile (non-critical)
+      // Fetch active profile from system settings (non-critical)
       try {
-        const userSettings = await fetchUserSettings();
-        setActiveProfile(userSettings?.preset_id || 'custom');
+        const settingsRes = await fetchSettings();
+        const preset = settingsRes?.settings?.preset_id || settingsRes?.preset_id;
+        setActiveProfile(preset || 'custom');
       } catch (profileErr) {
         console.log('Could not fetch profile:', profileErr);
       }

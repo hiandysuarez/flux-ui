@@ -440,9 +440,14 @@ export default function AnalyticsPage() {
 
           {/* Breakdown Tab */}
           {activeBreakdown === 'breakdown' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24 }}>
-              {/* By Symbol */}
-              <div style={{ ...cardStyle, background: colors.bgCard, borderColor: colors.border }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+              {/* By Symbol - half width card */}
+              <div style={{
+                ...cardStyle,
+                background: colors.bgCard,
+                borderColor: colors.border,
+                maxWidth: '100%',
+              }}>
                 <div style={{
                   fontWeight: 800,
                   fontSize: 18,
@@ -550,38 +555,42 @@ function SymbolBar({ data, maxPnl, themeColors }) {
       display: 'flex',
       alignItems: 'center',
       gap: 12,
-      marginBottom: 8,
-      padding: '8px 0',
-      borderBottom: `1px solid ${themeColors.border}`,
+      marginBottom: 6,
+      padding: '6px 0',
+      borderBottom: `1px solid ${themeColors.border}20`,
     }}>
       <span style={{
-        width: 60,
+        width: 52,
         fontWeight: 700,
-        fontSize: 14,
+        fontSize: 13,
         color: themeColors.textPrimary,
+        letterSpacing: '-0.01em',
       }}>
         {data.symbol}
       </span>
       <div style={{
         flex: 1,
-        height: 20,
+        height: 8,
         background: themeColors.bgSecondary,
-        borderRadius: 4,
+        borderRadius: 100,
         overflow: 'hidden',
       }}>
         <div style={{
-          width: `${Math.max(barWidth, 2)}%`,
+          width: `${Math.max(barWidth, 3)}%`,
           height: '100%',
-          background: isPositive ? themeColors.accent : themeColors.error,
-          opacity: 0.8,
-          borderRadius: 4,
+          background: isPositive
+            ? `linear-gradient(90deg, ${themeColors.accent}90, ${themeColors.accent})`
+            : `linear-gradient(90deg, ${themeColors.error}90, ${themeColors.error})`,
+          borderRadius: 100,
+          boxShadow: `0 0 8px ${isPositive ? themeColors.accent : themeColors.error}40`,
+          transition: 'width 0.3s ease',
         }} />
       </div>
       <span style={{
-        width: 70,
+        width: 65,
         textAlign: 'right',
         fontFamily: fontFamily.mono,
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: 700,
         color: isPositive ? themeColors.accent : themeColors.error,
       }}>
