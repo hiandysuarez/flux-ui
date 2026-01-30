@@ -24,7 +24,7 @@ export default function LandingPage() {
 
   const features = [
     {
-      title: 'AI-Powered Decisions',
+      title: 'ML-Powered Decisions',
       description: 'Machine learning models analyze market patterns and execute trades with precision timing.',
       icon: '⚡',
     },
@@ -58,7 +58,7 @@ export default function LandingPage() {
     },
     {
       number: '03',
-      title: 'Let AI Trade',
+      title: 'Let ML Trade',
       description: 'Sit back as intelligent algorithms execute trades based on your preferences.',
     },
   ];
@@ -73,8 +73,8 @@ export default function LandingPage() {
   return (
     <>
       <Head>
-        <title>Flux | AI-Powered Trading Platform</title>
-        <meta name="description" content="Trade smarter with AI. Flux uses machine learning to analyze markets and execute trades with precision." />
+        <title>Flux | ML-Powered Trading Platform</title>
+        <meta name="description" content="Trade smarter with ML. Flux uses machine learning to analyze markets and execute trades with precision." />
       </Head>
 
       <div style={{
@@ -325,7 +325,7 @@ export default function LandingPage() {
                   letterSpacing: '0.05em',
                   textTransform: 'uppercase',
                 }}>
-                  AI-Powered Trading
+                  ML-Powered Trading
                 </span>
               </div>
 
@@ -338,7 +338,7 @@ export default function LandingPage() {
                 letterSpacing: '-0.03em',
               }}>
                 Trade Smarter<br />
-                <span style={{ color: colors.accent }}>with AI</span>
+                <span style={{ color: colors.accent }}>with ML</span>
               </h1>
 
               {/* Subheadline */}
@@ -350,7 +350,7 @@ export default function LandingPage() {
                 maxWidth: 480,
               }}>
                 Flux uses machine learning to analyze market patterns and execute trades with precision.
-                Set your strategy once, let AI handle the rest.
+                Set your strategy once, let ML handle the rest.
               </p>
 
               {/* CTA Buttons */}
@@ -778,7 +778,7 @@ export default function LandingPage() {
               marginBottom: 40,
               lineHeight: 1.6,
             }}>
-              Join thousands of traders using AI to gain an edge in the markets.
+              Join thousands of traders using ML to gain an edge in the markets.
               Start with paper trading, no credit card required.
             </p>
             <button
