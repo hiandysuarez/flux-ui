@@ -121,7 +121,7 @@ export default function Layout({ children, active = 'dashboard' }) {
         {/* Logo */}
         <a href="/" style={{ display: 'flex', alignItems: 'center' }}>
           <img
-            src="/images/flux_logo.png"
+            src="/images/flux_new_logo.png"
             alt="Flux"
             style={{
               height: 48,
@@ -215,7 +215,7 @@ export default function Layout({ children, active = 'dashboard' }) {
               borderBottom: `1px solid ${colors.border}`,
             }}>
               <img
-                src="/images/flux_logo.png"
+                src="/images/flux_new_logo.png"
                 alt="Flux"
                 style={{ height: 40, width: 'auto' }}
               />

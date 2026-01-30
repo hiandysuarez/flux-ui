@@ -619,7 +619,6 @@ export default function SettingsPage() {
                           transition: 'all 0.2s ease',
                         }}
                       >
-                        <span style={{ fontSize: 14 }}>{mode === 'paper' ? '📄' : '💰'}</span>
                         {mode}
                       </button>
                     ))}
