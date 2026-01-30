@@ -798,7 +798,6 @@ export default function SettingsPage() {
                 guardrail={guardrails.conf_threshold}
                 value={get('conf_threshold', 0.60)}
                 colors={colors}
-                theme={theme}
                 explanation={SETTING_EXPLANATIONS.conf_threshold}
                 expandedExplanations={expandedExplanations}
                 setExpandedExplanations={setExpandedExplanations}
@@ -827,7 +826,6 @@ export default function SettingsPage() {
                 guardrail={guardrails.mom_entry_pct}
                 value={get('mom_entry_pct', 0.002)}
                 colors={colors}
-                theme={theme}
                 explanation={SETTING_EXPLANATIONS.mom_entry_pct}
                 expandedExplanations={expandedExplanations}
                 setExpandedExplanations={setExpandedExplanations}
@@ -856,7 +854,6 @@ export default function SettingsPage() {
                 guardrail={guardrails.mom_lookback}
                 value={get('mom_lookback', 8)}
                 colors={colors}
-                theme={theme}
                 explanation={SETTING_EXPLANATIONS.mom_lookback}
                 expandedExplanations={expandedExplanations}
                 setExpandedExplanations={setExpandedExplanations}
@@ -902,7 +899,6 @@ export default function SettingsPage() {
                 guardrail={guardrails.stop_loss_pct}
                 value={get('stop_loss_pct', 0.01)}
                 colors={colors}
-                theme={theme}
                 explanation={SETTING_EXPLANATIONS.stop_loss_pct}
                 expandedExplanations={expandedExplanations}
                 setExpandedExplanations={setExpandedExplanations}
@@ -931,7 +927,6 @@ export default function SettingsPage() {
                 guardrail={guardrails.take_profit_pct}
                 value={get('take_profit_pct', 0.02)}
                 colors={colors}
-                theme={theme}
                 explanation={SETTING_EXPLANATIONS.take_profit_pct}
                 expandedExplanations={expandedExplanations}
                 setExpandedExplanations={setExpandedExplanations}
@@ -979,7 +974,6 @@ export default function SettingsPage() {
                 guardrail={guardrails.risk_per_trade_pct}
                 value={get('risk_per_trade_pct', 0.005)}
                 colors={colors}
-                theme={theme}
                 explanation={SETTING_EXPLANATIONS.risk_per_trade_pct}
                 expandedExplanations={expandedExplanations}
                 setExpandedExplanations={setExpandedExplanations}
@@ -1008,7 +1002,6 @@ export default function SettingsPage() {
                 guardrail={guardrails.max_hold_min}
                 value={get('max_hold_min', 120)}
                 colors={colors}
-                theme={theme}
                 explanation={SETTING_EXPLANATIONS.max_hold_min}
                 expandedExplanations={expandedExplanations}
                 setExpandedExplanations={setExpandedExplanations}
@@ -1109,7 +1102,6 @@ export default function SettingsPage() {
                 guardrail={guardrails.trades_per_ticker_per_day}
                 value={get('trades_per_ticker_per_day', 1)}
                 colors={colors}
-                theme={theme}
                 explanation={SETTING_EXPLANATIONS.trades_per_ticker_per_day}
                 expandedExplanations={expandedExplanations}
                 setExpandedExplanations={setExpandedExplanations}
@@ -1146,7 +1138,6 @@ export default function SettingsPage() {
                 guardrail={guardrails.max_open_positions}
                 value={get('max_open_positions', 5)}
                 colors={colors}
-                theme={theme}
                 explanation={SETTING_EXPLANATIONS.max_open_positions}
                 expandedExplanations={expandedExplanations}
                 setExpandedExplanations={setExpandedExplanations}
@@ -1328,7 +1319,6 @@ function SettingRow({
   value,
   children,
   colors = darkTheme,
-  theme = 'dark',
   explanation,
   expandedExplanations,
   setExpandedExplanations,
@@ -1401,7 +1391,6 @@ function SettingRow({
             recommended={guardrail.recommended || guardrail.default}
             isPercent={guardrail.min < 1}
             decimals={guardrail.min < 0.01 ? 2 : 1}
-            theme={theme}
           />
         </div>
       )}
