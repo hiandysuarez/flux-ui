@@ -36,8 +36,49 @@ import {
   lookbackOptions,
 } from '../lib/theme';
 import Layout from '../components/Layout';
+import LandingPage from './landing';
+import { useAuth } from '../lib/auth';
 
 export default function Home() {
+  const { user, loading } = useAuth();
+
+  // Show landing page for unauthenticated users
+  if (!loading && !user) {
+    return <LandingPage />;
+  }
+
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: darkTheme.bgPrimary,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <div style={{
+          width: 40,
+          height: 40,
+          border: `3px solid ${darkTheme.border}`,
+          borderTopColor: darkTheme.accent,
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+        }} />
+        <style>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  // Authenticated user - show dashboard
+  return <Dashboard />;
+}
+
+function Dashboard() {
   const colors = darkTheme;
   const effects = visualEffects;
 

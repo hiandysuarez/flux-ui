@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../lib/auth';
 import {
@@ -16,10 +16,44 @@ import {
 export default function Layout({ children, active = 'dashboard' }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
-  const { signOut } = useAuth();
+  const { user, loading, signOut } = useAuth();
 
   // Dark Luxe theme - single theme
   const colors = darkTheme;
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+  // Show loading spinner while checking auth
+  if (loading || !user) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: colors.bgPrimary,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <div style={{
+          width: 40,
+          height: 40,
+          border: `3px solid ${colors.border}`,
+          borderTopColor: colors.accent,
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+        }} />
+        <style>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   const navLinks = [
     { href: '/', label: 'Dashboard', key: 'dashboard' },
