@@ -567,7 +567,7 @@ export default function SettingsPage() {
                 <>
                   <PresetSelector
                     presets={presets}
-                    selected={settings.preset_id}
+                    selected={settings?.preset_id ?? null}
                     onSelect={handlePresetSelect}
                     disabled={saving}
                   />
