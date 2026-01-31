@@ -697,19 +697,21 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
     pathD += ` C ${seg.cp1.x},${seg.cp1.y} ${seg.cp2.x},${seg.cp2.y} ${seg.p2.x},${seg.p2.y}`;
   }
 
-  // Generate segmented area paths - each segment colored by daily change
+  // Generate segmented area and line paths - each segment colored by daily change
   const segmentPaths = [];
   for (let i = 0; i < data.length - 1; i++) {
     const seg = getBezierSegment(i);
     const isPositive = dailyChanges[i + 1] >= 0;
 
-    // Create path: curve from p1 to p2, then down to bottom, across, back up
-    const segmentPath = `M ${seg.p1.x},${seg.p1.y} C ${seg.cp1.x},${seg.cp1.y} ${seg.cp2.x},${seg.cp2.y} ${seg.p2.x},${seg.p2.y} L ${seg.p2.x},${bottomY} L ${seg.p1.x},${bottomY} Z`;
+    // Area path: curve from p1 to p2, then down to bottom, across, back up
+    const areaPath = `M ${seg.p1.x},${seg.p1.y} C ${seg.cp1.x},${seg.cp1.y} ${seg.cp2.x},${seg.cp2.y} ${seg.p2.x},${seg.p2.y} L ${seg.p2.x},${bottomY} L ${seg.p1.x},${bottomY} Z`;
+    // Line path: just the curve
+    const linePath = `M ${seg.p1.x},${seg.p1.y} C ${seg.cp1.x},${seg.cp1.y} ${seg.cp2.x},${seg.cp2.y} ${seg.p2.x},${seg.p2.y}`;
 
     segmentPaths.push({
-      path: segmentPath,
+      areaPath,
+      linePath,
       color: isPositive ? goldColor : redColor,
-      gradientId: `segGrad_${i}`,
     });
   }
 
@@ -761,9 +763,9 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
             <stop offset="100%" stopColor={redColor} stopOpacity="0.02" />
           </linearGradient>
 
-          {/* Line glow filter */}
+          {/* Line glow filter - subtle */}
           <filter id="lineGlow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+            <feGaussianBlur stdDeviation="0.6" result="coloredBlur"/>
             <feMerge>
               <feMergeNode in="coloredBlur"/>
               <feMergeNode in="SourceGraphic"/>
@@ -807,22 +809,25 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
         {/* Segmented area fills with gradient shadows */}
         {segmentPaths.map((seg, i) => (
           <path
-            key={i}
-            d={seg.path}
+            key={`area-${i}`}
+            d={seg.areaPath}
             fill={seg.color === goldColor ? 'url(#segGradGold)' : 'url(#segGradRed)'}
           />
         ))}
 
-        {/* Main curve line with glow */}
-        <path
-          d={pathD}
-          fill="none"
-          stroke={lineColor}
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          filter="url(#lineGlow)"
-        />
+        {/* Segmented line - each segment colored by daily change */}
+        {segmentPaths.map((seg, i) => (
+          <path
+            key={`line-${i}`}
+            d={seg.linePath}
+            fill="none"
+            stroke={seg.color}
+            strokeWidth="0.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            filter="url(#lineGlow)"
+          />
+        ))}
 
         {/* Hover vertical line */}
         {hoverIdx !== null && (
@@ -843,10 +848,10 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
           <circle
             cx={getPoint(hoverIdx).x}
             cy={getPoint(hoverIdx).y}
-            r="2.5"
+            r="1.5"
             fill={dailyChanges[hoverIdx] >= 0 ? goldColor : redColor}
             stroke={themeColors.bgCard}
-            strokeWidth="1.2"
+            strokeWidth="0.8"
           />
         )}
 
@@ -854,10 +859,10 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
         <circle
           cx={lastPoint.x}
           cy={lastPoint.y}
-          r="3.5"
-          fill={lineColor}
+          r="2"
+          fill={dailyChanges[data.length - 1] >= 0 ? goldColor : redColor}
           stroke={themeColors.bgCard}
-          strokeWidth="1.5"
+          strokeWidth="0.8"
           filter="url(#lineGlow)"
         />
       </svg>
