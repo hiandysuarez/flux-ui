@@ -653,9 +653,11 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
 
   if (!data || data.length < 2) return null;
 
-  // Theme colors for segmented fills
+  // Theme colors - subtle for fills, bright for line
   const goldColor = '#D4A574';
   const redColor = '#F85149';
+  const goldBright = '#F5C76D';  // Brighter gold for line
+  const redBright = '#FF6B6B';   // Brighter red for line
 
   const max = Math.max(...data, 0);
   const min = Math.min(...data, 0);
@@ -711,7 +713,8 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
     segmentPaths.push({
       areaPath,
       linePath,
-      color: isPositive ? goldColor : redColor,
+      fillColor: isPositive ? goldColor : redColor,
+      lineColor: isPositive ? goldBright : redBright,
     });
   }
 
@@ -751,16 +754,16 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
             <stop offset="100%" stopColor={themeColors.bgPrimary} stopOpacity="0.8" />
           </linearGradient>
 
-          {/* Segment gradients - gold and red with fading shadow */}
+          {/* Segment gradients - subtle fading shadow */}
           <linearGradient id="segGradGold" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={goldColor} stopOpacity="0.35" />
-            <stop offset="40%" stopColor={goldColor} stopOpacity="0.18" />
-            <stop offset="100%" stopColor={goldColor} stopOpacity="0.02" />
+            <stop offset="0%" stopColor={goldColor} stopOpacity="0.15" />
+            <stop offset="50%" stopColor={goldColor} stopOpacity="0.06" />
+            <stop offset="100%" stopColor={goldColor} stopOpacity="0" />
           </linearGradient>
           <linearGradient id="segGradRed" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={redColor} stopOpacity="0.35" />
-            <stop offset="40%" stopColor={redColor} stopOpacity="0.18" />
-            <stop offset="100%" stopColor={redColor} stopOpacity="0.02" />
+            <stop offset="0%" stopColor={redColor} stopOpacity="0.15" />
+            <stop offset="50%" stopColor={redColor} stopOpacity="0.06" />
+            <stop offset="100%" stopColor={redColor} stopOpacity="0" />
           </linearGradient>
 
           {/* Line glow filter - subtle */}
@@ -811,17 +814,17 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
           <path
             key={`area-${i}`}
             d={seg.areaPath}
-            fill={seg.color === goldColor ? 'url(#segGradGold)' : 'url(#segGradRed)'}
+            fill={seg.fillColor === goldColor ? 'url(#segGradGold)' : 'url(#segGradRed)'}
           />
         ))}
 
-        {/* Segmented line - each segment colored by daily change */}
+        {/* Segmented line - bright colors for visibility */}
         {segmentPaths.map((seg, i) => (
           <path
             key={`line-${i}`}
             d={seg.linePath}
             fill="none"
-            stroke={seg.color}
+            stroke={seg.lineColor}
             strokeWidth="0.5"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -849,7 +852,7 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
             cx={getPoint(hoverIdx).x}
             cy={getPoint(hoverIdx).y}
             r="1.5"
-            fill={dailyChanges[hoverIdx] >= 0 ? goldColor : redColor}
+            fill={dailyChanges[hoverIdx] >= 0 ? goldBright : redBright}
             stroke={themeColors.bgCard}
             strokeWidth="0.8"
           />
@@ -860,7 +863,7 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
           cx={lastPoint.x}
           cy={lastPoint.y}
           r="2"
-          fill={dailyChanges[data.length - 1] >= 0 ? goldColor : redColor}
+          fill={dailyChanges[data.length - 1] >= 0 ? goldBright : redBright}
           stroke={themeColors.bgCard}
           strokeWidth="0.8"
           filter="url(#lineGlow)"
