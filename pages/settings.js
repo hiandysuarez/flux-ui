@@ -1059,7 +1059,7 @@ export default function SettingsPage() {
               {get('mq_velocity_enabled', true) && (
                 <SettingRow
                   label="Speed Sensitivity"
-                  description="How fast is 'too fast'? 2x means exit if price moves against you twice as fast as normal for this stock."
+                  description="Multiplier threshold for triggering early exit. A value of 2.0 triggers exit when adverse price movement exceeds twice the stock's average volatility rate."
                   colors={colors}
                 >
                   {isAdmin ? (
