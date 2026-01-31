@@ -193,6 +193,16 @@ function Dashboard() {
   const positionCount = account?.position_count || 0;
   const marketOpen = account?.market_open || false;
   const marketCloseTime = account?.market_close_time;
+  const statsDate = account?.stats_date; // Date of stats if not today
+  const alpacaConfigured = account?.alpaca_configured !== false;
+  const alpacaError = account?.alpaca_error;
+
+  // Format date for display (e.g., "Jan 30")
+  const formatStatsDate = (dateStr) => {
+    if (!dateStr) return null;
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
 
   return (
     <Layout>
@@ -270,7 +280,7 @@ function Dashboard() {
             letterSpacing: '0.1em',
             marginBottom: spacing.sm,
           }}>
-            Today's P&L
+            {statsDate ? `Last Session (${formatStatsDate(statsDate)})` : "Today's P&L"}
           </div>
 
           <div style={{
@@ -314,8 +324,9 @@ function Dashboard() {
           <StatCard
             colors={colors}
             label="Account Equity"
-            value={fmtNoSign(equity)}
-            sublabel="Total Value"
+            value={!alpacaConfigured ? '—' : fmtNoSign(equity)}
+            sublabel={alpacaError ? 'Broker not connected' : 'Total Value'}
+            valueColor={alpacaError ? colors.textMuted : undefined}
           />
 
           {/* Unrealized P&L */}
