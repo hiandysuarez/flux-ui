@@ -19,6 +19,7 @@ import {
   borderRadius,
 } from '../lib/theme';
 import Layout from '../components/Layout';
+import SubscriptionBanner from '../components/SubscriptionBanner';
 import LandingPage from './landing';
 import { useAuth } from '../lib/auth';
 import Link from 'next/link';
@@ -233,6 +234,9 @@ function Dashboard() {
           .delay-3 { animation-delay: 0.3s; }
           .delay-4 { animation-delay: 0.4s; }
         `}</style>
+
+        {/* Subscription Limit Banner */}
+        <SubscriptionBanner />
 
         {/* Toast Notifications */}
         <div style={{ position: 'fixed', top: 80, right: 20, zIndex: 1000 }}>
