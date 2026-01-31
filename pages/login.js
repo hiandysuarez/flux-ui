@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import { colors, fontSize, fontWeight, shadows, transitions } from '../lib/theme';
 import { useAuth } from '../lib/auth';
 
@@ -11,6 +12,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
@@ -23,6 +25,11 @@ export default function LoginPage() {
 
     try {
       if (mode === 'signup') {
+        if (!termsAccepted) {
+          setError('You must accept the Terms of Service to create an account');
+          setLoading(false);
+          return;
+        }
         if (password !== confirmPassword) {
           setError('Passwords do not match');
           setLoading(false);
@@ -188,34 +195,73 @@ export default function LoginPage() {
           </div>
 
           {mode === 'signup' && (
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: fontSize.sm,
-                fontWeight: fontWeight.medium,
-                color: colors.textSecondary,
-                marginBottom: '6px',
+            <>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: fontSize.sm,
+                  fontWeight: fontWeight.medium,
+                  color: colors.textSecondary,
+                  marginBottom: '6px',
+                }}>
+                  Confirm Password
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    background: colors.bgTertiary,
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: '8px',
+                    color: colors.textPrimary,
+                    fontSize: fontSize.base,
+                    outline: 'none',
+                  }}
+                  placeholder="••••••••"
+                />
+              </div>
+
+              {/* Terms Acceptance Checkbox */}
+              <div style={{
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
               }}>
-                Confirm Password
-              </label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  background: colors.bgTertiary,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: '8px',
-                  color: colors.textPrimary,
-                  fontSize: fontSize.base,
-                  outline: 'none',
-                }}
-                placeholder="••••••••"
-              />
-            </div>
+                <input
+                  type="checkbox"
+                  id="terms-checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    marginTop: '2px',
+                    cursor: 'pointer',
+                    accentColor: colors.accent,
+                  }}
+                />
+                <label
+                  htmlFor="terms-checkbox"
+                  style={{
+                    fontSize: fontSize.sm,
+                    color: colors.textSecondary,
+                    cursor: 'pointer',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  I have read and agree to the{' '}
+                  <Link href="/terms" target="_blank" style={{ color: colors.accent, textDecoration: 'underline' }}>
+                    Terms of Service
+                  </Link>
+                  {' '}and understand that trading involves risk of loss.
+                </label>
+              </div>
+            </>
           )}
 
           {error && (
@@ -274,7 +320,16 @@ export default function LoginPage() {
           fontSize: fontSize.xs,
           color: colors.textMuted,
         }}>
-          By continuing, you agree to our Terms of Service and Privacy Policy
+          {mode === 'login' ? (
+            <>
+              By logging in, you agree to our{' '}
+              <Link href="/terms" style={{ color: colors.textSecondary, textDecoration: 'underline' }}>
+                Terms of Service
+              </Link>
+            </>
+          ) : (
+            'Create an account to start paper trading for free'
+          )}
         </p>
       </div>
     </div>
