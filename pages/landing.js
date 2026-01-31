@@ -175,7 +175,7 @@ export default function LandingPage() {
               display: none !important;
             }
             .features-grid {
-              grid-template-columns: 1fr !important;
+              grid-template-columns: repeat(2, 1fr) !important;
             }
             .steps-grid {
               grid-template-columns: 1fr !important;
@@ -186,11 +186,33 @@ export default function LandingPage() {
             .hero-buttons {
               justify-content: center !important;
             }
+            .landing-section {
+              padding: 60px 16px !important;
+            }
+            .landing-hero-title {
+              font-size: 36px !important;
+            }
           }
 
-          @media (max-width: 600px) {
+          @media (max-width: 640px) {
+            .features-grid {
+              grid-template-columns: 1fr !important;
+            }
             .stats-grid {
               grid-template-columns: 1fr !important;
+            }
+            .landing-hero-title {
+              font-size: 28px !important;
+            }
+            .landing-section {
+              padding: 40px 12px !important;
+            }
+            .hero-buttons {
+              flex-direction: column !important;
+              width: 100% !important;
+            }
+            .hero-buttons button, .hero-buttons a {
+              width: 100% !important;
             }
           }
         `}</style>
@@ -330,7 +352,7 @@ export default function LandingPage() {
               </div>
 
               {/* Headline */}
-              <h1 style={{
+              <h1 className="landing-hero-title" style={{
                 fontSize: 56,
                 fontWeight: fontWeight.extrabold,
                 lineHeight: 1.1,

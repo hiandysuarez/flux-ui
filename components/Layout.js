@@ -21,10 +21,10 @@ export default function Layout({ children, active = 'dashboard' }) {
   // Dark Luxe theme - single theme
   const colors = darkTheme;
 
-  // Redirect to login if not authenticated
+  // Redirect to landing if not authenticated
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/login');
+      router.push('/landing');
     }
   }, [user, loading, router]);
 
@@ -77,6 +77,7 @@ export default function Layout({ children, active = 'dashboard' }) {
     }}>
       {/* Styles + animations */}
       <style>{`
+        /* Responsive utilities */
         @media (max-width: 768px) {
           .responsive-grid-2 {
             grid-template-columns: 1fr !important;
@@ -87,6 +88,21 @@ export default function Layout({ children, active = 'dashboard' }) {
           .responsive-flex-col {
             flex-direction: column !important;
             align-items: stretch !important;
+          }
+          .header-compact {
+            padding: 0 12px !important;
+          }
+          .header-badge-hide {
+            display: none !important;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .responsive-grid-3 {
+            grid-template-columns: 1fr !important;
+          }
+          .logo-small {
+            height: 36px !important;
           }
         }
 
@@ -116,13 +132,13 @@ export default function Layout({ children, active = 'dashboard' }) {
       `}</style>
 
       {/* Header */}
-      <header style={{
-        height: 72,
-        padding: '0 24px',
+      <header className="header-compact" style={{
+        height: 64,
+        padding: '0 16px',
         borderBottom: `1px solid ${colors.border}`,
         display: 'flex',
         alignItems: 'center',
-        gap: 16,
+        gap: 12,
         ...glassStyle,
         position: 'sticky',
         top: 0,
@@ -157,8 +173,9 @@ export default function Layout({ children, active = 'dashboard' }) {
           <img
             src="/images/flux_new_logo.png"
             alt="Flux"
+            className="logo-small"
             style={{
-              height: 48,
+              height: 40,
               width: 'auto',
               objectFit: 'contain',
             }}
@@ -195,8 +212,8 @@ export default function Layout({ children, active = 'dashboard' }) {
           </span>
         </div>
 
-        {/* Version badge */}
-        <div style={{
+        {/* Version badge - hidden on mobile */}
+        <div className="header-badge-hide" style={{
           padding: '6px 12px',
           borderRadius: borderRadius.full,
           background: colors.bgTertiary,
@@ -362,7 +379,7 @@ export default function Layout({ children, active = 'dashboard' }) {
       )}
 
       {/* Main content */}
-      <main style={{ padding: spacing.xl }}>
+      <main style={{ padding: spacing.lg, maxWidth: 1400, margin: '0 auto' }}>
         {children}
       </main>
 

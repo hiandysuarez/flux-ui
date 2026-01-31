@@ -186,7 +186,8 @@ export default function HistoryPage() {
 
       {/* Table */}
       <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div className="table-scroll" style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }}>
           <thead>
             <tr style={{ background: colors.bgSecondary }}>
               <Th>Date</Th>
@@ -264,6 +265,7 @@ export default function HistoryPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Pagination */}

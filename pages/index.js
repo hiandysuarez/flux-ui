@@ -287,7 +287,7 @@ function Dashboard() {
             {statsDate ? `Last Session (${formatStatsDate(statsDate)})` : "Today's P&L"}
           </div>
 
-          <div style={{
+          <div className="hero-text" style={{
             fontFamily: fontFamily.display,
             fontSize: fontSize.hero,
             fontWeight: fontWeight.bold,
@@ -302,7 +302,8 @@ function Dashboard() {
           <div style={{
             display: 'flex',
             justifyContent: 'center',
-            gap: spacing.lg,
+            flexWrap: 'wrap',
+            gap: spacing.sm,
             fontSize: fontSize.sm,
             color: colors.textSecondary,
             fontFamily: fontFamily.sans,
@@ -310,17 +311,17 @@ function Dashboard() {
             <span style={{ color: pnlColor(todayPnlPct) }}>
               {todayPnlPct >= 0 ? '▲' : '▼'} {Math.abs(todayPnlPct).toFixed(2)}%
             </span>
-            <span>•</span>
+            <span className="hide-mobile">•</span>
             <span>{todayTrades} trade{todayTrades !== 1 ? 's' : ''}</span>
-            <span>•</span>
+            <span className="hide-mobile">•</span>
             <span>{todayWinRate}% win rate</span>
           </div>
         </section>
 
         {/* ===== Quick Stats Row ===== */}
-        <section className="fadeUp delay-1" style={{
+        <section className="fadeUp delay-1 responsive-grid-3" style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: spacing.md,
           marginBottom: spacing.xl,
         }}>
@@ -365,13 +366,14 @@ function Dashboard() {
 
         {/* ===== Active Positions ===== */}
         <section className="fadeUp delay-2" style={{ marginBottom: spacing.xl }}>
-          <div style={{
+          <div className="flex-mobile-col" style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             marginBottom: spacing.md,
+            gap: spacing.sm,
           }}>
-            <h2 style={{
+            <h2 className="section-title" style={{
               fontFamily: fontFamily.sans,
               fontSize: fontSize.lg,
               fontWeight: fontWeight.semibold,
@@ -380,7 +382,7 @@ function Dashboard() {
             }}>
               Active Positions
             </h2>
-            <div style={{ display: 'flex', gap: spacing.sm }}>
+            <div style={{ display: 'flex', gap: spacing.sm, flexWrap: 'wrap' }}>
               <button
                 onClick={handleRunCycle}
                 disabled={acting}
@@ -519,7 +521,7 @@ function Dashboard() {
         {/* ===== Quick Links ===== */}
         <section className="fadeUp delay-4" style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
           gap: spacing.md,
         }}>
           <QuickLink href="/analytics" label="Analytics" colors={colors} />

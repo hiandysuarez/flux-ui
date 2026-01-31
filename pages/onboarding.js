@@ -100,7 +100,7 @@ export default function OnboardingPage() {
       background: colors.bgPrimary,
       padding: '20px',
     }}>
-      <div style={{
+      <div className="card-responsive" style={{
         width: '100%',
         maxWidth: '700px',
         background: colors.bgSecondary,
@@ -218,9 +218,9 @@ export default function OnboardingPage() {
               }}>
                 Understanding Flux
               </h4>
-              <div style={{
+              <div className="responsive-grid-2" style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
                 gap: '16px',
                 fontSize: fontSize.sm,
               }}>

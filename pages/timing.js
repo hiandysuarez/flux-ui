@@ -105,7 +105,8 @@ export default function TimingPage() {
             <div style={{ padding: '12px 16px', borderBottom: `1px solid ${colors.border}` }}>
               <span style={{ fontWeight: 800, fontSize: 16, color: colors.textPrimary }}>Hourly Breakdown</span>
             </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="table-scroll" style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 500 }}>
               <thead>
                 <tr style={{ background: colors.bgSecondary }}>
                   <Th>Hour</Th>
@@ -146,6 +147,7 @@ export default function TimingPage() {
                 })}
               </tbody>
             </table>
+            </div>
           </div>
         </>
       )}

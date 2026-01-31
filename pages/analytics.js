@@ -369,7 +369,7 @@ export default function AnalyticsPage() {
                 }}>
                   Risk/Reward Profile
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
                   <div>
                     <div style={{ color: colors.textMuted, fontSize: 13, marginBottom: 8 }}>Average Win vs Loss</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -436,7 +436,7 @@ export default function AnalyticsPage() {
 
           {/* Breakdown Tab */}
           {activeBreakdown === 'breakdown' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
               {/* By Symbol - half width card */}
               <div style={{
                 ...cardStyle,

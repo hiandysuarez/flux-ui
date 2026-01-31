@@ -63,7 +63,7 @@ export default function LoginPage() {
       background: colors.bgPrimary,
       padding: '20px',
     }}>
-      <div style={{
+      <div className="card-responsive" style={{
         width: '100%',
         maxWidth: '400px',
         background: colors.bgSecondary,

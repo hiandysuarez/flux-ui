@@ -98,6 +98,118 @@ export default function App({ Component, pageProps }) {
           0% { background-position: -200% 0; }
           100% { background-position: 200% 0; }
         }
+
+        /* ===========================================
+           RESPONSIVE UTILITIES
+           =========================================== */
+
+        /* Mobile-first responsive grid */
+        .mobile-stack {
+          display: grid;
+          gap: 16px;
+        }
+
+        /* Table scroll wrapper */
+        .table-scroll {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        /* Hide on mobile */
+        .hide-mobile {
+          display: block;
+        }
+
+        /* ===========================================
+           TABLET BREAKPOINT (768px)
+           =========================================== */
+        @media (max-width: 768px) {
+          /* Typography scaling */
+          .hero-text {
+            font-size: 36px !important;
+          }
+          .section-title {
+            font-size: 20px !important;
+          }
+
+          /* Grid stacking */
+          .mobile-stack {
+            grid-template-columns: 1fr !important;
+          }
+          .grid-2-col {
+            grid-template-columns: 1fr !important;
+          }
+          .grid-3-col {
+            grid-template-columns: 1fr !important;
+          }
+
+          /* Header adjustments */
+          .header-badge {
+            display: none !important;
+          }
+
+          /* Card padding */
+          .card-responsive {
+            padding: 16px !important;
+          }
+
+          /* Main content padding */
+          main {
+            padding: 16px !important;
+          }
+
+          /* Hide less important columns */
+          .hide-mobile {
+            display: none !important;
+          }
+        }
+
+        /* ===========================================
+           MOBILE BREAKPOINT (640px)
+           =========================================== */
+        @media (max-width: 640px) {
+          /* Smaller typography */
+          .hero-text {
+            font-size: 28px !important;
+          }
+          .section-title {
+            font-size: 18px !important;
+          }
+
+          /* Tighter spacing */
+          .card-responsive {
+            padding: 12px !important;
+          }
+
+          main {
+            padding: 12px !important;
+          }
+
+          /* Full width buttons on mobile */
+          .btn-mobile-full {
+            width: 100% !important;
+          }
+
+          /* Stack flex items */
+          .flex-mobile-col {
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+        }
+
+        /* ===========================================
+           SMALL MOBILE (480px)
+           =========================================== */
+        @media (max-width: 480px) {
+          .hero-text {
+            font-size: 24px !important;
+          }
+
+          /* Even tighter padding */
+          main {
+            padding: 8px !important;
+          }
+        }
       `}</style>
       <Component {...pageProps} />
     </AuthProvider>

@@ -101,7 +101,8 @@ export default function SymbolsPage() {
             <div style={{ padding: '12px 16px', borderBottom: `1px solid ${colors.border}` }}>
               <span style={{ fontWeight: 800, fontSize: 16, color: colors.textPrimary }}>All Symbols</span>
             </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="table-scroll" style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
               <thead>
                 <tr style={{ background: colors.bgSecondary }}>
                   <Th>Symbol</Th>
@@ -155,6 +156,7 @@ export default function SymbolsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         </>
       )}
