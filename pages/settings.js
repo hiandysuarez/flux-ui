@@ -134,10 +134,12 @@ const SETTING_EXPLANATIONS = {
     tip: 'Match your position count to your ability to monitor trades.',
   },
   mq_velocity_enabled: {
-    title: 'Velocity Exit',
-    description: 'Automatically exit when price moves against you faster than normal.',
-    details: 'Compares adverse price movement to the ticker\'s ATR (Average True Range). If price is moving against your position faster than expected, triggers early exit.',
-    tip: 'Recommended to leave ON - catches rapid reversals before hitting full stop-loss.',
+    title: 'Quick Reversal Protection',
+    description: 'Exit early if the price suddenly moves against you.',
+    details: 'Every stock has a "normal" speed of movement. NVDA moves faster than SPY - that\'s expected. But if a stock suddenly drops much faster than its usual speed, something might be wrong (news, panic selling, etc.). This feature detects abnormally fast moves against your position and exits before hitting your full stop-loss.',
+    lowImpact: 'OFF: Only uses regular stop-loss. May hold through sudden drops.',
+    highImpact: 'ON: Exits early on unusually fast adverse moves. May exit too soon on volatile stocks.',
+    tip: 'Recommended ON. Protects you from flash crashes and sudden reversals.',
   },
   symbols: {
     title: 'Trading Symbols',
@@ -1036,8 +1038,8 @@ export default function SettingsPage() {
               }
             >
               <SettingRow
-                label="Velocity Exit Enabled"
-                description="When enabled, exits early if price moves against you faster than normal (based on ATR)."
+                label="Quick Reversal Protection"
+                description="Exit early if price drops unusually fast (protects against sudden reversals)."
                 colors={colors}
                 explanation={SETTING_EXPLANATIONS.mq_velocity_enabled}
                 expandedExplanations={expandedExplanations}
@@ -1056,8 +1058,8 @@ export default function SettingsPage() {
 
               {get('mq_velocity_enabled', true) && (
                 <SettingRow
-                  label="Velocity Multiplier"
-                  description="Exit if price is moving against you this many times faster than normal (ATR-based)."
+                  label="Speed Sensitivity"
+                  description="How fast is 'too fast'? 2x means exit if price moves against you twice as fast as normal for this stock."
                   colors={colors}
                 >
                   {isAdmin ? (
