@@ -653,12 +653,20 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
 
   if (!data || data.length < 2) return null;
 
+  // Theme colors for segmented fills
+  const goldColor = '#D4A574';
+  const redColor = '#F85149';
+
   const max = Math.max(...data, 0);
   const min = Math.min(...data, 0);
   const range = max - min || 1;
   const chartHeight = 220;
   const chartWidth = 100;
   const padding = 10;
+  const bottomY = chartHeight - padding;
+
+  // Calculate daily changes for segment coloring
+  const dailyChanges = data.map((val, i) => i === 0 ? val : val - data[i - 1]);
 
   // Generate smooth curve path using bezier curves
   const getPoint = (i) => {
@@ -667,9 +675,8 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
     return { x, y };
   };
 
-  // Create smooth bezier path
-  let pathD = `M ${getPoint(0).x},${getPoint(0).y}`;
-  for (let i = 0; i < data.length - 1; i++) {
+  // Get bezier control points for smooth curve between two points
+  const getBezierSegment = (i) => {
     const p0 = getPoint(Math.max(0, i - 1));
     const p1 = getPoint(i);
     const p2 = getPoint(i + 1);
@@ -680,18 +687,35 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
     const cp2x = p2.x - (p3.x - p1.x) / 6;
     const cp2y = p2.y - (p3.y - p1.y) / 6;
 
-    pathD += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
+    return { p1, p2, cp1: { x: cp1x, y: cp1y }, cp2: { x: cp2x, y: cp2y } };
+  };
+
+  // Create full smooth bezier path for the main line
+  let pathD = `M ${getPoint(0).x},${getPoint(0).y}`;
+  for (let i = 0; i < data.length - 1; i++) {
+    const seg = getBezierSegment(i);
+    pathD += ` C ${seg.cp1.x},${seg.cp1.y} ${seg.cp2.x},${seg.cp2.y} ${seg.p2.x},${seg.p2.y}`;
   }
 
-  // Zero line position
-  const zeroY = padding + ((1 - (0 - min) / range) * (chartHeight - padding * 2));
+  // Generate segmented area paths - each segment colored by daily change
+  const segmentPaths = [];
+  for (let i = 0; i < data.length - 1; i++) {
+    const seg = getBezierSegment(i);
+    const isPositive = dailyChanges[i + 1] >= 0;
+
+    // Create path: curve from p1 to p2, then down to bottom, across, back up
+    const segmentPath = `M ${seg.p1.x},${seg.p1.y} C ${seg.cp1.x},${seg.cp1.y} ${seg.cp2.x},${seg.cp2.y} ${seg.p2.x},${seg.p2.y} L ${seg.p2.x},${bottomY} L ${seg.p1.x},${bottomY} Z`;
+
+    segmentPaths.push({
+      path: segmentPath,
+      color: isPositive ? goldColor : redColor,
+      gradientId: `segGrad_${i}`,
+    });
+  }
 
   const finalPnl = data[data.length - 1];
   const lastPoint = getPoint(data.length - 1);
-  const lineColor = finalPnl >= 0 ? themeColors.accent : themeColors.error;
-
-  // Area path for gradient fill
-  const areaPath = pathD + ` L ${lastPoint.x},${zeroY} L ${getPoint(0).x},${zeroY} Z`;
+  const lineColor = finalPnl >= 0 ? goldColor : redColor;
 
   return (
     <div style={{ position: 'relative' }}>
@@ -712,32 +736,53 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
               y: e.clientY,
               trade: idx + 1,
               pnl: data[idx],
+              dailyChange: dailyChanges[idx],
             });
           }
         }}
         onMouseLeave={() => { setTooltip(null); setHoverIdx(null); }}
       >
-        {/* Background gradient */}
         <defs>
+          {/* Background gradient */}
           <linearGradient id="chartBgGradient" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={themeColors.bgSecondary} stopOpacity="0.5" />
             <stop offset="100%" stopColor={themeColors.bgPrimary} stopOpacity="0.8" />
           </linearGradient>
-          <linearGradient id="pnlAreaGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={lineColor} stopOpacity="0.25" />
-            <stop offset="50%" stopColor={lineColor} stopOpacity="0.1" />
-            <stop offset="100%" stopColor={lineColor} stopOpacity="0" />
+
+          {/* Segment gradients - gold and red with fading shadow */}
+          <linearGradient id="segGradGold" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={goldColor} stopOpacity="0.35" />
+            <stop offset="40%" stopColor={goldColor} stopOpacity="0.18" />
+            <stop offset="100%" stopColor={goldColor} stopOpacity="0.02" />
           </linearGradient>
-          <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor={lineColor} stopOpacity="0.6" />
-            <stop offset="50%" stopColor={lineColor} stopOpacity="1" />
-            <stop offset="100%" stopColor={lineColor} stopOpacity="1" />
+          <linearGradient id="segGradRed" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={redColor} stopOpacity="0.35" />
+            <stop offset="40%" stopColor={redColor} stopOpacity="0.18" />
+            <stop offset="100%" stopColor={redColor} stopOpacity="0.02" />
           </linearGradient>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+
+          {/* Line glow filter */}
+          <filter id="lineGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
             <feMerge>
               <feMergeNode in="coloredBlur"/>
               <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+
+          {/* Subtle inner shadow for depth */}
+          <filter id="innerShadow" x="-10%" y="-10%" width="120%" height="120%">
+            <feComponentTransfer in="SourceAlpha">
+              <feFuncA type="table" tableValues="1 0" />
+            </feComponentTransfer>
+            <feGaussianBlur stdDeviation="1" />
+            <feOffset dx="0" dy="1" result="offsetblur" />
+            <feFlood floodColor="rgba(0,0,0,0.3)" result="color" />
+            <feComposite in2="offsetblur" operator="in" />
+            <feComposite in2="SourceAlpha" operator="in" />
+            <feMerge>
+              <feMergeNode in="SourceGraphic" />
+              <feMergeNode />
             </feMerge>
           </filter>
         </defs>
@@ -746,7 +791,7 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
         <rect x="0" y="0" width={chartWidth} height={chartHeight} fill="url(#chartBgGradient)" rx="2" />
 
         {/* Subtle horizontal grid lines */}
-        {[0.2, 0.4, 0.6, 0.8].map(pct => (
+        {[0.25, 0.5, 0.75].map(pct => (
           <line
             key={pct}
             x1={padding}
@@ -754,38 +799,29 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
             x2={chartWidth - padding}
             y2={padding + pct * (chartHeight - padding * 2)}
             stroke={themeColors.border}
-            strokeWidth="0.2"
-            strokeOpacity="0.5"
+            strokeWidth="0.15"
+            strokeOpacity="0.4"
           />
         ))}
 
-        {/* Zero line */}
-        <line
-          x1={padding}
-          y1={zeroY}
-          x2={chartWidth - padding}
-          y2={zeroY}
-          stroke={themeColors.textMuted}
-          strokeWidth="0.5"
-          strokeDasharray="3,3"
-          strokeOpacity="0.5"
-        />
+        {/* Segmented area fills with gradient shadows */}
+        {segmentPaths.map((seg, i) => (
+          <path
+            key={i}
+            d={seg.path}
+            fill={seg.color === goldColor ? 'url(#segGradGold)' : 'url(#segGradRed)'}
+          />
+        ))}
 
-        {/* Area fill */}
-        <path
-          d={areaPath}
-          fill="url(#pnlAreaGradient)"
-        />
-
-        {/* Main line with glow */}
+        {/* Main curve line with glow */}
         <path
           d={pathD}
           fill="none"
           stroke={lineColor}
-          strokeWidth="2"
+          strokeWidth="1.8"
           strokeLinecap="round"
           strokeLinejoin="round"
-          filter="url(#glow)"
+          filter="url(#lineGlow)"
         />
 
         {/* Hover vertical line */}
@@ -794,11 +830,11 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
             x1={getPoint(hoverIdx).x}
             y1={padding}
             x2={getPoint(hoverIdx).x}
-            y2={chartHeight - padding}
+            y2={bottomY}
             stroke={themeColors.textMuted}
-            strokeWidth="0.5"
+            strokeWidth="0.4"
             strokeDasharray="2,2"
-            strokeOpacity="0.5"
+            strokeOpacity="0.6"
           />
         )}
 
@@ -807,10 +843,10 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
           <circle
             cx={getPoint(hoverIdx).x}
             cy={getPoint(hoverIdx).y}
-            r="3"
-            fill={lineColor}
+            r="2.5"
+            fill={dailyChanges[hoverIdx] >= 0 ? goldColor : redColor}
             stroke={themeColors.bgCard}
-            strokeWidth="1.5"
+            strokeWidth="1.2"
           />
         )}
 
@@ -818,11 +854,11 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
         <circle
           cx={lastPoint.x}
           cy={lastPoint.y}
-          r="4"
+          r="3.5"
           fill={lineColor}
           stroke={themeColors.bgCard}
-          strokeWidth="2"
-          filter="url(#glow)"
+          strokeWidth="1.5"
+          filter="url(#lineGlow)"
         />
       </svg>
 
@@ -831,27 +867,38 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
         <div style={{
           position: 'fixed',
           left: tooltip.x + 12,
-          top: tooltip.y - 60,
+          top: tooltip.y - 80,
           background: themeColors.bgCard,
           border: `1px solid ${themeColors.border}`,
-          padding: '10px 14px',
+          padding: '12px 16px',
           borderRadius: 10,
           fontSize: 12,
           pointerEvents: 'none',
           zIndex: 100,
-          boxShadow: `0 8px 24px rgba(0,0,0,0.4), 0 0 0 1px ${themeColors.border}`,
-          backdropFilter: 'blur(8px)',
+          boxShadow: `0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px ${themeColors.border}`,
+          backdropFilter: 'blur(12px)',
+          minWidth: 120,
         }}>
-          <div style={{ color: themeColors.textMuted, marginBottom: 6, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          <div style={{ color: themeColors.textMuted, marginBottom: 8, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
             Trade #{tooltip.trade}
           </div>
           <div style={{
-            fontWeight: 800,
-            fontSize: 18,
-            color: tooltip.pnl >= 0 ? themeColors.accent : themeColors.error,
+            fontWeight: 700,
+            fontSize: 16,
+            color: tooltip.pnl >= 0 ? goldColor : redColor,
             fontFamily: fontFamily.mono,
+            marginBottom: 6,
           }}>
             {formatCurrency(tooltip.pnl)}
+          </div>
+          <div style={{
+            fontSize: 11,
+            color: tooltip.dailyChange >= 0 ? goldColor : redColor,
+            fontFamily: fontFamily.mono,
+            opacity: 0.85,
+          }}>
+            {tooltip.dailyChange >= 0 ? '+' : ''}{formatCurrency(tooltip.dailyChange)}
+            <span style={{ color: themeColors.textMuted, marginLeft: 4 }}>change</span>
           </div>
         </div>
       )}
@@ -864,27 +911,27 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
         marginTop: 12,
         padding: '0 4px',
       }}>
-        <span style={{ fontSize: 11, color: themeColors.textMuted }}>Trade 1</span>
+        <span style={{ fontSize: 10, color: themeColors.textMuted, opacity: 0.7 }}>Trade 1</span>
         <div style={{
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          padding: '6px 12px',
-          background: finalPnl >= 0 ? `${themeColors.accent}15` : `${themeColors.error}15`,
-          borderRadius: 6,
-          border: `1px solid ${finalPnl >= 0 ? themeColors.accent : themeColors.error}30`,
+          padding: '6px 14px',
+          background: finalPnl >= 0 ? `${goldColor}12` : `${redColor}12`,
+          borderRadius: 8,
+          border: `1px solid ${finalPnl >= 0 ? goldColor : redColor}25`,
         }}>
-          <span style={{ fontSize: 11, color: themeColors.textMuted }}>Final P&L</span>
+          <span style={{ fontSize: 10, color: themeColors.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Final P&L</span>
           <span style={{
-            color: finalPnl >= 0 ? themeColors.accent : themeColors.error,
-            fontWeight: 800,
+            color: finalPnl >= 0 ? goldColor : redColor,
+            fontWeight: 700,
             fontSize: 14,
             fontFamily: fontFamily.mono,
           }}>
             {formatCurrency(finalPnl)}
           </span>
         </div>
-        <span style={{ fontSize: 11, color: themeColors.textMuted }}>Trade {data.length}</span>
+        <span style={{ fontSize: 10, color: themeColors.textMuted, opacity: 0.7 }}>Trade {data.length}</span>
       </div>
     </div>
   );
