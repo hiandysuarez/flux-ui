@@ -81,11 +81,16 @@ function Dashboard() {
       if (!silent) setLoading(true);
 
       const [accountRes, positionsRes, tradesRes, statusRes] = await Promise.all([
-        fetchAccountSummary().catch(() => null),
-        fetchActivePositions().catch(() => ({ positions: [] })),
-        fetchRecentTrades(10).catch(() => ({ trades: [] })),
-        fetchStatus().catch(() => null),
+        fetchAccountSummary().catch((e) => { console.error('Account fetch error:', e); return null; }),
+        fetchActivePositions().catch((e) => { console.error('Positions fetch error:', e); return { positions: [] }; }),
+        fetchRecentTrades(10).catch((e) => { console.error('Trades fetch error:', e); return { trades: [] }; }),
+        fetchStatus().catch((e) => { console.error('Status fetch error:', e); return null; }),
       ]);
+
+      // Debug: log account data
+      if (!silent) {
+        console.log('Account Summary:', accountRes);
+      }
 
       setAccount(accountRes);
       setPositions(positionsRes?.positions || []);
@@ -365,17 +370,18 @@ function Dashboard() {
                 onClick={handleRunCycle}
                 disabled={acting}
                 style={{
-                  padding: `${spacing.sm} ${spacing.md}`,
+                  padding: `${spacing.md} ${spacing.xl}`,
                   background: colors.accent,
                   color: colors.bgPrimary,
                   border: 'none',
                   borderRadius: borderRadius.md,
                   fontFamily: fontFamily.sans,
-                  fontSize: fontSize.sm,
-                  fontWeight: fontWeight.semibold,
+                  fontSize: fontSize.md,
+                  fontWeight: fontWeight.bold,
                   cursor: acting ? 'wait' : 'pointer',
                   opacity: acting ? 0.7 : 1,
                   transition: transitions.fast,
+                  boxShadow: `0 2px 8px rgba(212, 165, 116, 0.3)`,
                 }}
               >
                 {acting ? 'Running...' : 'Run Cycle'}
@@ -636,6 +642,17 @@ function ActivityRow({ trade, colors, index }) {
   const isWin = trade.win === true;
   const confidence = parseFloat(trade.confidence || 0) * 100;
 
+  // Format date as MM-DD-YY
+  const formatDateTime = (ts) => {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const year = String(d.getFullYear()).slice(-2);
+    const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    return `${month}-${day}-${year} ${time}`;
+  };
+
   return (
     <div style={{
       display: 'flex',
@@ -646,18 +663,14 @@ function ActivityRow({ trade, colors, index }) {
       animationDelay: `${index * 0.1}s`,
       opacity: 0,
     }}>
-      {/* Time */}
+      {/* Date & Time */}
       <div style={{
-        width: 80,
+        width: 130,
         fontSize: fontSize.sm,
         color: colors.textMuted,
         fontFamily: fontFamily.mono,
       }}>
-        {trade.ts ? new Date(trade.ts).toLocaleTimeString('en-US', {
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-        }) : ''}
+        {formatDateTime(trade.ts)}
       </div>
 
       {/* Action */}
