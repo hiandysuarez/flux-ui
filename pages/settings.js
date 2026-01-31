@@ -133,11 +133,11 @@ const SETTING_EXPLANATIONS = {
     highImpact: 'More (5-10): Diversified exposure, but diluted focus.',
     tip: 'Match your position count to your ability to monitor trades.',
   },
-  mq_exit_enabled: {
-    title: 'Market Quality Exit',
-    description: 'Automatically exit when market conditions deteriorate.',
-    details: 'Monitors spread width, volume, and volatility. If conditions become unfavorable (wide spreads, low volume), triggers early exit to avoid slippage.',
-    tip: 'Recommended to leave ON - protects you during sudden liquidity drops.',
+  mq_velocity_enabled: {
+    title: 'Velocity Exit',
+    description: 'Automatically exit when price moves against you faster than normal.',
+    details: 'Compares adverse price movement to the ticker\'s ATR (Average True Range). If price is moving against your position faster than expected, triggers early exit.',
+    tip: 'Recommended to leave ON - catches rapid reversals before hitting full stop-loss.',
   },
   symbols: {
     title: 'Trading Symbols',
@@ -1036,42 +1036,43 @@ export default function SettingsPage() {
               }
             >
               <SettingRow
-                label="MQ Exit Enabled"
-                description="When enabled, positions may be closed early if liquidity drops or spreads widen."
+                label="Velocity Exit Enabled"
+                description="When enabled, exits early if price moves against you faster than normal (based on ATR)."
                 colors={colors}
-                explanation={SETTING_EXPLANATIONS.mq_exit_enabled}
+                explanation={SETTING_EXPLANATIONS.mq_velocity_enabled}
                 expandedExplanations={expandedExplanations}
                 setExpandedExplanations={setExpandedExplanations}
-                settingKey="mq_exit_enabled"
+                settingKey="mq_velocity_enabled"
               >
                 {isAdmin ? (
                   <Toggle
-                    value={get('mq_exit_enabled', true)}
-                    onChange={(v) => set('mq_exit_enabled', v)}
+                    value={get('mq_velocity_enabled', true)}
+                    onChange={(v) => set('mq_velocity_enabled', v)}
                   />
                 ) : (
-                  <ReadOnlyToggle value={get('mq_exit_enabled', true)} />
+                  <ReadOnlyToggle value={get('mq_velocity_enabled', true)} />
                 )}
               </SettingRow>
 
-              {get('mq_exit_enabled', true) && (
+              {get('mq_velocity_enabled', true) && (
                 <SettingRow
-                  label="MQ Loss Threshold"
-                  description="MQ exit only triggers if position is already at this loss level."
+                  label="Velocity Multiplier"
+                  description="Exit if price is moving against you this many times faster than normal (ATR-based)."
                   colors={colors}
                 >
                   {isAdmin ? (
                     <ValidatedNumberInput
-                      value={get('mq_exit_loss_threshold', 0.001)}
-                      onChange={(v) => set('mq_exit_loss_threshold', v)}
-                      step={0.0001}
-                      min={0}
-                      max={0.01}
-                      isPercent
+                      value={get('mq_velocity_multiplier', 2.0)}
+                      onChange={(v) => set('mq_velocity_multiplier', v)}
+                      step={0.1}
+                      min={1.5}
+                      max={5.0}
                       colors={colors}
                     />
                   ) : (
-                    <ReadOnlyPercent colors={colors} value={get('mq_exit_loss_threshold', 0.001)} />
+                    <span style={{ fontFamily: 'monospace', color: colors.textPrimary }}>
+                      {get('mq_velocity_multiplier', 2.0)}x
+                    </span>
                   )}
                 </SettingRow>
               )}
