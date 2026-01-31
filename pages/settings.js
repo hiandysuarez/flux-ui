@@ -37,6 +37,8 @@ const DEFAULT_GUARDRAILS = {
   take_profit_pct: { min: 0.005, max: 0.05, default: 0.02, recommended: 0.02 },
   risk_per_trade_pct: { min: 0.001, max: 0.01, default: 0.005, recommended: 0.005 },
   max_hold_min: { min: 15, max: 390, default: 120, recommended: 120 },
+  trailing_stop_activation: { min: 0.30, max: 0.95, default: 0.70, recommended: 0.70 },
+  trailing_stop_distance: { min: 0.00, max: 1.00, default: 1.00, recommended: 1.00 },
   mom_entry_pct: { min: 0.001, max: 0.01, default: 0.002, recommended: 0.002 },
   mom_lookback: { min: 3, max: 20, default: 8, recommended: 8 },
 };
@@ -140,6 +142,30 @@ const SETTING_EXPLANATIONS = {
     lowImpact: 'OFF: Only uses regular stop-loss. May hold through sudden drops.',
     highImpact: 'ON: Exits early on unusually fast adverse moves. May exit too soon on volatile stocks.',
     tip: 'Recommended ON. Protects you from flash crashes and sudden reversals.',
+  },
+  trailing_stop_enabled: {
+    title: 'Trailing Stop',
+    description: 'Lock in gains by moving your stop-loss up as price rises.',
+    details: 'When a trade moves in your favor and reaches a certain profit level (the activation point), a trailing stop is set. By default, this stop is at your entry price (break-even), so if the trade reverses, you exit without a loss instead of riding back down to your stop-loss.',
+    lowImpact: 'OFF: Uses fixed stop-loss only. May give back unrealized gains on reversals.',
+    highImpact: 'ON: Protects gains by activating a trailing stop once trade is profitable.',
+    tip: 'Recommended ON. Helps preserve capital on trades that turn around.',
+  },
+  trailing_stop_activation: {
+    title: 'Trailing Stop Activation',
+    description: 'When to activate the trailing stop.',
+    details: 'Percentage of your take-profit target that must be reached before the trailing stop activates. At 70%, if your take-profit is 2%, the trailing stop activates when you hit +1.4% gain.',
+    lowImpact: 'Lower (30-50%): Activates earlier, protects smaller gains.',
+    highImpact: 'Higher (80-95%): Only activates near take-profit, lets trade run longer.',
+    tip: '70% is a good balance - gives the trade room to develop.',
+  },
+  trailing_stop_distance: {
+    title: 'Trailing Stop Distance',
+    description: 'How much profit to give back before exiting.',
+    details: '1.0 = break-even (stop at entry price). 0.5 = lock in 50% of peak gain. 0.0 = tightest trail (stop follows price closely). The default (1.0) gives the trade maximum room to breathe.',
+    lowImpact: 'Lower (0.0-0.5): Locks in more profit but may exit too early.',
+    highImpact: 'Higher (1.0): Break-even stop only. Maximum room for trade to work.',
+    tip: 'Start with 1.0 (break-even). Tighten only if you want to lock in partial gains.',
   },
   symbols: {
     title: 'Trading Symbols',
@@ -1077,6 +1103,98 @@ export default function SettingsPage() {
                     </span>
                   )}
                 </SettingRow>
+              )}
+            </SettingsSection>
+
+            {/* Trailing Stop Section */}
+            <SettingsSection
+              title="Trailing Stop"
+              subtitle="Lock in gains by moving your stop up as price rises."
+              colors={colors}
+              icon={
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                  <polyline points="17 6 23 6 23 12"/>
+                </svg>
+              }
+            >
+              <SettingRow
+                label="Trailing Stop"
+                description="Activate a break-even stop once trade reaches target profit level."
+                colors={colors}
+                explanation={SETTING_EXPLANATIONS.trailing_stop_enabled}
+                expandedExplanations={expandedExplanations}
+                setExpandedExplanations={setExpandedExplanations}
+                settingKey="trailing_stop_enabled"
+              >
+                {isAdmin ? (
+                  <Toggle
+                    value={get('trailing_stop_enabled', true)}
+                    onChange={(v) => set('trailing_stop_enabled', v)}
+                  />
+                ) : (
+                  <ReadOnlyToggle value={get('trailing_stop_enabled', true)} />
+                )}
+              </SettingRow>
+
+              {get('trailing_stop_enabled', true) && (
+                <>
+                  <SettingRow
+                    label="Activation Point"
+                    description="Activates when trade reaches this % of take-profit target."
+                    guardrail={guardrails.trailing_stop_activation}
+                    value={get('trailing_stop_activation', 0.70)}
+                    colors={colors}
+                    explanation={SETTING_EXPLANATIONS.trailing_stop_activation}
+                    expandedExplanations={expandedExplanations}
+                    setExpandedExplanations={setExpandedExplanations}
+                    settingKey="trailing_stop_activation"
+                  >
+                    {isAdmin ? (
+                      <ValidatedNumberInput
+                        value={get('trailing_stop_activation', 0.70)}
+                        onChange={(v) => set('trailing_stop_activation', v)}
+                        step={0.05}
+                        min={0.30}
+                        max={0.95}
+                        colors={colors}
+                        format={(v) => `${(v * 100).toFixed(0)}%`}
+                      />
+                    ) : (
+                      <span style={{ fontFamily: 'monospace', color: colors.textPrimary }}>
+                        {(get('trailing_stop_activation', 0.70) * 100).toFixed(0)}%
+                      </span>
+                    )}
+                  </SettingRow>
+
+                  <SettingRow
+                    label="Trail Distance"
+                    description="How much gain to give back (1.0 = break-even at entry, 0.5 = lock 50%)."
+                    guardrail={guardrails.trailing_stop_distance}
+                    value={get('trailing_stop_distance', 1.00)}
+                    colors={colors}
+                    explanation={SETTING_EXPLANATIONS.trailing_stop_distance}
+                    expandedExplanations={expandedExplanations}
+                    setExpandedExplanations={setExpandedExplanations}
+                    settingKey="trailing_stop_distance"
+                  >
+                    {isAdmin ? (
+                      <ValidatedNumberInput
+                        value={get('trailing_stop_distance', 1.00)}
+                        onChange={(v) => set('trailing_stop_distance', v)}
+                        step={0.1}
+                        min={0.00}
+                        max={1.00}
+                        colors={colors}
+                        format={(v) => v === 1 ? 'Break-even' : `Lock ${((1-v) * 100).toFixed(0)}%`}
+                      />
+                    ) : (
+                      <span style={{ fontFamily: 'monospace', color: colors.textPrimary }}>
+                        {get('trailing_stop_distance', 1.00) === 1 ? 'Break-even' : `Lock ${((1 - get('trailing_stop_distance', 1.00)) * 100).toFixed(0)}%`}
+                      </span>
+                    )}
+                  </SettingRow>
+                </>
               )}
             </SettingsSection>
           </div>
