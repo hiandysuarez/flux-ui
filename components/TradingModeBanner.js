@@ -12,14 +12,15 @@ import {
   transitions,
 } from '../lib/theme';
 
-export default function TradingModeBanner({ status, onModeChange }) {
+export default function TradingModeBanner({ userSettings, brokerStatus, onModeChange }) {
   const [switching, setSwitching] = useState(false);
   const [error, setError] = useState(null);
   const colors = darkTheme;
 
-  // Get trading mode from status (with fallback)
-  const tradingMode = status?.trading_mode || 'paper';
-  const brokerMode = status?.broker_mode || 'paper';
+  // Get trading mode from USER SETTINGS (not system status)
+  const tradingMode = userSettings?.trading_mode || 'paper';
+  // Get broker mode from system status (actual Alpaca connection)
+  const brokerMode = brokerStatus?.broker_mode || 'paper';
 
   // Mode configurations
   const modeConfig = {

@@ -5,6 +5,7 @@ import {
   fetchAccountSummary,
   fetchActivePositions,
   fetchRecentTrades,
+  fetchUserSettings,
   runDecisionCycle,
   forceExitAll,
 } from '../lib/api';
@@ -67,6 +68,7 @@ function Dashboard() {
   const [positions, setPositions] = useState([]);
   const [trades, setTrades] = useState([]);
   const [status, setStatus] = useState(null);
+  const [userSettings, setUserSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
   const [toasts, setToasts] = useState([]);
@@ -82,18 +84,30 @@ function Dashboard() {
     try {
       if (!silent) setLoading(true);
 
+      // First fetch user settings to get trading mode
+      const userSettingsRes = await fetchUserSettings().catch((e) => {
+        console.error('UserSettings fetch error:', e);
+        return { settings: { trading_mode: 'paper' } };
+      });
+
+      const settings = userSettingsRes?.settings || { trading_mode: 'paper' };
+      const tradingMode = settings.trading_mode || 'paper';
+
+      // Then fetch data based on trading mode
       const [accountRes, positionsRes, tradesRes, statusRes] = await Promise.all([
-        fetchAccountSummary().catch((e) => { console.error('Account fetch error:', e); return null; }),
+        fetchAccountSummary(tradingMode).catch((e) => { console.error('Account fetch error:', e); return null; }),
         fetchActivePositions().catch((e) => { console.error('Positions fetch error:', e); return { positions: [] }; }),
-        fetchRecentTrades(10).catch((e) => { console.error('Trades fetch error:', e); return { trades: [] }; }),
+        fetchRecentTrades(10, tradingMode).catch((e) => { console.error('Trades fetch error:', e); return { trades: [] }; }),
         fetchStatus().catch((e) => { console.error('Status fetch error:', e); return null; }),
       ]);
 
       // Debug: log account data
       if (!silent) {
         console.log('Account Summary:', accountRes);
+        console.log('Trading Mode:', tradingMode);
       }
 
+      setUserSettings(settings);
       setAccount(accountRes);
       setPositions(positionsRes?.positions || []);
       setTrades(tradesRes?.trades || []);
@@ -237,7 +251,7 @@ function Dashboard() {
         `}</style>
 
         {/* Trading Mode Banner */}
-        <TradingModeBanner status={status} onModeChange={() => load(true)} />
+        <TradingModeBanner userSettings={userSettings} brokerStatus={status} onModeChange={() => load(true)} />
 
         {/* Subscription Limit Banner */}
         <SubscriptionBanner />
