@@ -6,6 +6,7 @@ import {
   fetchActivePositions,
   fetchRecentTrades,
   fetchUserSettings,
+  fetchDailyPnl,
   runDecisionCycle,
   forceExitAll,
 } from '../lib/api';
@@ -68,6 +69,7 @@ function Dashboard() {
   const [trades, setTrades] = useState([]);
   const [status, setStatus] = useState(null);
   const [userSettings, setUserSettings] = useState(null);
+  const [dailyPnl, setDailyPnl] = useState([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
   const [toasts, setToasts] = useState([]);
@@ -93,11 +95,12 @@ function Dashboard() {
       const tradingMode = settings.trading_mode || 'paper';
 
       // Then fetch data based on trading mode
-      const [accountRes, positionsRes, tradesRes, statusRes] = await Promise.all([
+      const [accountRes, positionsRes, tradesRes, statusRes, dailyPnlRes] = await Promise.all([
         fetchAccountSummary(tradingMode).catch((e) => { console.error('Account fetch error:', e); return null; }),
         fetchActivePositions().catch((e) => { console.error('Positions fetch error:', e); return { positions: [] }; }),
         fetchRecentTrades(10, tradingMode).catch((e) => { console.error('Trades fetch error:', e); return { trades: [] }; }),
         fetchStatus().catch((e) => { console.error('Status fetch error:', e); return null; }),
+        fetchDailyPnl(14).catch((e) => { console.error('DailyPnl fetch error:', e); return { data: [] }; }),
       ]);
 
       // Debug: log account data
@@ -111,6 +114,7 @@ function Dashboard() {
       setPositions(positionsRes?.positions || []);
       setTrades(tradesRes?.trades || []);
       setStatus(statusRes);
+      setDailyPnl(dailyPnlRes?.data || []);
       setLastRefresh(new Date());
     } catch (e) {
       console.error('Dashboard load error:', e);
@@ -330,6 +334,23 @@ function Dashboard() {
             <span className="hide-mobile">•</span>
             <span>{todayWinRate}% win rate</span>
           </div>
+
+          {/* 14-day P&L Sparkline */}
+          {dailyPnl.length >= 2 && (
+            <div style={{ marginTop: spacing.lg }}>
+              <div style={{
+                fontSize: fontSize.xs,
+                color: colors.textMuted,
+                fontFamily: fontFamily.sans,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: spacing.xs,
+              }}>
+                14-Day Trend
+              </div>
+              <PnlSparkline data={dailyPnl} colors={colors} width={200} height={40} />
+            </div>
+          )}
         </section>
 
         {/* ===== Quick Stats Row ===== */}
@@ -831,5 +852,66 @@ function SkeletonHero({ colors }) {
         ))}
       </div>
     </>
+  );
+}
+
+// Mini sparkline for daily P&L trend (14 days)
+function PnlSparkline({ data, colors, width = 200, height = 40 }) {
+  if (!data || data.length < 2) return null;
+
+  // Extract P&L values from data (expecting {date, pnl} objects)
+  const values = data.map(d => d.pnl || d.total_pnl || 0);
+
+  const max = Math.max(...values, 0);
+  const min = Math.min(...values, 0);
+  const range = max - min || 1;
+  const padding = 4;
+  const chartHeight = height - padding * 2;
+  const chartWidth = width - padding * 2;
+
+  // Generate smooth path
+  const points = values.map((v, i) => {
+    const x = padding + (i / (values.length - 1)) * chartWidth;
+    const y = padding + chartHeight - ((v - min) / range) * chartHeight;
+    return { x, y, v };
+  });
+
+  // Create smooth bezier curve
+  let pathD = `M ${points[0].x} ${points[0].y}`;
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1];
+    const curr = points[i];
+    const cpx = (prev.x + curr.x) / 2;
+    pathD += ` C ${cpx} ${prev.y}, ${cpx} ${curr.y}, ${curr.x} ${curr.y}`;
+  }
+
+  // Gradient fill path
+  const fillPath = pathD + ` L ${points[points.length - 1].x} ${height} L ${points[0].x} ${height} Z`;
+
+  // Last value determines color
+  const lastVal = values[values.length - 1];
+  const strokeColor = lastVal >= 0 ? colors.accent : colors.error;
+  const gradientId = `pnl-gradient-${lastVal >= 0 ? 'up' : 'down'}`;
+
+  return (
+    <svg width={width} height={height} style={{ display: 'block', margin: '0 auto' }}>
+      <defs>
+        <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor={strokeColor} stopOpacity="0.3" />
+          <stop offset="100%" stopColor={strokeColor} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {/* Fill area */}
+      <path d={fillPath} fill={`url(#${gradientId})`} />
+      {/* Line */}
+      <path d={pathD} fill="none" stroke={strokeColor} strokeWidth="2" strokeLinecap="round" />
+      {/* End dot */}
+      <circle
+        cx={points[points.length - 1].x}
+        cy={points[points.length - 1].y}
+        r="3"
+        fill={strokeColor}
+      />
+    </svg>
   );
 }
