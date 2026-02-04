@@ -18,6 +18,7 @@ export default function SubscriptionBanner() {
   const [limits, setLimits] = useState(null);
   const [loading, setLoading] = useState(true);
   const [dismissed, setDismissed] = useState(false);
+  const [visible, setVisible] = useState(false);
   const colors = darkTheme;
 
   useEffect(() => {
@@ -28,6 +29,15 @@ export default function SubscriptionBanner() {
       .catch(err => console.error('SubscriptionBanner fetch error:', err))
       .finally(() => setLoading(false));
   }, []);
+
+  // Trigger slide-down animation after mount
+  useEffect(() => {
+    if (!loading && limits && !dismissed) {
+      // Small delay to ensure CSS transition works
+      const timer = setTimeout(() => setVisible(true), 50);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, limits, dismissed]);
 
   // Don't show if loading, no limits, can trade, or dismissed
   if (loading || !limits || dismissed) return null;
@@ -55,55 +65,61 @@ export default function SubscriptionBanner() {
 
   return (
     <div style={{
-      padding: `${spacing.md} ${spacing.lg}`,
+      padding: `${spacing.lg} ${spacing.xl}`,
       borderRadius: borderRadius.lg,
       marginBottom: spacing.lg,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: spacing.md,
+      gap: spacing.lg,
       background: isBlocked
-        ? `linear-gradient(135deg, ${colors.error}15, ${colors.error}08)`
-        : `linear-gradient(135deg, ${colors.warning}15, ${colors.warning}08)`,
-      border: `1px solid ${isBlocked ? colors.error : colors.warning}30`,
+        ? `linear-gradient(135deg, ${colors.error}18, ${colors.error}08)`
+        : `linear-gradient(135deg, ${colors.warning}18, ${colors.warning}08)`,
+      border: `1px solid ${isBlocked ? colors.error : colors.warning}40`,
+      // Slide-down animation
+      transform: visible ? 'translateY(0)' : 'translateY(-20px)',
+      opacity: visible ? 1 : 0,
+      transition: 'transform 0.4s ease-out, opacity 0.4s ease-out',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md, flex: 1 }}>
-        <span style={{ fontSize: '20px' }}>{isBlocked ? '⚠️' : '📈'}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: spacing.lg, flex: 1 }}>
+        <span style={{ fontSize: '28px' }}>{isBlocked ? '⚠️' : '📈'}</span>
         <div>
           <div style={{
-            fontSize: fontSize.sm,
-            fontWeight: fontWeight.semibold,
+            fontSize: fontSize.base,
+            fontWeight: fontWeight.bold,
             fontFamily: fontFamily.sans,
             color: colors.textPrimary,
-            marginBottom: '2px',
+            marginBottom: '4px',
           }}>
             {isBlocked ? 'Trading Paused' : 'Approaching Limit'}
           </div>
           <div style={{
-            fontSize: fontSize.xs,
+            fontSize: fontSize.sm,
             fontFamily: fontFamily.sans,
             color: colors.textSecondary,
+            lineHeight: 1.4,
           }}>
             {message}
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: spacing.sm }}>
+      <div style={{ display: 'flex', gap: spacing.md, alignItems: 'center' }}>
         <button
           onClick={() => router.push('/upgrade')}
           style={{
-            padding: `${spacing.sm} ${spacing.lg}`,
+            padding: `${spacing.md} ${spacing.xl}`,
             borderRadius: borderRadius.md,
             border: 'none',
             background: colors.accent,
             color: colors.bgPrimary,
-            fontSize: fontSize.sm,
-            fontWeight: fontWeight.semibold,
+            fontSize: fontSize.base,
+            fontWeight: fontWeight.bold,
             fontFamily: fontFamily.sans,
             cursor: 'pointer',
             transition: transitions.fast,
             whiteSpace: 'nowrap',
+            boxShadow: `0 2px 8px ${colors.accent}40`,
           }}
         >
           Upgrade to {upgradeTier}
@@ -111,12 +127,12 @@ export default function SubscriptionBanner() {
         <button
           onClick={() => setDismissed(true)}
           style={{
-            padding: `${spacing.sm} ${spacing.md}`,
+            padding: `${spacing.md} ${spacing.lg}`,
             borderRadius: borderRadius.md,
             border: `1px solid ${colors.border}`,
             background: 'transparent',
             color: colors.textMuted,
-            fontSize: fontSize.sm,
+            fontSize: fontSize.base,
             fontFamily: fontFamily.sans,
             cursor: 'pointer',
             transition: transitions.fast,

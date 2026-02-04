@@ -58,7 +58,13 @@ export default function Layout({ children, active = 'dashboard' }) {
       setTradingMode(newMode);
     } catch (e) {
       console.error('Failed to save trading mode:', e);
-      alert('Failed to change trading mode. Please try again.');
+      // Check if it's a "no live account" error (403)
+      const errorMsg = e.message || '';
+      if (errorMsg.includes('403') || errorMsg.toLowerCase().includes('live trading not available')) {
+        alert('Live trading is not available.\n\nPlease link a live broker account or upgrade your subscription to enable live trading.');
+      } else {
+        alert('Failed to change trading mode. Please try again.');
+      }
     } finally {
       setModeLoading(false);
     }
