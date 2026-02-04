@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../lib/auth';
+import { fetchUserSettings, saveUserSettings } from '../lib/api';
 import {
   darkTheme,
   borderRadius,
@@ -15,11 +16,53 @@ import {
 
 export default function Layout({ children, active = 'dashboard' }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [tradingMode, setTradingMode] = useState('paper');
+  const [modeLoading, setModeLoading] = useState(false);
   const router = useRouter();
   const { user, loading, signOut } = useAuth();
 
   // Dark Luxe theme - single theme
   const colors = darkTheme;
+
+  // Fetch trading mode on mount
+  useEffect(() => {
+    async function loadTradingMode() {
+      if (!user) return;
+      try {
+        const res = await fetchUserSettings();
+        if (res?.settings?.trading_mode) {
+          setTradingMode(res.settings.trading_mode);
+        }
+      } catch (e) {
+        console.error('Failed to load trading mode:', e);
+      }
+    }
+    loadTradingMode();
+  }, [user]);
+
+  // Handle mode change
+  const handleModeChange = async (newMode) => {
+    if (newMode === tradingMode || modeLoading) return;
+
+    // Confirm before switching to live
+    if (newMode === 'live') {
+      const confirmed = window.confirm(
+        'Switch to LIVE mode?\n\nThis will execute real trades with real money. Make sure your broker account is properly configured.'
+      );
+      if (!confirmed) return;
+    }
+
+    setModeLoading(true);
+    try {
+      await saveUserSettings({ trading_mode: newMode });
+      setTradingMode(newMode);
+    } catch (e) {
+      console.error('Failed to save trading mode:', e);
+      alert('Failed to change trading mode. Please try again.');
+    } finally {
+      setModeLoading(false);
+    }
+  };
 
   // Redirect to landing if not authenticated
   useEffect(() => {
@@ -72,7 +115,8 @@ export default function Layout({ children, active = 'dashboard' }) {
   return (
     <div style={{
       minHeight: '100vh',
-      background: colors.bgPrimary,
+      background: tradingMode === 'live' ? '#050810' : colors.bgPrimary,
+      transition: 'background-color 0.4s ease',
       color: colors.textPrimary,
     }}>
       {/* Styles + animations */}
@@ -185,6 +229,53 @@ export default function Layout({ children, active = 'dashboard' }) {
         {/* Spacer */}
         <div style={{ flex: 1 }} />
 
+        {/* Paper/Live Mode Toggle */}
+        <div style={{
+          display: 'flex',
+          background: colors.bgSecondary,
+          borderRadius: '20px',
+          padding: '4px',
+          border: `1px solid ${colors.border}`,
+          opacity: modeLoading ? 0.7 : 1,
+        }}>
+          <button
+            onClick={() => handleModeChange('paper')}
+            disabled={modeLoading}
+            style={{
+              padding: '6px 16px',
+              borderRadius: '16px',
+              border: 'none',
+              cursor: modeLoading ? 'wait' : 'pointer',
+              fontWeight: 600,
+              fontSize: '13px',
+              fontFamily: fontFamily.sans,
+              background: tradingMode === 'paper' ? colors.accentDark : 'transparent',
+              color: tradingMode === 'paper' ? colors.accent : colors.textMuted,
+              transition: 'all 0.2s ease',
+            }}
+          >
+            Paper
+          </button>
+          <button
+            onClick={() => handleModeChange('live')}
+            disabled={modeLoading}
+            style={{
+              padding: '6px 16px',
+              borderRadius: '16px',
+              border: 'none',
+              cursor: modeLoading ? 'wait' : 'pointer',
+              fontWeight: 600,
+              fontSize: '13px',
+              fontFamily: fontFamily.sans,
+              background: tradingMode === 'live' ? 'rgba(63, 185, 80, 0.15)' : 'transparent',
+              color: tradingMode === 'live' ? colors.success : colors.textMuted,
+              transition: 'all 0.2s ease',
+            }}
+          >
+            Live
+          </button>
+        </div>
+
         {/* Status indicator */}
         <div style={{
           display: 'flex',
@@ -199,8 +290,8 @@ export default function Layout({ children, active = 'dashboard' }) {
             width: 8,
             height: 8,
             borderRadius: '50%',
-            background: colors.accent,
-            boxShadow: `0 0 8px ${colors.accent}`,
+            background: tradingMode === 'live' ? colors.success : colors.accent,
+            boxShadow: tradingMode === 'live' ? `0 0 8px ${colors.success}` : `0 0 8px ${colors.accent}`,
             animation: 'pulse 2s infinite',
           }} />
           <span style={{
@@ -208,7 +299,7 @@ export default function Layout({ children, active = 'dashboard' }) {
             fontWeight: fontWeight.semibold,
             color: colors.textSecondary,
           }}>
-            Live
+            {tradingMode === 'live' ? 'Live' : 'Paper'}
           </span>
         </div>
 

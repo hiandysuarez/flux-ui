@@ -51,11 +51,11 @@ const SETTING_EXPLANATIONS = {
     details: 'Paper mode simulates trades without risking real capital - perfect for testing strategies. Live mode executes real trades through your connected broker account.',
     tip: 'Always test new strategies in Paper mode first.',
   },
-  kill_switch: {
-    title: 'Kill Switch',
-    description: 'Emergency stop for all trading activity.',
-    details: 'When enabled, the bot will immediately stop placing new trades and won\'t enter any positions. Existing positions are NOT automatically closed.',
-    tip: 'Use this if you need to pause trading quickly without closing positions.',
+  execute_trades: {
+    title: 'Execute Trades',
+    description: 'Controls whether the bot can place new trades.',
+    details: 'When enabled, the bot will actively look for and execute trade opportunities. When disabled, the bot will not enter any new positions. Existing positions are NOT automatically closed.',
+    tip: 'Disable this to pause trading without closing existing positions.',
   },
   trading_window: {
     title: 'Trading Window',
@@ -729,21 +729,21 @@ export default function SettingsPage() {
               }
             >
               <SettingRow
-                label="Kill Switch"
-                description="When enabled, the bot will not enter any new positions."
+                label="Execute Trades"
+                description="When enabled, the bot will actively place trades. Disable to pause trading."
                 colors={colors}
-                explanation={SETTING_EXPLANATIONS.kill_switch}
+                explanation={SETTING_EXPLANATIONS.execute_trades}
                 expandedExplanations={expandedExplanations}
                 setExpandedExplanations={setExpandedExplanations}
-                settingKey="kill_switch"
+                settingKey="execute_trades"
               >
                 {isAdmin ? (
                   <Toggle
-                    value={get('kill_switch', 'off') === 'on'}
-                    onChange={(v) => set('kill_switch', v ? 'on' : 'off')}
+                    value={get('kill_switch', 'off') === 'off'}
+                    onChange={(v) => set('kill_switch', v ? 'off' : 'on')}
                   />
                 ) : (
-                  <ReadOnlyToggle value={get('kill_switch', 'off') === 'on'} />
+                  <ReadOnlyToggle value={get('kill_switch', 'off') === 'off'} />
                 )}
               </SettingRow>
 

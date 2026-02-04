@@ -21,7 +21,6 @@ import {
 } from '../lib/theme';
 import Layout from '../components/Layout';
 import SubscriptionBanner from '../components/SubscriptionBanner';
-import TradingModeBanner from '../components/TradingModeBanner';
 import LandingPage from './landing';
 import { useAuth } from '../lib/auth';
 import Link from 'next/link';
@@ -249,9 +248,6 @@ function Dashboard() {
           .delay-3 { animation-delay: 0.3s; }
           .delay-4 { animation-delay: 0.4s; }
         `}</style>
-
-        {/* Trading Mode Banner */}
-        <TradingModeBanner userSettings={userSettings} brokerStatus={status} onModeChange={() => load(true)} />
 
         {/* Subscription Limit Banner */}
         <SubscriptionBanner />
