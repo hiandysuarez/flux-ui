@@ -71,12 +71,20 @@ function getConfidenceStyle(confidence) {
   return { color: colors.warning, label: 'Low', bg: colors.warningDark };
 }
 
-// Format percentage change
+// Format percentage change (for numeric deltas)
 function formatDelta(value, isPercent = true) {
   const num = Number(value) || 0;
   const sign = num > 0 ? '+' : '';
   const suffix = isPercent ? '%' : '';
   return `${sign}${num.toFixed(2)}${suffix}`;
+}
+
+// Check if a string represents a positive impact (starts with + or contains positive keywords)
+function isPositiveImpact(impactStr) {
+  if (!impactStr || typeof impactStr !== 'string') return false;
+  // Check if starts with + or doesn't start with -
+  return impactStr.trim().startsWith('+') ||
+         (!impactStr.trim().startsWith('-') && impactStr.includes('protection'));
 }
 
 export default function OptimizePage() {
@@ -87,6 +95,7 @@ export default function OptimizePage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [selectedSuggestions, setSelectedSuggestions] = useState(new Set());
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [days, setDays] = useState(30);
   const [runningBacktest, setRunningBacktest] = useState(false);
 
@@ -183,28 +192,58 @@ export default function OptimizePage() {
   async function handleApply() {
     if (selectedSuggestions.size === 0) return;
     setApplying(true);
+    setError(null);
     try {
-      // Build settings payload
+      // Build settings payload with selected suggestions
       const payload = {};
+      const appliedSettings = [];
       for (const s of suggestions) {
         if (selectedSuggestions.has(s.setting_name)) {
           payload[s.setting_name] = s.suggested_value;
-          // Log action
+          appliedSettings.push(s.setting_name);
+        }
+      }
+
+      console.log('[Optimize] Applying settings:', payload);
+
+      // Save to backend (partial update - only these fields)
+      const result = await saveUserSettings(payload);
+
+      console.log('[Optimize] Save result:', result);
+
+      // Check for errors in response
+      if (result?.ok === false) {
+        throw new Error(result.error || 'Failed to save settings');
+      }
+
+      // Log accepted actions after successful save
+      for (const s of suggestions) {
+        if (selectedSuggestions.has(s.setting_name)) {
           await logSuggestionAction(
             s.setting_name,
             s.current_value,
             s.suggested_value,
             'accepted'
-          );
+          ).catch(e => console.warn('Failed to log suggestion action:', e));
         }
       }
-      await saveUserSettings(payload);
+
       setShowConfirm(false);
+      setError(null);
+
+      // Show success message
+      setSuccess(`Successfully applied ${appliedSettings.length} setting${appliedSettings.length !== 1 ? 's' : ''}!`);
+      setTimeout(() => setSuccess(null), 5000);
+
       // Reload to show updated values
-      loadData();
+      await loadData();
+
+      // Clear selections since they've been applied
+      setSelectedSuggestions(new Set());
+
     } catch (e) {
       console.error('Failed to apply settings:', e);
-      setError('Failed to apply settings. Please try again.');
+      setError(`Failed to apply settings: ${e.message || 'Unknown error'}`);
     } finally {
       setApplying(false);
     }
@@ -402,6 +441,38 @@ export default function OptimizePage() {
         </div>
       )}
 
+      {/* Success banner */}
+      {success && (
+        <div style={{
+          padding: spacing.md,
+          marginBottom: spacing.lg,
+          borderRadius: borderRadius.md,
+          background: colors.successDark,
+          border: `1px solid rgba(63, 185, 80, 0.3)`,
+          color: colors.success,
+          fontSize: fontSize.sm,
+          display: 'flex',
+          alignItems: 'center',
+          gap: spacing.sm,
+        }}>
+          <span>✓</span>
+          {success}
+          <button
+            onClick={() => setSuccess(null)}
+            style={{
+              marginLeft: 'auto',
+              background: 'none',
+              border: 'none',
+              color: colors.success,
+              cursor: 'pointer',
+              fontSize: fontSize.lg,
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Loading state */}
       {loading ? (
         <div style={{
@@ -432,7 +503,29 @@ export default function OptimizePage() {
               gap: spacing.lg,
               marginBottom: spacing.xl,
             }}>
-              {/* Current Performance Card */}
+              {/* Show info banner if no trades in period */}
+              {(!backtest.current?.total_trades || backtest.current.total_trades === 0) && (
+                <div style={{
+                  gridColumn: '1 / -1',
+                  padding: spacing.lg,
+                  borderRadius: borderRadius.md,
+                  background: colors.bgSecondary,
+                  border: `1px solid ${colors.border}`,
+                  textAlign: 'center',
+                  color: colors.textMuted,
+                }}>
+                  <span style={{ fontSize: '32px', display: 'block', marginBottom: spacing.sm }}>📊</span>
+                  <p style={{ margin: 0, fontSize: fontSize.sm }}>
+                    No completed trades found in the last <strong>{days} days</strong>.
+                    <br />
+                    Try selecting a longer period or wait for more trading data.
+                  </p>
+                </div>
+              )}
+
+              {/* Current Performance Card - only show if we have trades */}
+              {backtest.current?.total_trades > 0 && (
+                <>
               <div className="optimize-card" style={{
                 ...cardStyle,
                 position: 'relative',
@@ -561,6 +654,8 @@ export default function OptimizePage() {
                   />
                 </div>
               </div>
+                </>
+              )}
             </div>
           )}
 
@@ -761,22 +856,21 @@ export default function OptimizePage() {
                         </span>
                       </div>
 
-                      {/* Impact estimate */}
+                      {/* Impact estimate - displayed as string from backend */}
                       <div style={{
                         textAlign: 'right',
-                        minWidth: 80,
+                        minWidth: 100,
                       }}>
                         {suggestion.impact_estimate && (
                           <span style={{
                             padding: '4px 10px',
                             borderRadius: borderRadius.full,
-                            background: suggestion.impact_estimate > 0 ? colors.successDark : colors.errorDark,
-                            color: suggestion.impact_estimate > 0 ? colors.success : colors.error,
+                            background: isPositiveImpact(suggestion.impact_estimate) ? colors.successDark : colors.warningDark,
+                            color: isPositiveImpact(suggestion.impact_estimate) ? colors.success : colors.warning,
                             fontSize: fontSize.xs,
                             fontWeight: fontWeight.semibold,
-                            fontFamily: fontFamily.mono,
                           }}>
-                            {formatDelta(suggestion.impact_estimate)}
+                            {suggestion.impact_estimate}
                           </span>
                         )}
                       </div>
