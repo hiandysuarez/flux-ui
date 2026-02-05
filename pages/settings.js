@@ -235,8 +235,8 @@ export default function SettingsPage() {
   const [expandedExplanations, setExpandedExplanations] = useState({});
   const [loadError, setLoadError] = useState(null);
 
-  // Check if user is admin
-  const isAdmin = user?.id && ADMIN_USER_ID && user.id === ADMIN_USER_ID;
+  // All authenticated users can edit their own settings
+  const isAdmin = true;
 
   const addToast = (message, type = 'success') => {
     const id = Date.now();
@@ -257,16 +257,11 @@ export default function SettingsPage() {
       if (!user) return;
 
       setLoadError(null);
-      const userIsAdmin = user.id && ADMIN_USER_ID && user.id === ADMIN_USER_ID;
 
       try {
-        // Admin loads admin settings, regular users load their personal settings
-        const settingsPromise = userIsAdmin
-          ? fetchAdminSettings()  // Admin settings (flat columns in admin_settings)
-          : fetchUserSettings();  // Per-user settings
-
+        // All users load their own settings via fetchUserSettings
         const [settingsRes, presetsRes, guardrailsRes] = await Promise.all([
-          settingsPromise,
+          fetchUserSettings(),
           fetchPresets(),
           fetchGuardrails().catch(() => ({ ok: true, guardrails: DEFAULT_GUARDRAILS })),
         ]);
@@ -276,7 +271,7 @@ export default function SettingsPage() {
         } else if (settingsRes.settings) {
           // fetchSettings returns { settings: {...} } directly
           setSettings(settingsRes.settings);
-        } else if (!userIsAdmin && settingsRes.error === 'no_settings') {
+        } else if (settingsRes.error === 'no_settings') {
           // User hasn't completed onboarding - redirect them
           router.push('/onboarding');
           return;
@@ -313,7 +308,6 @@ export default function SettingsPage() {
   };
 
   const set = (path, value) => {
-    if (!isAdmin) return; // Only admin can edit
     setErrors(e => ({ ...e, [path]: null }));
     setSettings((s) => {
       const parts = path.split('.');
@@ -342,10 +336,8 @@ export default function SettingsPage() {
     return true;
   };
 
-  // Handle preset selection (admin only)
+  // Handle preset selection
   const handlePresetSelect = async (presetId) => {
-    if (!isAdmin) return;
-
     if (presetId === null) {
       setSettings(s => ({ ...s, preset_id: null }));
       return;
@@ -368,8 +360,6 @@ export default function SettingsPage() {
   };
 
   async function onSave() {
-    if (!isAdmin) return;
-
     if (Object.values(errors).some(e => e)) {
       addToast('Please fix validation errors', 'error');
       return;
@@ -377,9 +367,8 @@ export default function SettingsPage() {
 
     setSaving(true);
     try {
-      const res = isAdmin
-        ? await saveAdminSettings(settings)  // Admin settings (flat columns)
-        : await saveUserSettings(settings);  // Per-user settings
+      // All users save to their own settings
+      const res = await saveUserSettings(settings);
 
       if (res.ok || res.settings) {
         setSettings(res.settings ?? settings);
@@ -534,21 +523,6 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
-
-      {/* Read-only banner (non-admin only) */}
-      {!isAdmin && (
-        <div style={{
-          padding: '12px 16px',
-          background: 'rgba(59, 130, 246, 0.1)',
-          border: '1px solid rgba(59, 130, 246, 0.3)',
-          borderRadius: 8,
-          color: '#3b82f6',
-          fontSize: 13,
-          marginBottom: 24,
-        }}>
-          Settings are view-only. Contact support to make changes.
-        </div>
-      )}
 
       {/* Tab Navigation - Pill style */}
       <div style={{
