@@ -210,13 +210,24 @@ export default function Layout({ children, active = 'dashboard' }) {
             background: colors.bgTertiary,
             border: `1px solid ${colors.border}`,
             cursor: 'pointer',
-            transition: `all ${transitions.fast}`,
+            transition: 'all 0.2s ease',
           }}
-          aria-label="Open menu"
+          aria-label="Open navigation menu"
+          aria-expanded={menuOpen}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = colors.bgHover;
+            e.currentTarget.style.borderColor = colors.borderLight;
+            e.currentTarget.style.transform = 'scale(1.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = colors.bgTertiary;
+            e.currentTarget.style.borderColor = colors.border;
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
         >
-          <span style={{ width: 20, height: 2, background: colors.textPrimary, borderRadius: 1 }} />
-          <span style={{ width: 20, height: 2, background: colors.textPrimary, borderRadius: 1 }} />
-          <span style={{ width: 20, height: 2, background: colors.textPrimary, borderRadius: 1 }} />
+          <span style={{ width: 20, height: 2, background: colors.textPrimary, borderRadius: 1, transition: 'all 0.2s ease' }} />
+          <span style={{ width: 20, height: 2, background: colors.textPrimary, borderRadius: 1, transition: 'all 0.2s ease' }} />
+          <span style={{ width: 20, height: 2, background: colors.textPrimary, borderRadius: 1, transition: 'all 0.2s ease' }} />
         </button>
 
         {/* Logo */}

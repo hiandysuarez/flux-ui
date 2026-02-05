@@ -93,10 +93,135 @@ export default function App({ Component, pageProps }) {
           text-decoration: none;
         }
 
-        /* Smooth animations */
+        /* ===========================================
+           ANIMATIONS - Enterprise motion system
+           =========================================== */
+
         @keyframes shimmer {
           0% { background-position: -200% 0; }
           100% { background-position: 200% 0; }
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
+
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes scaleIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.6; }
+        }
+
+        @keyframes highlight {
+          0% { background-color: rgba(212, 165, 116, 0.2); }
+          100% { background-color: transparent; }
+        }
+
+        /* Animation utility classes */
+        .animate-fadeIn {
+          animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .animate-slideUp {
+          animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .animate-scaleIn {
+          animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .animate-pulse {
+          animation: pulse 2s ease-in-out infinite;
+        }
+
+        /* Staggered animation delays */
+        .delay-1 { animation-delay: 0.05s; }
+        .delay-2 { animation-delay: 0.1s; }
+        .delay-3 { animation-delay: 0.15s; }
+        .delay-4 { animation-delay: 0.2s; }
+        .delay-5 { animation-delay: 0.25s; }
+        .delay-6 { animation-delay: 0.3s; }
+
+        /* Hover transition base class */
+        .hover-lift {
+          transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        .hover-lift:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Interactive card hover */
+        .interactive-card {
+          cursor: pointer;
+          transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        .interactive-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(212, 165, 116, 0.2);
+          border-color: rgba(212, 165, 116, 0.4);
+        }
+
+        .interactive-card:active {
+          transform: scale(0.99);
+        }
+
+        /* Button press effect */
+        .btn-press:active {
+          transform: scale(0.98);
+        }
+
+        /* Skeleton loading */
+        .skeleton {
+          background: linear-gradient(90deg, #161B22 25%, #21262D 50%, #161B22 75%);
+          background-size: 200% 100%;
+          animation: shimmer 1.5s infinite;
+          border-radius: 6px;
+        }
+
+        /* Value change highlight */
+        .value-updated {
+          animation: highlight 0.8s ease-out;
         }
 
         /* ===========================================

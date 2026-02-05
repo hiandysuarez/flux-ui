@@ -137,20 +137,26 @@ export default function LoginPage() {
         {/* Form */}
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '16px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: fontSize.sm,
-              fontWeight: fontWeight.medium,
-              color: colors.textSecondary,
-              marginBottom: '6px',
-            }}>
+            <label
+              htmlFor="email-input"
+              style={{
+                display: 'block',
+                fontSize: fontSize.sm,
+                fontWeight: fontWeight.medium,
+                color: colors.textSecondary,
+                marginBottom: '6px',
+              }}
+            >
               Email
             </label>
             <input
+              id="email-input"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              aria-required="true"
+              autoComplete="email"
               style={{
                 width: '100%',
                 padding: '12px',
@@ -160,26 +166,41 @@ export default function LoginPage() {
                 color: colors.textPrimary,
                 fontSize: fontSize.base,
                 outline: 'none',
+                transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = colors.accent;
+                e.target.style.boxShadow = `0 0 0 3px ${colors.accentDark}`;
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = colors.border;
+                e.target.style.boxShadow = 'none';
               }}
               placeholder="you@example.com"
             />
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: fontSize.sm,
-              fontWeight: fontWeight.medium,
-              color: colors.textSecondary,
-              marginBottom: '6px',
-            }}>
+            <label
+              htmlFor="password-input"
+              style={{
+                display: 'block',
+                fontSize: fontSize.sm,
+                fontWeight: fontWeight.medium,
+                color: colors.textSecondary,
+                marginBottom: '6px',
+              }}
+            >
               Password
             </label>
             <input
+              id="password-input"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              aria-required="true"
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               style={{
                 width: '100%',
                 padding: '12px',
@@ -189,6 +210,15 @@ export default function LoginPage() {
                 color: colors.textPrimary,
                 fontSize: fontSize.base,
                 outline: 'none',
+                transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = colors.accent;
+                e.target.style.boxShadow = `0 0 0 3px ${colors.accentDark}`;
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = colors.border;
+                e.target.style.boxShadow = 'none';
               }}
               placeholder="••••••••"
             />
@@ -197,20 +227,26 @@ export default function LoginPage() {
           {mode === 'signup' && (
             <>
               <div style={{ marginBottom: '16px' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: fontSize.sm,
-                  fontWeight: fontWeight.medium,
-                  color: colors.textSecondary,
-                  marginBottom: '6px',
-                }}>
+                <label
+                  htmlFor="confirm-password-input"
+                  style={{
+                    display: 'block',
+                    fontSize: fontSize.sm,
+                    fontWeight: fontWeight.medium,
+                    color: colors.textSecondary,
+                    marginBottom: '6px',
+                  }}
+                >
                   Confirm Password
                 </label>
                 <input
+                  id="confirm-password-input"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
+                  aria-required="true"
+                  autoComplete="new-password"
                   style={{
                     width: '100%',
                     padding: '12px',
@@ -220,6 +256,15 @@ export default function LoginPage() {
                     color: colors.textPrimary,
                     fontSize: fontSize.base,
                     outline: 'none',
+                    transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = colors.accent;
+                    e.target.style.boxShadow = `0 0 0 3px ${colors.accentDark}`;
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = colors.border;
+                    e.target.style.boxShadow = 'none';
                   }}
                   placeholder="••••••••"
                 />

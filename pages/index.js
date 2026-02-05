@@ -421,6 +421,9 @@ function Dashboard() {
               <button
                 onClick={handleRunCycle}
                 disabled={acting}
+                aria-label="Run trading decision cycle"
+                aria-busy={acting}
+                className="btn-press"
                 style={{
                   padding: `${spacing.md} ${spacing.xl}`,
                   background: colors.accent,
@@ -432,8 +435,20 @@ function Dashboard() {
                   fontWeight: fontWeight.bold,
                   cursor: acting ? 'wait' : 'pointer',
                   opacity: acting ? 0.7 : 1,
-                  transition: transitions.fast,
+                  transition: 'all 0.2s ease',
                   boxShadow: `0 2px 8px rgba(212, 165, 116, 0.3)`,
+                }}
+                onMouseEnter={(e) => {
+                  if (!acting) {
+                    e.currentTarget.style.background = colors.accentHover;
+                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(212, 165, 116, 0.4)';
+                    e.currentTarget.style.transform = 'scale(1.02)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = colors.accent;
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(212, 165, 116, 0.3)';
+                  e.currentTarget.style.transform = 'scale(1)';
                 }}
               >
                 {acting ? 'Running...' : 'Run Cycle'}
@@ -519,12 +534,25 @@ function Dashboard() {
             }}>
               Recent Activity
             </h2>
-            <Link href="/history" style={{
-              color: colors.accent,
-              fontSize: fontSize.sm,
-              fontFamily: fontFamily.sans,
-              textDecoration: 'none',
-            }}>
+            <Link
+              href="/history"
+              aria-label="View full trade history"
+              style={{
+                color: colors.accent,
+                fontSize: fontSize.sm,
+                fontFamily: fontFamily.sans,
+                textDecoration: 'none',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = colors.accentHover;
+                e.currentTarget.style.textDecoration = 'underline';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = colors.accent;
+                e.currentTarget.style.textDecoration = 'none';
+              }}
+            >
               View Full History →
             </Link>
           </div>
@@ -585,13 +613,22 @@ function Dashboard() {
 // ===== Sub-Components =====
 
 function StatCard({ colors, label, value, sublabel, valueColor }) {
+  const [hovered, setHovered] = useState(false);
+
   return (
-    <div style={{
-      padding: spacing.lg,
-      background: colors.bgSecondary,
-      borderRadius: borderRadius.lg,
-      border: `1px solid ${colors.border}`,
-    }}>
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        padding: spacing.lg,
+        background: colors.bgSecondary,
+        borderRadius: borderRadius.lg,
+        border: `1px solid ${hovered ? colors.borderLight : colors.border}`,
+        transition: 'all 0.2s ease',
+        transform: hovered ? 'translateY(-1px)' : 'translateY(0)',
+        boxShadow: hovered ? '0 4px 12px rgba(0, 0, 0, 0.15)' : 'none',
+      }}
+    >
       <div style={{
         fontSize: fontSize.xs,
         color: colors.textMuted,
@@ -806,21 +843,32 @@ function ActivityRow({ trade, colors, index }) {
 }
 
 function QuickLink({ href, label, colors }) {
+  const [hovered, setHovered] = useState(false);
+
   return (
-    <Link href={href} style={{
-      display: 'block',
-      padding: spacing.md,
-      background: colors.bgSecondary,
-      borderRadius: borderRadius.md,
-      border: `1px solid ${colors.border}`,
-      textAlign: 'center',
-      textDecoration: 'none',
-      fontFamily: fontFamily.sans,
-      fontSize: fontSize.sm,
-      fontWeight: fontWeight.medium,
-      color: colors.textSecondary,
-      transition: transitions.fast,
-    }}>
+    <Link
+      href={href}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      aria-label={`Go to ${label}`}
+      style={{
+        display: 'block',
+        padding: spacing.md,
+        background: hovered ? colors.bgTertiary : colors.bgSecondary,
+        borderRadius: borderRadius.md,
+        border: `1px solid ${hovered ? colors.borderAccent : colors.border}`,
+        textAlign: 'center',
+        textDecoration: 'none',
+        fontFamily: fontFamily.sans,
+        fontSize: fontSize.sm,
+        fontWeight: fontWeight.medium,
+        color: hovered ? colors.accent : colors.textSecondary,
+        transition: 'all 0.2s ease',
+        transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
+        boxShadow: hovered ? '0 4px 12px rgba(0, 0, 0, 0.2)' : 'none',
+        cursor: 'pointer',
+      }}
+    >
       {label}
     </Link>
   );
@@ -893,8 +941,17 @@ function PnlSparkline({ data, colors, width = 200, height = 40 }) {
   const strokeColor = lastVal >= 0 ? colors.accent : colors.error;
   const gradientId = `pnl-gradient-${lastVal >= 0 ? 'up' : 'down'}`;
 
+  const trendDirection = lastVal >= 0 ? 'positive' : 'negative';
+
   return (
-    <svg width={width} height={height} style={{ display: 'block', margin: '0 auto' }}>
+    <svg
+      width={width}
+      height={height}
+      style={{ display: 'block', margin: '0 auto' }}
+      role="img"
+      aria-label={`14-day P&L trend chart showing ${trendDirection} performance`}
+    >
+      <title>P&L Trend: {trendDirection}</title>
       <defs>
         <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor={strokeColor} stopOpacity="0.3" />
