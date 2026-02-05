@@ -110,6 +110,7 @@ export default function Layout({ children, active = 'dashboard' }) {
     { href: '/history', label: 'History', key: 'history' },
     { href: '/symbols', label: 'Symbols', key: 'symbols' },
     { href: '/timing', label: 'Timing', key: 'timing' },
+    { href: '/optimize', label: 'Optimize', key: 'optimize', badge: 'ML' },
   ];
 
   const handleLogout = async () => {
@@ -411,6 +412,20 @@ export default function Layout({ children, active = 'dashboard' }) {
                   }}
                 >
                   {link.label}
+                  {link.badge && (
+                    <span style={{
+                      marginLeft: 'auto',
+                      padding: '2px 8px',
+                      borderRadius: borderRadius.full,
+                      background: `linear-gradient(135deg, ${colors.accent}, #C4956A)`,
+                      color: colors.bgPrimary,
+                      fontSize: fontSize.xs,
+                      fontWeight: fontWeight.bold,
+                      letterSpacing: '0.02em',
+                    }}>
+                      {link.badge}
+                    </span>
+                  )}
                 </a>
               ))}
             </nav>
