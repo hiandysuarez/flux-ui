@@ -98,11 +98,34 @@ export default function OptimizePage() {
     setLoading(true);
     setError(null);
     try {
+      console.log('[Optimize] Loading data for', days, 'days...');
       const [bt, sugg] = await Promise.all([
         fetchQuickBacktest(days),
         fetchSettingsSuggestions(days),
       ]);
-      setBacktest(bt);
+      console.log('[Optimize] Backtest response:', bt);
+      console.log('[Optimize] Suggestions response:', sugg);
+
+      // Check for API error responses
+      if (bt?.ok === false) {
+        throw new Error(bt.error || 'Backtest API returned error');
+      }
+      if (sugg?.ok === false) {
+        throw new Error(sugg.error || 'Suggestions API returned error');
+      }
+
+      // Map backend response to expected frontend structure
+      // Backend uses: current_performance, optimized_performance
+      // Frontend expects: current, optimized
+      const mappedBacktest = {
+        current: bt.current_performance || bt.current,
+        optimized: bt.optimized_performance || bt.optimized,
+        improvement: bt.improvement,
+        has_suggestions: bt.has_suggestions,
+      };
+      console.log('[Optimize] Mapped backtest:', mappedBacktest);
+
+      setBacktest(mappedBacktest);
       setSuggestions(sugg?.suggestions || []);
       // Pre-select high confidence suggestions
       const highConf = new Set(
@@ -112,8 +135,12 @@ export default function OptimizePage() {
       );
       setSelectedSuggestions(highConf);
     } catch (e) {
-      console.error('Failed to load optimization data:', e);
-      setError('Failed to load optimization data. Please try again.');
+      console.error('[Optimize] Error details:', e);
+      console.error('[Optimize] Error message:', e.message);
+      console.error('[Optimize] Error stack:', e.stack);
+      // Show the actual error message
+      const errorMsg = e.message || 'Unknown error';
+      setError(`Failed to load: ${errorMsg}`);
     } finally {
       setLoading(false);
     }
