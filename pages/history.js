@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import { fetchTradeHistory } from '../lib/api';
+import { SkeletonTableRow } from '../components/Skeleton';
 import {
   colors,
   borderRadius,
@@ -115,55 +116,61 @@ export default function HistoryPage() {
       </div>
 
       {/* Filters */}
-      <div style={{ ...cardStyle, marginBottom: 24 }}>
+      <div style={{ ...cardStyle, marginBottom: 24 }} role="search" aria-label="Filter trades">
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>Symbol</label>
+            <label htmlFor="filter-symbol" style={{ display: 'block', fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>Symbol</label>
             <input
+              id="filter-symbol"
               type="text"
               value={symbol}
               onChange={e => setSymbol(e.target.value.toUpperCase())}
               placeholder="e.g. QQQ"
+              aria-label="Filter by symbol"
               style={{ ...inputStyle, width: 100 }}
             />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>Side</label>
-            <select value={side} onChange={e => setSide(e.target.value)} style={{ ...inputStyle, width: 100 }}>
+            <label htmlFor="filter-side" style={{ display: 'block', fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>Side</label>
+            <select id="filter-side" value={side} onChange={e => setSide(e.target.value)} aria-label="Filter by trade side" style={{ ...inputStyle, width: 100 }}>
               <option value="">All</option>
               <option value="BUY">BUY</option>
               <option value="SELL">SELL</option>
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>Result</label>
-            <select value={win} onChange={e => setWin(e.target.value)} style={{ ...inputStyle, width: 100 }}>
+            <label htmlFor="filter-result" style={{ display: 'block', fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>Result</label>
+            <select id="filter-result" value={win} onChange={e => setWin(e.target.value)} aria-label="Filter by win/loss" style={{ ...inputStyle, width: 100 }}>
               <option value="">All</option>
               <option value="true">Win</option>
               <option value="false">Loss</option>
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>From</label>
+            <label htmlFor="filter-from" style={{ display: 'block', fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>From</label>
             <input
+              id="filter-from"
               type="date"
               value={dateFrom}
               onChange={e => setDateFrom(e.target.value)}
+              aria-label="Filter from date"
               style={{ ...inputStyle, width: 140 }}
             />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>To</label>
+            <label htmlFor="filter-to" style={{ display: 'block', fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>To</label>
             <input
+              id="filter-to"
               type="date"
               value={dateTo}
               onChange={e => setDateTo(e.target.value)}
+              aria-label="Filter to date"
               style={{ ...inputStyle, width: 140 }}
             />
           </div>
-          <button onClick={applyFilters} style={buttonPrimaryStyle}>Apply</button>
-          <button onClick={clearFilters} style={buttonStyle}>Clear</button>
-          <button onClick={exportCsv} style={{ ...buttonStyle, marginLeft: 'auto' }}>Export CSV</button>
+          <button onClick={applyFilters} aria-label="Apply filters" style={buttonPrimaryStyle}>Apply</button>
+          <button onClick={clearFilters} aria-label="Clear all filters" style={buttonStyle}>Clear</button>
+          <button onClick={exportCsv} aria-label="Export trades to CSV" style={{ ...buttonStyle, marginLeft: 'auto' }}>Export CSV</button>
         </div>
       </div>
 
@@ -180,35 +187,34 @@ export default function HistoryPage() {
       )}
 
       {/* Results count */}
-      <div style={{ marginBottom: 12, color: colors.textMuted, fontSize: 13 }}>
+      <div id="trade-count" style={{ marginBottom: 12, color: colors.textMuted, fontSize: 13 }} aria-live="polite">
         {total} trades found
       </div>
 
       {/* Table */}
       <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
-        <div className="table-scroll" style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }}>
+        <div className="table-scroll" style={{ overflowX: 'auto' }} role="region" aria-label="Trade history table" tabIndex={0}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }} aria-describedby="trade-count">
           <thead>
             <tr style={{ background: colors.bgSecondary }}>
-              <Th>Date</Th>
-              <Th>Symbol</Th>
-              <Th>Side</Th>
-              <Th>Qty</Th>
-              <Th>Price</Th>
-              <Th>P&L</Th>
-              <Th>P&L %</Th>
-              <Th>Hold</Th>
-              <Th>Result</Th>
-              <Th>Exit Reason</Th>
+              <Th scope="col">Date</Th>
+              <Th scope="col">Symbol</Th>
+              <Th scope="col">Side</Th>
+              <Th scope="col">Qty</Th>
+              <Th scope="col">Price</Th>
+              <Th scope="col">P&L</Th>
+              <Th scope="col">P&L %</Th>
+              <Th scope="col">Hold</Th>
+              <Th scope="col">Result</Th>
+              <Th scope="col">Exit Reason</Th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={10} style={{ padding: 40, textAlign: 'center', color: colors.textMuted }}>
-                  Loading...
-                </td>
-              </tr>
+              // Professional skeleton loading state
+              Array.from({ length: 10 }).map((_, i) => (
+                <SkeletonTableRow key={i} columns={10} />
+              ))
             ) : trades.length === 0 ? (
               <tr>
                 <td colSpan={10} style={{ padding: 40, textAlign: 'center', color: colors.textMuted }}>
@@ -270,42 +276,47 @@ export default function HistoryPage() {
 
       {/* Pagination */}
       {pages > 1 && (
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 20 }}>
+        <nav aria-label="Trade history pagination" style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 20 }}>
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page <= 1}
+            aria-label="Go to previous page"
             style={{ ...buttonStyle, opacity: page <= 1 ? 0.5 : 1 }}
           >
             Prev
           </button>
-          <span style={{ padding: '8px 16px', color: colors.textMuted }}>
+          <span style={{ padding: '8px 16px', color: colors.textMuted }} aria-live="polite">
             Page {page} of {pages}
           </span>
           <button
             onClick={() => setPage(p => Math.min(pages, p + 1))}
             disabled={page >= pages}
+            aria-label="Go to next page"
             style={{ ...buttonStyle, opacity: page >= pages ? 0.5 : 1 }}
           >
             Next
           </button>
-        </div>
+        </nav>
       )}
     </Layout>
   );
 }
 
 // Components
-function Th({ children }) {
+function Th({ children, scope = 'col' }) {
   return (
-    <th style={{
-      textAlign: 'left',
-      padding: '12px 14px',
-      fontSize: 12,
-      fontWeight: 700,
-      color: colors.textMuted,
-      textTransform: 'uppercase',
-      letterSpacing: '0.5px',
-    }}>
+    <th
+      scope={scope}
+      style={{
+        textAlign: 'left',
+        padding: '12px 14px',
+        fontSize: 12,
+        fontWeight: 700,
+        color: colors.textMuted,
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px',
+      }}
+    >
       {children}
     </th>
   );

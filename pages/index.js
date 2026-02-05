@@ -257,18 +257,34 @@ function Dashboard() {
         <SubscriptionBanner />
 
         {/* Toast Notifications */}
-        <div style={{ position: 'fixed', top: 80, right: 20, zIndex: 1000 }}>
+        <div
+          role="region"
+          aria-label="Notifications"
+          aria-live="polite"
+          style={{ position: 'fixed', top: 80, right: 20, zIndex: 1000 }}
+        >
           {toasts.map(t => (
-            <div key={t.id} style={{
-              background: t.type === 'error' ? colors.error : colors.success,
-              color: '#fff',
-              padding: `${spacing.sm} ${spacing.md}`,
-              borderRadius: borderRadius.md,
-              marginBottom: spacing.sm,
-              fontFamily: fontFamily.sans,
-              fontSize: fontSize.sm,
-              boxShadow: shadows.lg,
-            }}>
+            <div
+              key={t.id}
+              role="alert"
+              aria-atomic="true"
+              className="animate-slideUp"
+              style={{
+                background: t.type === 'error' ? colors.error : colors.success,
+                color: '#fff',
+                padding: `${spacing.sm} ${spacing.md}`,
+                borderRadius: borderRadius.md,
+                marginBottom: spacing.sm,
+                fontFamily: fontFamily.sans,
+                fontSize: fontSize.sm,
+                fontWeight: fontWeight.medium,
+                boxShadow: shadows.lg,
+                display: 'flex',
+                alignItems: 'center',
+                gap: spacing.sm,
+              }}
+            >
+              <span aria-hidden="true">{t.type === 'error' ? '!' : '✓'}</span>
               {t.message}
             </div>
           ))}

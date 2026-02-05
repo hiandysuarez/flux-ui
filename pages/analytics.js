@@ -2,6 +2,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import Layout from '../components/Layout';
 import { fetchPerformanceMetrics } from '../lib/api';
+import { SkeletonStatCard, SkeletonChart } from '../components/Skeleton';
 import {
   darkTheme,
   borderRadius,
@@ -111,18 +112,24 @@ export default function AnalyticsPage() {
         flexWrap: 'wrap',
         alignItems: 'center',
       }}>
-        <div style={{
-          display: 'flex',
-          gap: 4,
-          background: colors.bgSecondary,
-          padding: 4,
-          borderRadius: borderRadius.lg,
-          border: `1px solid ${colors.border}`,
-        }}>
+        <div
+          role="group"
+          aria-label="Select time range"
+          style={{
+            display: 'flex',
+            gap: 4,
+            background: colors.bgSecondary,
+            padding: 4,
+            borderRadius: borderRadius.lg,
+            border: `1px solid ${colors.border}`,
+          }}
+        >
           {lookbackOptions.analytics.filter(opt => opt.value !== 'custom').map(opt => (
             <button
               key={opt.value}
               onClick={() => setDays(opt.value)}
+              aria-pressed={days === opt.value}
+              aria-label={`Show ${opt.label} data`}
               style={{
                 padding: '8px 14px',
                 fontSize: fontSize.sm,
@@ -156,16 +163,20 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Breakdown Tabs */}
-      <div style={{
-        display: 'flex',
-        gap: 4,
-        marginBottom: 24,
-        background: colors.bgSecondary,
-        padding: 4,
-        borderRadius: borderRadius.md,
-        border: `1px solid ${colors.border}`,
-        width: 'fit-content',
-      }}>
+      <div
+        role="tablist"
+        aria-label="Analytics view"
+        style={{
+          display: 'flex',
+          gap: 4,
+          marginBottom: 24,
+          background: colors.bgSecondary,
+          padding: 4,
+          borderRadius: borderRadius.md,
+          border: `1px solid ${colors.border}`,
+          width: 'fit-content',
+        }}
+      >
         {[
           { id: 'overview', label: 'Overview' },
           { id: 'performance', label: 'Performance' },
@@ -173,6 +184,10 @@ export default function AnalyticsPage() {
         ].map(tab => (
           <button
             key={tab.id}
+            role="tab"
+            aria-selected={activeBreakdown === tab.id}
+            aria-controls={`panel-${tab.id}`}
+            id={`tab-${tab.id}`}
             onClick={() => setActiveBreakdown(tab.id)}
             style={{
               padding: '8px 16px',
@@ -193,9 +208,9 @@ export default function AnalyticsPage() {
       </div>
 
       {loading && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 24 }} aria-busy="true" aria-label="Loading analytics data">
           {[1, 2, 3, 4, 5, 6].map(i => (
-            <SkeletonCard key={i} colors={colors} />
+            <SkeletonStatCard key={i} />
           ))}
         </div>
       )}
@@ -216,7 +231,7 @@ export default function AnalyticsPage() {
         <>
           {/* Overview Tab */}
           {activeBreakdown === 'overview' && (
-            <>
+            <div role="tabpanel" id="panel-overview" aria-labelledby="tab-overview">
               {/* Key Metrics Grid */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 24 }}>
                 <MetricCard
@@ -276,12 +291,12 @@ export default function AnalyticsPage() {
                   <CumulativePnlChart data={metrics.cumulative_pnl} themeColors={colors} />
                 </div>
               )}
-            </>
+            </div>
           )}
 
           {/* Performance Tab */}
           {activeBreakdown === 'performance' && (
-            <>
+            <div role="tabpanel" id="panel-performance" aria-labelledby="tab-performance">
               {/* Trade Stats */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 24 }}>
                 <MetricCard
@@ -431,12 +446,12 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
               </div>
-            </>
+            </div>
           )}
 
           {/* Breakdown Tab */}
           {activeBreakdown === 'breakdown' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
+            <div role="tabpanel" id="panel-breakdown" aria-labelledby="tab-breakdown" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
               {/* By Symbol - half width card */}
               <div style={{
                 ...cardStyle,
@@ -614,38 +629,6 @@ function StatRow({ label, value, color, themeColors }) {
   );
 }
 
-function SkeletonCard({ colors }) {
-  return (
-    <div style={{ ...cardStyle, background: colors.bgCard, borderColor: colors.border }}>
-      <div style={{
-        ...skeletonStyle,
-        width: '60%',
-        height: 14,
-        marginBottom: 8,
-        background: `linear-gradient(90deg, ${colors.bgSecondary} 25%, ${colors.bgTertiary} 50%, ${colors.bgSecondary} 75%)`,
-        backgroundSize: '200% 100%',
-        animation: 'shimmer 1.5s infinite',
-      }} />
-      <div style={{
-        ...skeletonStyle,
-        width: '80%',
-        height: 28,
-        marginBottom: 8,
-        background: `linear-gradient(90deg, ${colors.bgSecondary} 25%, ${colors.bgTertiary} 50%, ${colors.bgSecondary} 75%)`,
-        backgroundSize: '200% 100%',
-        animation: 'shimmer 1.5s infinite',
-      }} />
-      <div style={{
-        ...skeletonStyle,
-        width: '40%',
-        height: 12,
-        background: `linear-gradient(90deg, ${colors.bgSecondary} 25%, ${colors.bgTertiary} 50%, ${colors.bgSecondary} 75%)`,
-        backgroundSize: '200% 100%',
-        animation: 'shimmer 1.5s infinite',
-      }} />
-    </div>
-  );
-}
 
 function CumulativePnlChart({ data, themeColors = darkTheme }) {
   const [tooltip, setTooltip] = useState(null);

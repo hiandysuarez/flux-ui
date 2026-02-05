@@ -866,22 +866,29 @@ export default function OptimizePage() {
 
       {/* Confirmation Modal */}
       {showConfirm && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0, 0, 0, 0.8)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: spacing.lg,
-        }}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-title"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.8)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: spacing.lg,
+            animation: 'fadeIn 0.2s ease-out',
+          }}
+          onClick={(e) => e.target === e.currentTarget && !applying && setShowConfirm(false)}
+        >
           <div style={{
             ...cardStyle,
             maxWidth: 480,
             width: '100%',
-            animation: 'fadeInUp 0.3s ease-out',
+            animation: 'scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
           }}>
             <div style={{
               display: 'flex',
@@ -889,8 +896,8 @@ export default function OptimizePage() {
               gap: spacing.sm,
               marginBottom: spacing.lg,
             }}>
-              <span style={{ fontSize: '24px' }}>⚡</span>
-              <h2 style={typography.h2}>Confirm Changes</h2>
+              <span style={{ fontSize: '24px' }} aria-hidden="true">⚡</span>
+              <h2 id="modal-title" style={typography.h2}>Confirm Changes</h2>
             </div>
 
             <p style={{
@@ -960,6 +967,7 @@ export default function OptimizePage() {
               <button
                 onClick={() => setShowConfirm(false)}
                 disabled={applying}
+                aria-label="Cancel and close dialog"
                 style={{
                   padding: '12px 24px',
                   borderRadius: borderRadius.md,
@@ -978,6 +986,8 @@ export default function OptimizePage() {
               <button
                 onClick={handleApply}
                 disabled={applying}
+                aria-label={applying ? 'Applying changes' : 'Confirm and apply settings'}
+                aria-busy={applying}
                 style={{
                   padding: '12px 24px',
                   borderRadius: borderRadius.md,
