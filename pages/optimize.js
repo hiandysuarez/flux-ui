@@ -73,9 +73,10 @@ function getConfidenceStyle(confidence) {
 
 // Format percentage change
 function formatDelta(value, isPercent = true) {
-  const sign = value > 0 ? '+' : '';
+  const num = Number(value) || 0;
+  const sign = num > 0 ? '+' : '';
   const suffix = isPercent ? '%' : '';
-  return `${sign}${value.toFixed(2)}${suffix}`;
+  return `${sign}${num.toFixed(2)}${suffix}`;
 }
 
 export default function OptimizePage() {
@@ -661,9 +662,11 @@ export default function OptimizePage() {
                   };
                   const confStyle = getConfidenceStyle(suggestion.confidence);
                   const isSelected = selectedSuggestions.has(suggestion.setting_name);
-                  const delta = suggestion.suggested_value - suggestion.current_value;
-                  const deltaPercent = suggestion.current_value !== 0
-                    ? ((delta / suggestion.current_value) * 100).toFixed(1)
+                  const currentVal = Number(suggestion.current_value) || 0;
+                  const suggestedVal = Number(suggestion.suggested_value) || 0;
+                  const delta = suggestedVal - currentVal;
+                  const deltaPercent = currentVal !== 0
+                    ? ((delta / currentVal) * 100).toFixed(1)
                     : 0;
 
                   return (

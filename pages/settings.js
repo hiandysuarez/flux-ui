@@ -233,6 +233,7 @@ export default function SettingsPage() {
   const [toasts, setToasts] = useState([]);
   const [errors, setErrors] = useState({});
   const [expandedExplanations, setExpandedExplanations] = useState({});
+  const [loadError, setLoadError] = useState(null);
 
   // Check if user is admin
   const isAdmin = user?.id && ADMIN_USER_ID && user.id === ADMIN_USER_ID;
@@ -255,6 +256,7 @@ export default function SettingsPage() {
     async function load() {
       if (!user) return;
 
+      setLoadError(null);
       const userIsAdmin = user.id && ADMIN_USER_ID && user.id === ADMIN_USER_ID;
 
       try {
@@ -278,6 +280,9 @@ export default function SettingsPage() {
           // User hasn't completed onboarding - redirect them
           router.push('/onboarding');
           return;
+        } else {
+          // API returned error or no settings
+          setLoadError(settingsRes.error || 'Failed to load settings');
         }
 
         if (presetsRes.ok && presetsRes.presets) {
@@ -288,7 +293,9 @@ export default function SettingsPage() {
           setGuardrails(guardrailsRes.guardrails);
         }
       } catch (e) {
-        addToast(String(e?.message || e), 'error');
+        const errorMsg = String(e?.message || e);
+        setLoadError(errorMsg);
+        addToast(errorMsg, 'error');
       }
     }
     load();
@@ -391,10 +398,54 @@ export default function SettingsPage() {
   const currentPreset = presets.find(p => p.id === settings?.preset_id);
   const isPresetMode = settings?.preset_id !== null && settings?.preset_id !== undefined;
 
-  if (authLoading || !settings) {
+  if (authLoading || (!settings && !loadError)) {
     return (
       <Layout active="settings">
-        <div style={{ color: colors.textMuted }}>Loading settings...</div>
+        <div style={{ color: colors.textMuted, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 20,
+            height: 20,
+            border: `2px solid ${colors.border}`,
+            borderTopColor: colors.accent,
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }} />
+          Loading settings...
+        </div>
+        <style>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </Layout>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <Layout active="settings">
+        <div style={{
+          ...cardStyle,
+          background: colors.errorDark || '#1a0a0a',
+          borderColor: colors.error,
+          color: colors.error,
+        }}>
+          <strong>Error loading settings:</strong> {loadError}
+          <br /><br />
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '8px 16px',
+              background: colors.error,
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+            }}
+          >
+            Retry
+          </button>
+        </div>
       </Layout>
     );
   }
