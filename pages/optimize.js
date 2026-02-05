@@ -389,6 +389,26 @@ export default function OptimizePage() {
           -webkit-mask-composite: xor;
           pointer-events: none;
         }
+
+        @keyframes bannerDropDown {
+          0% {
+            transform: translate(-50%, -100%);
+            opacity: 0;
+          }
+          60% {
+            transform: translate(-50%, 8px);
+            opacity: 1;
+          }
+          100% {
+            transform: translate(-50%, 0);
+            opacity: 1;
+          }
+        }
+
+        @keyframes overlayFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
       `}</style>
 
       {/* Header */}
@@ -564,48 +584,78 @@ export default function OptimizePage() {
                 </div>
               )}
 
-              {/* Custom Backtest Header */}
+              {/* Custom Backtest Overlay + Banner */}
               {isCustomBacktest && (
-                <div style={{
-                  gridColumn: '1 / -1',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: `${spacing.sm} ${spacing.md}`,
-                  marginBottom: spacing.sm,
-                  borderRadius: borderRadius.md,
-                  background: colors.accentDark,
-                  border: `1px solid ${colors.accent}40`,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
-                    <span style={{ color: colors.accent }}>✨</span>
-                    <span style={{ color: colors.accent, fontSize: fontSize.sm, fontWeight: fontWeight.semibold }}>
-                      Custom Backtest Results
-                    </span>
-                    <span style={{
-                      fontSize: fontSize.xs,
-                      color: colors.textMuted,
-                    }}>
-                      (comparing selected suggestions)
-                    </span>
-                  </div>
-                  <button
+                <>
+                  {/* Backdrop Overlay */}
+                  <div
                     onClick={handleResetBacktest}
                     style={{
-                      padding: '4px 12px',
-                      borderRadius: borderRadius.sm,
-                      border: `1px solid ${colors.border}`,
-                      background: colors.bgTertiary,
-                      color: colors.textSecondary,
-                      fontSize: fontSize.xs,
-                      fontWeight: fontWeight.medium,
+                      position: 'fixed',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      zIndex: 998,
+                      backdropFilter: 'blur(6px)',
+                      WebkitBackdropFilter: 'blur(6px)',
+                      background: 'rgba(13, 17, 23, 0.7)',
+                      animation: 'overlayFadeIn 0.3s ease-out forwards',
                       cursor: 'pointer',
-                      transition: `all ${transitions.fast}`,
                     }}
-                  >
-                    Reset
-                  </button>
-                </div>
+                  />
+
+                  {/* Floating Banner */}
+                  <div style={{
+                    position: 'fixed',
+                    top: spacing.xl,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    zIndex: 999,
+                    width: 'calc(100% - 48px)',
+                    maxWidth: '540px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: `${spacing.md} ${spacing.lg}`,
+                    borderRadius: borderRadius.lg,
+                    background: `linear-gradient(135deg, ${colors.accent}22, ${colors.bgCard})`,
+                    border: `1px solid ${colors.accent}50`,
+                    boxShadow: `0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px ${colors.accent}20`,
+                    animation: 'bannerDropDown 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+                      <span style={{ fontSize: '24px' }}>✨</span>
+                      <div>
+                        <span style={{ color: colors.accent, fontSize: fontSize.base, fontWeight: fontWeight.semibold, display: 'block' }}>
+                          Custom Backtest Results
+                        </span>
+                        <span style={{
+                          fontSize: fontSize.xs,
+                          color: colors.textMuted,
+                        }}>
+                          Comparing selected suggestions
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleResetBacktest}
+                      style={{
+                        padding: `${spacing.sm} ${spacing.md}`,
+                        borderRadius: borderRadius.md,
+                        border: `1px solid ${colors.border}`,
+                        background: colors.bgSecondary,
+                        color: colors.textSecondary,
+                        fontSize: fontSize.sm,
+                        fontWeight: fontWeight.medium,
+                        cursor: 'pointer',
+                        transition: `all ${transitions.fast}`,
+                      }}
+                    >
+                      Reset
+                    </button>
+                  </div>
+                </>
               )}
 
               {/* Current Performance Card - only show if we have trades */}

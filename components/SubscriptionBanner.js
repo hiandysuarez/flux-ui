@@ -64,83 +64,129 @@ export default function SubscriptionBanner() {
   const upgradeTier = limits.suggest_upgrade === 'pro' ? 'Pro' : 'Plus';
 
   return (
-    <div style={{
-      padding: `${spacing.lg} ${spacing.xl}`,
-      borderRadius: borderRadius.lg,
-      marginBottom: spacing.lg,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: spacing.lg,
-      background: isBlocked
-        ? `linear-gradient(135deg, ${colors.error}18, ${colors.error}08)`
-        : `linear-gradient(135deg, ${colors.warning}18, ${colors.warning}08)`,
-      border: `1px solid ${isBlocked ? colors.error : colors.warning}40`,
-      // Slide-down animation
-      transform: visible ? 'translateY(0)' : 'translateY(-20px)',
-      opacity: visible ? 1 : 0,
-      transition: 'transform 0.4s ease-out, opacity 0.4s ease-out',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: spacing.lg, flex: 1 }}>
-        <span style={{ fontSize: '28px' }}>{isBlocked ? '⚠️' : '📈'}</span>
-        <div>
-          <div style={{
-            fontSize: fontSize.base,
-            fontWeight: fontWeight.bold,
-            fontFamily: fontFamily.sans,
-            color: colors.textPrimary,
-            marginBottom: '4px',
-          }}>
-            {isBlocked ? 'Trading Paused' : 'Approaching Limit'}
-          </div>
-          <div style={{
-            fontSize: fontSize.sm,
-            fontFamily: fontFamily.sans,
-            color: colors.textSecondary,
-            lineHeight: 1.4,
-          }}>
-            {message}
+    <>
+      <style>{`
+        @keyframes bannerDropDown {
+          0% {
+            transform: translateY(-100%);
+            opacity: 0;
+          }
+          60% {
+            transform: translateY(8px);
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+        @keyframes overlayFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+      `}</style>
+
+      {/* Backdrop Overlay */}
+      <div
+        onClick={() => setDismissed(true)}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 998,
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+          background: 'rgba(13, 17, 23, 0.7)',
+          animation: visible ? 'overlayFadeIn 0.3s ease-out forwards' : 'none',
+          opacity: visible ? 1 : 0,
+        }}
+      />
+
+      {/* Banner */}
+      <div style={{
+        position: 'fixed',
+        top: spacing.xl,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 999,
+        width: 'calc(100% - 48px)',
+        maxWidth: '720px',
+        padding: `${spacing.lg} ${spacing.xl}`,
+        borderRadius: borderRadius.lg,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: spacing.lg,
+        background: isBlocked
+          ? `linear-gradient(135deg, ${colors.error}22, ${colors.bgCard})`
+          : `linear-gradient(135deg, ${colors.warning}22, ${colors.bgCard})`,
+        border: `1px solid ${isBlocked ? colors.error : colors.warning}50`,
+        boxShadow: `0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px ${isBlocked ? colors.error : colors.warning}20`,
+        animation: visible ? 'bannerDropDown 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards' : 'none',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing.lg, flex: 1 }}>
+          <span style={{ fontSize: '28px' }}>{isBlocked ? '⚠️' : '📈'}</span>
+          <div>
+            <div style={{
+              fontSize: fontSize.base,
+              fontWeight: fontWeight.bold,
+              fontFamily: fontFamily.sans,
+              color: colors.textPrimary,
+              marginBottom: '4px',
+            }}>
+              {isBlocked ? 'Trading Paused' : 'Approaching Limit'}
+            </div>
+            <div style={{
+              fontSize: fontSize.sm,
+              fontFamily: fontFamily.sans,
+              color: colors.textSecondary,
+              lineHeight: 1.4,
+            }}>
+              {message}
+            </div>
           </div>
         </div>
-      </div>
 
-      <div style={{ display: 'flex', gap: spacing.md, alignItems: 'center' }}>
-        <button
-          onClick={() => router.push('/upgrade')}
-          style={{
-            padding: `${spacing.md} ${spacing.xl}`,
-            borderRadius: borderRadius.md,
-            border: 'none',
-            background: colors.accent,
-            color: colors.bgPrimary,
-            fontSize: fontSize.base,
-            fontWeight: fontWeight.bold,
-            fontFamily: fontFamily.sans,
-            cursor: 'pointer',
-            transition: transitions.fast,
-            whiteSpace: 'nowrap',
-            boxShadow: `0 2px 8px ${colors.accent}40`,
-          }}
-        >
-          Upgrade to {upgradeTier}
-        </button>
-        <button
-          onClick={() => setDismissed(true)}
-          style={{
-            padding: `${spacing.md} ${spacing.lg}`,
-            borderRadius: borderRadius.md,
-            border: `1px solid ${colors.border}`,
-            background: 'transparent',
-            color: colors.textMuted,
-            fontSize: fontSize.base,
-            fontFamily: fontFamily.sans,
-            cursor: 'pointer',
-            transition: transitions.fast,
-          }}
-        >
-          ✕
-        </button>
+        <div style={{ display: 'flex', gap: spacing.md, alignItems: 'center' }}>
+          <button
+            onClick={() => router.push('/upgrade')}
+            style={{
+              padding: `${spacing.md} ${spacing.xl}`,
+              borderRadius: borderRadius.md,
+              border: 'none',
+              background: colors.accent,
+              color: colors.bgPrimary,
+              fontSize: fontSize.base,
+              fontWeight: fontWeight.bold,
+              fontFamily: fontFamily.sans,
+              cursor: 'pointer',
+              transition: transitions.fast,
+              whiteSpace: 'nowrap',
+              boxShadow: `0 2px 8px ${colors.accent}40`,
+            }}
+          >
+            Upgrade to {upgradeTier}
+          </button>
+          <button
+            onClick={() => setDismissed(true)}
+            style={{
+              padding: `${spacing.md} ${spacing.lg}`,
+              borderRadius: borderRadius.md,
+              border: `1px solid ${colors.border}`,
+              background: 'transparent',
+              color: colors.textMuted,
+              fontSize: fontSize.base,
+              fontFamily: fontFamily.sans,
+              cursor: 'pointer',
+              transition: transitions.fast,
+            }}
+          >
+            ✕
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
