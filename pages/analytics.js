@@ -286,9 +286,9 @@ export default function AnalyticsPage() {
                     color: colors.textPrimary,
                     marginBottom: 16,
                   }}>
-                    Daily P&L
+                    Cumulative P&L
                   </div>
-                  <CumulativePnlChart data={metrics.cumulative_pnl} themeColors={colors} />
+                  <CumulativePnlChart data={metrics.cumulative_pnl} days={days} themeColors={colors} />
                 </div>
               )}
             </div>
@@ -630,84 +630,109 @@ function StatRow({ label, value, color, themeColors }) {
 }
 
 
-function CumulativePnlChart({ data, themeColors = darkTheme }) {
+function CumulativePnlChart({ data, days = 30, themeColors = darkTheme }) {
   const [tooltip, setTooltip] = useState(null);
   const [hoverIdx, setHoverIdx] = useState(null);
 
-  // Aggregate trades by date
+  // Aggregate trades into daily buckets based on selected time range
   const dailyData = useMemo(() => {
     if (!data || data.length < 2) return [];
 
-    // Convert cumulative values to per-trade P&L changes
-    const changes = data.map((val, i) => i === 0 ? val : val - data[i - 1]);
+    // Calculate how many days we're viewing
+    let numDays = days;
+    if (days === 'mtd') {
+      numDays = new Date().getDate();
+    } else if (days === 'ytd') {
+      const now = new Date();
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      numDays = Math.ceil((now - startOfYear) / (1000 * 60 * 60 * 24));
+    }
 
-    // Group by date - assuming trades are chronological
-    // For now, we'll simulate days by grouping every N trades
-    // In production, you'd have timestamps with each trade
-    const tradesPerDay = Math.max(1, Math.ceil(data.length / 30)); // Aim for ~30 days max
-    const days = [];
+    // Group trades into buckets matching the number of days
+    const bucketCount = Math.min(numDays, data.length);
+    const tradesPerBucket = Math.max(1, Math.ceil(data.length / bucketCount));
+    const points = [];
 
-    for (let i = 0; i < data.length; i += tradesPerDay) {
-      const dayTrades = changes.slice(i, Math.min(i + tradesPerDay, data.length));
-      const dayPnl = dayTrades.reduce((sum, val) => sum + val, 0);
-      const cumulative = data[Math.min(i + tradesPerDay - 1, data.length - 1)];
-      days.push({
-        dayIndex: days.length,
-        pnl: dayPnl,
+    for (let i = 0; i < data.length; i += tradesPerBucket) {
+      const endIdx = Math.min(i + tradesPerBucket - 1, data.length - 1);
+      const cumulative = data[endIdx];
+      const prevCumulative = i > 0 ? data[i - 1] : 0;
+      const dailyChange = cumulative - prevCumulative;
+
+      points.push({
+        index: points.length,
         cumulative,
-        tradeCount: dayTrades.length,
+        dailyChange,
+        tradeCount: Math.min(tradesPerBucket, data.length - i),
       });
     }
 
-    return days;
-  }, [data]);
+    return points;
+  }, [data, days]);
 
-  if (!dailyData || dailyData.length < 1) return null;
+  if (!dailyData || dailyData.length < 2) return null;
 
   // Theme colors
-  const goldColor = 'rgba(212, 165, 116, 0.85)';
-  const redColor = 'rgba(248, 81, 73, 0.85)';
-  const goldBright = '#D4A574';
-  const redBright = '#F85149';
+  const goldColor = '#D4A574';
+  const redColor = '#F85149';
+  const goldBright = '#F5C76D';
+  const redBright = '#FF6B6B';
 
   // Chart dimensions
   const chartHeight = 220;
   const chartWidth = 100;
-  const paddingTop = 15;
-  const paddingBottom = 15;
-  const paddingX = 8;
-  const usableHeight = chartHeight - paddingTop - paddingBottom;
-  const usableWidth = chartWidth - paddingX * 2;
+  const padding = 10;
+  const bottomY = chartHeight - padding;
 
-  // Calculate bar dimensions
-  const barCount = dailyData.length;
-  const gapRatio = 0.25; // Gap is 25% of bar+gap width
-  const totalBarWidth = usableWidth / barCount;
-  const barWidth = totalBarWidth * (1 - gapRatio);
-  const barGap = totalBarWidth * gapRatio;
+  const max = Math.max(...dailyData.map(d => d.cumulative), 0);
+  const min = Math.min(...dailyData.map(d => d.cumulative), 0);
+  const range = max - min || 1;
 
-  // Find max absolute value for scaling
-  const maxAbsPnl = Math.max(
-    Math.abs(Math.max(...dailyData.map(d => d.pnl), 0)),
-    Math.abs(Math.min(...dailyData.map(d => d.pnl), 0)),
-    1
-  );
-
-  // Zero line position (center of chart)
-  const zeroY = paddingTop + usableHeight / 2;
-  const halfHeight = usableHeight / 2;
-
-  // Calculate bar positions
-  const getBarProps = (day, index) => {
-    const x = paddingX + index * totalBarWidth + barGap / 2;
-    const height = (Math.abs(day.pnl) / maxAbsPnl) * halfHeight * 0.9; // 90% of half height
-    const isPositive = day.pnl >= 0;
-    const y = isPositive ? zeroY - height : zeroY;
-
-    return { x, y, width: barWidth, height: Math.max(height, 0.5), isPositive };
+  // Get point coordinates
+  const getPoint = (i) => {
+    const x = padding + ((i / (dailyData.length - 1)) * (chartWidth - padding * 2));
+    const y = padding + ((1 - (dailyData[i].cumulative - min) / range) * (chartHeight - padding * 2));
+    return { x, y };
   };
 
+  // Get bezier control points for smooth curve
+  const getBezierSegment = (i) => {
+    const p0 = getPoint(Math.max(0, i - 1));
+    const p1 = getPoint(i);
+    const p2 = getPoint(i + 1);
+    const p3 = getPoint(Math.min(dailyData.length - 1, i + 2));
+
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+    return { p1, p2, cp1: { x: cp1x, y: cp1y }, cp2: { x: cp2x, y: cp2y } };
+  };
+
+  // Generate segmented paths - each segment colored by daily change
+  const segmentPaths = [];
+  for (let i = 0; i < dailyData.length - 1; i++) {
+    const seg = getBezierSegment(i);
+    const isPositive = dailyData[i + 1].dailyChange >= 0;
+
+    const areaPath = `M ${seg.p1.x},${seg.p1.y} C ${seg.cp1.x},${seg.cp1.y} ${seg.cp2.x},${seg.cp2.y} ${seg.p2.x},${seg.p2.y} L ${seg.p2.x},${bottomY} L ${seg.p1.x},${bottomY} Z`;
+    const linePath = `M ${seg.p1.x},${seg.p1.y} C ${seg.cp1.x},${seg.cp1.y} ${seg.cp2.x},${seg.cp2.y} ${seg.p2.x},${seg.p2.y}`;
+
+    segmentPaths.push({
+      areaPath,
+      linePath,
+      isPositive,
+    });
+  }
+
   const finalPnl = dailyData[dailyData.length - 1]?.cumulative || 0;
+  const lastPoint = getPoint(dailyData.length - 1);
+
+  // Calculate period label
+  let periodLabel = `${days} days`;
+  if (days === 'mtd') periodLabel = 'MTD';
+  else if (days === 'ytd') periodLabel = 'YTD';
 
   return (
     <div style={{ position: 'relative' }}>
@@ -720,13 +745,13 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
         onMouseMove={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
           const x = (e.clientX - rect.left) / rect.width;
-          const idx = Math.floor(x * barCount);
+          const idx = Math.round(x * (dailyData.length - 1));
           if (idx >= 0 && idx < dailyData.length) {
             setHoverIdx(idx);
             setTooltip({
               x: e.clientX,
               y: e.clientY,
-              day: dailyData[idx],
+              point: dailyData[idx],
             });
           }
         }}
@@ -734,107 +759,123 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
       >
         <defs>
           {/* Background gradient */}
-          <linearGradient id="barChartBg" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id="pnlChartBg" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={themeColors.bgSecondary} stopOpacity="0.5" />
             <stop offset="100%" stopColor={themeColors.bgPrimary} stopOpacity="0.8" />
           </linearGradient>
 
-          {/* Gold bar shadow - upward glow */}
-          <filter id="goldBarShadow" x="-50%" y="-100%" width="200%" height="300%">
-            <feDropShadow dx="0" dy="-1" stdDeviation="1.5"
-              floodColor="#D4A574" floodOpacity="0.5"/>
-          </filter>
-
-          {/* Red bar shadow - downward glow */}
-          <filter id="redBarShadow" x="-50%" y="-50%" width="200%" height="250%">
-            <feDropShadow dx="0" dy="1" stdDeviation="1.5"
-              floodColor="#F85149" floodOpacity="0.5"/>
-          </filter>
-
-          {/* Bar gradients for depth */}
-          <linearGradient id="goldBarGrad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#D4A574" stopOpacity="0.7" />
-            <stop offset="50%" stopColor="#E8C19A" stopOpacity="0.9" />
-            <stop offset="100%" stopColor="#D4A574" stopOpacity="0.7" />
+          {/* Area fill gradients with shadow effect */}
+          <linearGradient id="goldAreaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={goldColor} stopOpacity="0.25" />
+            <stop offset="50%" stopColor={goldColor} stopOpacity="0.10" />
+            <stop offset="100%" stopColor={goldColor} stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id="redAreaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={redColor} stopOpacity="0.25" />
+            <stop offset="50%" stopColor={redColor} stopOpacity="0.10" />
+            <stop offset="100%" stopColor={redColor} stopOpacity="0" />
           </linearGradient>
 
-          <linearGradient id="redBarGrad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#F85149" stopOpacity="0.7" />
-            <stop offset="50%" stopColor="#FF7B73" stopOpacity="0.9" />
-            <stop offset="100%" stopColor="#F85149" stopOpacity="0.7" />
-          </linearGradient>
+          {/* Line glow filter */}
+          <filter id="lineGlowFilter" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="0.8" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+
+          {/* Point glow */}
+          <filter id="pointGlow" x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur stdDeviation="1" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
         </defs>
 
         {/* Chart background */}
-        <rect x="0" y="0" width={chartWidth} height={chartHeight} fill="url(#barChartBg)" rx="2" />
+        <rect x="0" y="0" width={chartWidth} height={chartHeight} fill="url(#pnlChartBg)" rx="2" />
 
         {/* Subtle grid lines */}
-        {[0.25, 0.75].map(pct => (
+        {[0.25, 0.5, 0.75].map(pct => (
           <line
             key={pct}
-            x1={paddingX}
-            y1={paddingTop + pct * usableHeight}
-            x2={chartWidth - paddingX}
-            y2={paddingTop + pct * usableHeight}
+            x1={padding}
+            y1={padding + pct * (chartHeight - padding * 2)}
+            x2={chartWidth - padding}
+            y2={padding + pct * (chartHeight - padding * 2)}
             stroke={themeColors.border}
-            strokeWidth="0.1"
-            strokeOpacity="0.3"
+            strokeWidth="0.15"
+            strokeOpacity="0.4"
           />
         ))}
 
-        {/* Zero baseline - dashed line */}
-        <line
-          x1={paddingX}
-          y1={zeroY}
-          x2={chartWidth - paddingX}
-          y2={zeroY}
-          stroke={themeColors.border}
-          strokeWidth="0.25"
-          strokeDasharray="1,1"
-          strokeOpacity="0.6"
-        />
+        {/* Segmented area fills with gradient shadows */}
+        {segmentPaths.map((seg, i) => (
+          <path
+            key={`area-${i}`}
+            d={seg.areaPath}
+            fill={seg.isPositive ? 'url(#goldAreaGrad)' : 'url(#redAreaGrad)'}
+          />
+        ))}
 
-        {/* Bars */}
-        {dailyData.map((day, i) => {
-          const { x, y, width, height, isPositive } = getBarProps(day, i);
-          const isHovered = hoverIdx === i;
+        {/* Segmented line with glow */}
+        {segmentPaths.map((seg, i) => (
+          <path
+            key={`line-${i}`}
+            d={seg.linePath}
+            fill="none"
+            stroke={seg.isPositive ? goldBright : redBright}
+            strokeWidth="0.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            filter="url(#lineGlowFilter)"
+          />
+        ))}
 
-          return (
-            <rect
-              key={i}
-              x={x}
-              y={y}
-              width={width}
-              height={height}
-              fill={isPositive ? 'url(#goldBarGrad)' : 'url(#redBarGrad)'}
-              filter={isPositive ? 'url(#goldBarShadow)' : 'url(#redBarShadow)'}
-              rx={0.5}
-              ry={0.5}
-              style={{
-                opacity: isHovered ? 1 : 0.9,
-                transition: 'opacity 0.15s ease',
-              }}
-            />
-          );
-        })}
-
-        {/* Hover indicator line */}
+        {/* Hover vertical line */}
         {hoverIdx !== null && (
           <line
-            x1={paddingX + hoverIdx * totalBarWidth + totalBarWidth / 2}
-            y1={paddingTop}
-            x2={paddingX + hoverIdx * totalBarWidth + totalBarWidth / 2}
-            y2={chartHeight - paddingBottom}
+            x1={getPoint(hoverIdx).x}
+            y1={padding}
+            x2={getPoint(hoverIdx).x}
+            y2={bottomY}
             stroke={themeColors.textMuted}
-            strokeWidth="0.2"
-            strokeDasharray="1,1"
-            strokeOpacity="0.4"
+            strokeWidth="0.3"
+            strokeDasharray="2,2"
+            strokeOpacity="0.5"
           />
         )}
+
+        {/* Hover point */}
+        {hoverIdx !== null && (
+          <circle
+            cx={getPoint(hoverIdx).x}
+            cy={getPoint(hoverIdx).y}
+            r="1.8"
+            fill={dailyData[hoverIdx].dailyChange >= 0 ? goldBright : redBright}
+            stroke={themeColors.bgCard}
+            strokeWidth="0.6"
+            filter="url(#pointGlow)"
+          />
+        )}
+
+        {/* End point marker */}
+        <circle
+          cx={lastPoint.x}
+          cy={lastPoint.y}
+          r="2"
+          fill={finalPnl >= 0 ? goldBright : redBright}
+          stroke={themeColors.bgCard}
+          strokeWidth="0.8"
+          filter="url(#pointGlow)"
+        />
       </svg>
 
       {/* Tooltip */}
-      {tooltip && tooltip.day && (
+      {tooltip && tooltip.point && (
         <div style={{
           position: 'fixed',
           left: tooltip.x + 12,
@@ -859,30 +900,30 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
             borderBottom: `1px solid ${themeColors.border}`,
             paddingBottom: 8,
           }}>
-            Day {tooltip.day.dayIndex + 1} • {tooltip.day.tradeCount} trades
+            Day {tooltip.point.index + 1} • {tooltip.point.tradeCount} trades
           </div>
 
           <div style={{ marginBottom: 8 }}>
-            <div style={{ color: themeColors.textMuted, fontSize: 10, marginBottom: 2 }}>Daily P&L</div>
+            <div style={{ color: themeColors.textMuted, fontSize: 10, marginBottom: 2 }}>Cumulative P&L</div>
             <div style={{
               fontWeight: 700,
               fontSize: 18,
-              color: tooltip.day.pnl >= 0 ? goldBright : redBright,
+              color: tooltip.point.cumulative >= 0 ? goldColor : redColor,
               fontFamily: fontFamily.mono,
             }}>
-              {tooltip.day.pnl >= 0 ? '+' : ''}{formatCurrency(tooltip.day.pnl)}
+              {formatCurrency(tooltip.point.cumulative)}
             </div>
           </div>
 
           <div>
-            <div style={{ color: themeColors.textMuted, fontSize: 10, marginBottom: 2 }}>Cumulative</div>
+            <div style={{ color: themeColors.textMuted, fontSize: 10, marginBottom: 2 }}>Daily Change</div>
             <div style={{
               fontSize: 13,
-              color: tooltip.day.cumulative >= 0 ? goldBright : redBright,
+              color: tooltip.point.dailyChange >= 0 ? goldColor : redColor,
               fontFamily: fontFamily.mono,
               opacity: 0.85,
             }}>
-              {formatCurrency(tooltip.day.cumulative)}
+              {tooltip.point.dailyChange >= 0 ? '+' : ''}{formatCurrency(tooltip.point.dailyChange)}
             </div>
           </div>
         </div>
@@ -904,9 +945,9 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
           alignItems: 'center',
           gap: 8,
           padding: '6px 14px',
-          background: finalPnl >= 0 ? `${goldBright}12` : `${redBright}12`,
+          background: finalPnl >= 0 ? `${goldColor}12` : `${redColor}12`,
           borderRadius: 8,
-          border: `1px solid ${finalPnl >= 0 ? goldBright : redBright}25`,
+          border: `1px solid ${finalPnl >= 0 ? goldColor : redColor}25`,
         }}>
           <span style={{
             fontSize: 10,
@@ -914,10 +955,10 @@ function CumulativePnlChart({ data, themeColors = darkTheme }) {
             textTransform: 'uppercase',
             letterSpacing: '0.5px'
           }}>
-            Total P&L
+            {periodLabel}
           </span>
           <span style={{
-            color: finalPnl >= 0 ? goldBright : redBright,
+            color: finalPnl >= 0 ? goldColor : redColor,
             fontWeight: 700,
             fontSize: 14,
             fontFamily: fontFamily.mono,
