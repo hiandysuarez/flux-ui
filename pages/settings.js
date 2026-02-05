@@ -6,7 +6,7 @@ import PresetSelector from '../components/PresetSelector';
 import GuardrailHint from '../components/GuardrailHint';
 import {
   fetchUserSettings, saveUserSettings, fetchPresets, applyPreset, fetchGuardrails,
-  fetchSettings, saveSettings
+  fetchSettings, saveSettings, fetchAdminSettings, saveAdminSettings
 } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import {
@@ -258,9 +258,9 @@ export default function SettingsPage() {
       const userIsAdmin = user.id && ADMIN_USER_ID && user.id === ADMIN_USER_ID;
 
       try {
-        // Admin loads system settings, regular users load their personal settings
+        // Admin loads admin settings, regular users load their personal settings
         const settingsPromise = userIsAdmin
-          ? fetchSettings()  // System-wide settings (env vars / app_settings)
+          ? fetchAdminSettings()  // Admin settings (flat columns in admin_settings)
           : fetchUserSettings();  // Per-user settings
 
         const [settingsRes, presetsRes, guardrailsRes] = await Promise.all([
@@ -370,17 +370,8 @@ export default function SettingsPage() {
 
     setSaving(true);
     try {
-      let payload = settings;
-
-      // Admin saves to system settings - filter out user-specific fields
-      // that don't exist in app_settings table
-      if (isAdmin) {
-        const { preset_id, user_id, theme, created_at, ...systemSettings } = settings;
-        payload = systemSettings;
-      }
-
       const res = isAdmin
-        ? await saveSettings(payload)  // System-wide settings
+        ? await saveAdminSettings(settings)  // Admin settings (flat columns)
         : await saveUserSettings(settings);  // Per-user settings
 
       if (res.ok || res.settings) {
