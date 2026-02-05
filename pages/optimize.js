@@ -87,6 +87,23 @@ function isPositiveImpact(impactStr) {
          (!impactStr.trim().startsWith('-') && impactStr.includes('protection'));
 }
 
+// Calculate delta string between two values
+function calcDelta(current, previous, isPercent = true, higherIsBetter = true) {
+  if (previous === null || previous === undefined) return null;
+  const diff = current - previous;
+  if (Math.abs(diff) < 0.001) return null; // No meaningful change
+
+  const sign = diff > 0 ? '+' : '';
+  const suffix = isPercent ? '%' : '';
+  const formatted = `${sign}${diff.toFixed(isPercent ? 2 : 2)}${suffix}`;
+
+  // For metrics where lower is better (like drawdown), invert the color logic
+  if (!higherIsBetter) {
+    return diff < 0 ? `+${Math.abs(diff).toFixed(2)}${suffix}` : `-${Math.abs(diff).toFixed(2)}${suffix}`;
+  }
+  return formatted;
+}
+
 export default function OptimizePage() {
   const [loading, setLoading] = useState(true);
   const [backtest, setBacktest] = useState(null);
@@ -98,6 +115,8 @@ export default function OptimizePage() {
   const [success, setSuccess] = useState(null);
   const [days, setDays] = useState(30);
   const [runningBacktest, setRunningBacktest] = useState(false);
+  const [isCustomBacktest, setIsCustomBacktest] = useState(false);
+  const [previousBacktest, setPreviousBacktest] = useState(null);
 
   // Load initial data
   useEffect(() => {
@@ -171,21 +190,43 @@ export default function OptimizePage() {
   async function handleRunBacktest() {
     if (selectedSuggestions.size === 0) return;
     setRunningBacktest(true);
+    setError(null);
     try {
+      // Save current values to show delta after backtest
+      setPreviousBacktest(backtest);
+
       const settings = {};
       suggestions.forEach(s => {
         if (selectedSuggestions.has(s.setting_name)) {
           settings[s.setting_name] = s.suggested_value;
         }
       });
+
+      console.log('[Optimize] Running backtest with settings:', settings);
       const result = await runBacktest(settings, days, true);
+      console.log('[Optimize] Backtest result:', result);
+
+      if (result?.ok === false) {
+        throw new Error(result.error || 'Backtest failed');
+      }
+
       setBacktest(result);
+      setIsCustomBacktest(true);
+      setSuccess('Backtest complete! Review the updated metrics below.');
+      setTimeout(() => setSuccess(null), 4000);
     } catch (e) {
       console.error('Backtest failed:', e);
-      setError('Backtest failed. Please try again.');
+      setError(`Backtest failed: ${e.message || 'Please try again.'}`);
     } finally {
       setRunningBacktest(false);
     }
+  }
+
+  // Reset to initial comparison
+  function handleResetBacktest() {
+    setIsCustomBacktest(false);
+    setPreviousBacktest(null);
+    loadData();
   }
 
   // Apply selected suggestions
@@ -523,6 +564,50 @@ export default function OptimizePage() {
                 </div>
               )}
 
+              {/* Custom Backtest Header */}
+              {isCustomBacktest && (
+                <div style={{
+                  gridColumn: '1 / -1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: `${spacing.sm} ${spacing.md}`,
+                  marginBottom: spacing.sm,
+                  borderRadius: borderRadius.md,
+                  background: colors.accentDark,
+                  border: `1px solid ${colors.accent}40`,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+                    <span style={{ color: colors.accent }}>✨</span>
+                    <span style={{ color: colors.accent, fontSize: fontSize.sm, fontWeight: fontWeight.semibold }}>
+                      Custom Backtest Results
+                    </span>
+                    <span style={{
+                      fontSize: fontSize.xs,
+                      color: colors.textMuted,
+                    }}>
+                      (comparing selected suggestions)
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleResetBacktest}
+                    style={{
+                      padding: '4px 12px',
+                      borderRadius: borderRadius.sm,
+                      border: `1px solid ${colors.border}`,
+                      background: colors.bgTertiary,
+                      color: colors.textSecondary,
+                      fontSize: fontSize.xs,
+                      fontWeight: fontWeight.medium,
+                      cursor: 'pointer',
+                      transition: `all ${transitions.fast}`,
+                    }}
+                  >
+                    Reset
+                  </button>
+                </div>
+              )}
+
               {/* Current Performance Card - only show if we have trades */}
               {backtest.current?.total_trades > 0 && (
                 <>
@@ -537,8 +622,8 @@ export default function OptimizePage() {
                   left: 0,
                   right: 0,
                   height: 3,
-                  background: colors.textMuted,
-                  opacity: 0.5,
+                  background: isCustomBacktest ? colors.accent : colors.textMuted,
+                  opacity: isCustomBacktest ? 1 : 0.5,
                 }} />
 
                 <div style={{
@@ -551,6 +636,15 @@ export default function OptimizePage() {
                   <h2 style={{ ...typography.h3, color: colors.textSecondary }}>
                     Current Settings
                   </h2>
+                  {isCustomBacktest && previousBacktest && (
+                    <span style={{
+                      marginLeft: 'auto',
+                      fontSize: fontSize.xs,
+                      color: colors.textMuted,
+                    }}>
+                      vs. initial
+                    </span>
+                  )}
                 </div>
 
                 <div style={{ display: 'grid', gap: spacing.md }}>
@@ -558,21 +652,40 @@ export default function OptimizePage() {
                     label="Win Rate"
                     value={`${(backtest.current?.win_rate * 100 || 0).toFixed(1)}%`}
                     color={colors.textPrimary}
+                    delta={isCustomBacktest && previousBacktest ? calcDelta(
+                      backtest.current?.win_rate * 100,
+                      previousBacktest.current?.win_rate * 100
+                    ) : null}
                   />
                   <MetricRow
                     label="Total Return"
                     value={`${(backtest.current?.total_return_pct || 0).toFixed(2)}%`}
                     color={backtest.current?.total_return_pct >= 0 ? colors.success : colors.error}
+                    delta={isCustomBacktest && previousBacktest ? calcDelta(
+                      backtest.current?.total_return_pct,
+                      previousBacktest.current?.total_return_pct
+                    ) : null}
                   />
                   <MetricRow
                     label="Max Drawdown"
                     value={`${(backtest.current?.max_drawdown_pct || 0).toFixed(2)}%`}
                     color={colors.error}
+                    delta={isCustomBacktest && previousBacktest ? calcDelta(
+                      backtest.current?.max_drawdown_pct,
+                      previousBacktest.current?.max_drawdown_pct,
+                      true,
+                      false // lower is better for drawdown
+                    ) : null}
                   />
                   <MetricRow
                     label="Profit Factor"
                     value={(backtest.current?.profit_factor || 0).toFixed(2)}
                     color={colors.textPrimary}
+                    delta={isCustomBacktest && previousBacktest ? calcDelta(
+                      backtest.current?.profit_factor,
+                      previousBacktest.current?.profit_factor,
+                      false
+                    ) : null}
                   />
                   <MetricRow
                     label="Total Trades"
@@ -605,7 +718,7 @@ export default function OptimizePage() {
                 }}>
                   <span style={{ fontSize: '20px' }}>✨</span>
                   <h2 style={{ ...typography.h3, color: colors.accent }}>
-                    ML Optimized
+                    {isCustomBacktest ? 'With Selected Changes' : 'ML Optimized'}
                   </h2>
                   {backtest.improvement?.win_rate_delta > 0 && (
                     <span style={{
@@ -627,25 +740,41 @@ export default function OptimizePage() {
                     label="Win Rate"
                     value={`${(backtest.optimized?.win_rate * 100 || 0).toFixed(1)}%`}
                     color={colors.success}
-                    delta={backtest.improvement?.win_rate_delta ? formatDelta(backtest.improvement.win_rate_delta * 100) : null}
+                    delta={
+                      isCustomBacktest && previousBacktest
+                        ? calcDelta(backtest.optimized?.win_rate * 100, previousBacktest.optimized?.win_rate * 100)
+                        : (backtest.improvement?.win_rate_delta ? formatDelta(backtest.improvement.win_rate_delta * 100) : null)
+                    }
                   />
                   <MetricRow
                     label="Total Return"
                     value={`${(backtest.optimized?.total_return_pct || 0).toFixed(2)}%`}
                     color={backtest.optimized?.total_return_pct >= 0 ? colors.success : colors.error}
-                    delta={backtest.improvement?.return_delta ? formatDelta(backtest.improvement.return_delta) : null}
+                    delta={
+                      isCustomBacktest && previousBacktest
+                        ? calcDelta(backtest.optimized?.total_return_pct, previousBacktest.optimized?.total_return_pct)
+                        : (backtest.improvement?.return_delta ? formatDelta(backtest.improvement.return_delta) : null)
+                    }
                   />
                   <MetricRow
                     label="Max Drawdown"
                     value={`${(backtest.optimized?.max_drawdown_pct || 0).toFixed(2)}%`}
                     color={colors.warning}
-                    delta={backtest.improvement?.drawdown_delta ? formatDelta(backtest.improvement.drawdown_delta) : null}
+                    delta={
+                      isCustomBacktest && previousBacktest
+                        ? calcDelta(backtest.optimized?.max_drawdown_pct, previousBacktest.optimized?.max_drawdown_pct, true, false)
+                        : (backtest.improvement?.drawdown_delta ? formatDelta(backtest.improvement.drawdown_delta) : null)
+                    }
                   />
                   <MetricRow
                     label="Profit Factor"
                     value={(backtest.optimized?.profit_factor || 0).toFixed(2)}
                     color={colors.textPrimary}
-                    delta={backtest.improvement?.profit_factor_delta ? formatDelta(backtest.improvement.profit_factor_delta, false) : null}
+                    delta={
+                      isCustomBacktest && previousBacktest
+                        ? calcDelta(backtest.optimized?.profit_factor, previousBacktest.optimized?.profit_factor, false)
+                        : (backtest.improvement?.profit_factor_delta ? formatDelta(backtest.improvement.profit_factor_delta, false) : null)
+                    }
                   />
                   <MetricRow
                     label="Total Trades"
