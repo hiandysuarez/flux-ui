@@ -116,6 +116,7 @@ export default function OptimizePage() {
   const [days, setDays] = useState(30);
   const [runningBacktest, setRunningBacktest] = useState(false);
   const [isCustomBacktest, setIsCustomBacktest] = useState(false);
+  const [showCustomBanner, setShowCustomBanner] = useState(false);
   const [previousBacktest, setPreviousBacktest] = useState(null);
 
   // Load initial data
@@ -212,6 +213,7 @@ export default function OptimizePage() {
 
       setBacktest(result);
       setIsCustomBacktest(true);
+      setShowCustomBanner(true);
       setSuccess('Backtest complete! Review the updated metrics below.');
       setTimeout(() => setSuccess(null), 4000);
     } catch (e) {
@@ -225,8 +227,14 @@ export default function OptimizePage() {
   // Reset to initial comparison
   function handleResetBacktest() {
     setIsCustomBacktest(false);
+    setShowCustomBanner(false);
     setPreviousBacktest(null);
     loadData();
+  }
+
+  // Just dismiss the banner overlay (keep custom backtest data)
+  function handleDismissBanner() {
+    setShowCustomBanner(false);
   }
 
   // Apply selected suggestions
@@ -585,11 +593,11 @@ export default function OptimizePage() {
               )}
 
               {/* Custom Backtest Overlay + Banner */}
-              {isCustomBacktest && (
+              {showCustomBanner && (
                 <>
                   {/* Backdrop Overlay */}
                   <div
-                    onClick={handleResetBacktest}
+                    onClick={handleDismissBanner}
                     style={{
                       position: 'fixed',
                       top: 0,
@@ -613,47 +621,68 @@ export default function OptimizePage() {
                     transform: 'translateX(-50%)',
                     zIndex: 999,
                     width: 'calc(100% - 48px)',
-                    maxWidth: '540px',
+                    maxWidth: '580px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: `${spacing.md} ${spacing.lg}`,
+                    padding: `${spacing.lg} ${spacing.xl}`,
                     borderRadius: borderRadius.lg,
                     background: `linear-gradient(135deg, ${colors.accent}22, ${colors.bgCard})`,
                     border: `1px solid ${colors.accent}50`,
                     boxShadow: `0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px ${colors.accent}20`,
                     animation: 'bannerDropDown 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
-                      <span style={{ fontSize: '24px' }}>✨</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md }}>
+                      <span style={{ fontSize: '28px' }}>✨</span>
                       <div>
-                        <span style={{ color: colors.accent, fontSize: fontSize.base, fontWeight: fontWeight.semibold, display: 'block' }}>
+                        <span style={{ color: colors.accent, fontSize: fontSize.lg, fontWeight: fontWeight.bold, display: 'block' }}>
                           Custom Backtest Results
                         </span>
                         <span style={{
-                          fontSize: fontSize.xs,
-                          color: colors.textMuted,
+                          fontSize: fontSize.sm,
+                          color: colors.textSecondary,
                         }}>
                           Comparing selected suggestions
                         </span>
                       </div>
                     </div>
-                    <button
-                      onClick={handleResetBacktest}
-                      style={{
-                        padding: `${spacing.sm} ${spacing.md}`,
-                        borderRadius: borderRadius.md,
-                        border: `1px solid ${colors.border}`,
-                        background: colors.bgSecondary,
-                        color: colors.textSecondary,
-                        fontSize: fontSize.sm,
-                        fontWeight: fontWeight.medium,
-                        cursor: 'pointer',
-                        transition: `all ${transitions.fast}`,
-                      }}
-                    >
-                      Reset
-                    </button>
+                    <div style={{ display: 'flex', gap: spacing.sm, alignItems: 'center' }}>
+                      <button
+                        onClick={handleResetBacktest}
+                        style={{
+                          padding: `${spacing.sm} ${spacing.md}`,
+                          borderRadius: borderRadius.md,
+                          border: `1px solid ${colors.accent}50`,
+                          background: 'transparent',
+                          color: colors.accent,
+                          fontSize: fontSize.sm,
+                          fontWeight: fontWeight.medium,
+                          cursor: 'pointer',
+                          transition: `all ${transitions.fast}`,
+                        }}
+                      >
+                        Reset
+                      </button>
+                      <button
+                        onClick={handleDismissBanner}
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: borderRadius.md,
+                          border: `1px solid ${colors.textMuted}50`,
+                          background: colors.bgSecondary,
+                          color: colors.textPrimary,
+                          fontSize: '18px',
+                          cursor: 'pointer',
+                          transition: `all ${transitions.fast}`,
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
                   </div>
                 </>
               )}

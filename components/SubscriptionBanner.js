@@ -68,15 +68,15 @@ export default function SubscriptionBanner() {
       <style>{`
         @keyframes bannerDropDown {
           0% {
-            transform: translateY(-100%);
+            transform: translateX(-50%) translateY(-100%);
             opacity: 0;
           }
           60% {
-            transform: translateY(8px);
+            transform: translateX(-50%) translateY(8px);
             opacity: 1;
           }
           100% {
-            transform: translateY(0);
+            transform: translateX(-50%) translateY(0);
             opacity: 1;
           }
         }
@@ -113,7 +113,7 @@ export default function SubscriptionBanner() {
         zIndex: 999,
         width: 'calc(100% - 48px)',
         maxWidth: '720px',
-        padding: `${spacing.lg} ${spacing.xl}`,
+        padding: `${spacing.xl} ${spacing.xxl || '32px'}`,
         borderRadius: borderRadius.lg,
         display: 'flex',
         alignItems: 'center',
@@ -172,12 +172,16 @@ export default function SubscriptionBanner() {
           <button
             onClick={() => setDismissed(true)}
             style={{
-              padding: `${spacing.md} ${spacing.lg}`,
+              width: '40px',
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               borderRadius: borderRadius.md,
-              border: `1px solid ${colors.border}`,
-              background: 'transparent',
-              color: colors.textMuted,
-              fontSize: fontSize.base,
+              border: `1px solid ${colors.textMuted}50`,
+              background: colors.bgSecondary,
+              color: colors.textPrimary,
+              fontSize: '18px',
               fontFamily: fontFamily.sans,
               cursor: 'pointer',
               transition: transitions.fast,
