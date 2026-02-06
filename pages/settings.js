@@ -207,6 +207,14 @@ const TAB_ICONS = {
       <line x1="9" y1="3" x2="9" y2="21"/>
     </svg>
   ),
+  orb: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="7" width="20" height="10" rx="2"/>
+      <line x1="7" y1="7" x2="7" y2="17"/>
+      <line x1="17" y1="7" x2="17" y2="17"/>
+      <path d="M12 7v-4M12 21v-4"/>
+    </svg>
+  ),
 };
 
 // Consolidated tabs for cleaner organization
@@ -216,6 +224,7 @@ const TABS = [
   { id: 'entry', label: 'Entry Rules', icon: TAB_ICONS.entry },
   { id: 'risk', label: 'Risk', icon: TAB_ICONS.risk },
   { id: 'limits', label: 'Limits', icon: TAB_ICONS.limits },
+  { id: 'orb', label: 'ORB Strategy', icon: TAB_ICONS.orb, badge: 'NEW' },
 ];
 
 export default function SettingsPage() {
@@ -1302,6 +1311,233 @@ export default function SettingsPage() {
                 colors={colors}
               />
             </SettingsSection>
+          </div>
+        )}
+
+        {/* ORB Strategy Tab */}
+        {activeTab === 'orb' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <SettingsSection
+              title="ORB Strategy Settings"
+              subtitle="Opening Range Breakout strategy configuration. Monitors the 5-minute opening range for break and retest setups."
+              colors={colors}
+              icon={TAB_ICONS.orb}
+            >
+              <SettingRow
+                label="ORB Enabled"
+                description="Enable or disable the ORB strategy. When disabled, no ORB setups will be detected."
+                colors={colors}
+              >
+                {isAdmin ? (
+                  <button
+                    onClick={() => set('orb_enabled', !get('orb_enabled', true))}
+                    style={get('orb_enabled', true) ? toggleOnStyle : toggleOffStyle}
+                  >
+                    <span style={{
+                      position: 'absolute',
+                      left: get('orb_enabled', true) ? 'calc(100% - 24px)' : '4px',
+                      top: '4px',
+                      width: 18,
+                      height: 18,
+                      borderRadius: '50%',
+                      background: '#fff',
+                      transition: 'left 0.2s ease',
+                    }} />
+                  </button>
+                ) : (
+                  <ReadOnlyValue colors={colors} value={get('orb_enabled', true) ? 'Enabled' : 'Disabled'} />
+                )}
+              </SettingRow>
+
+              <SettingRow
+                label="Trading Mode"
+                description="Stocks mode uses different timing windows and parameters than futures."
+                colors={colors}
+              >
+                {isAdmin ? (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {[{ id: false, label: 'Futures' }, { id: true, label: 'Stocks' }].map(mode => (
+                      <button
+                        key={String(mode.id)}
+                        onClick={() => set('orb_stocks_mode', mode.id)}
+                        style={{
+                          padding: '10px 20px',
+                          borderRadius: borderRadius.md,
+                          border: `2px solid ${get('orb_stocks_mode', false) === mode.id ? colors.accent : colors.border}`,
+                          background: get('orb_stocks_mode', false) === mode.id ? colors.accentDark : 'transparent',
+                          color: get('orb_stocks_mode', false) === mode.id ? colors.accent : colors.textMuted,
+                          fontWeight: 600,
+                          fontSize: 13,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        {mode.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <ReadOnlyValue colors={colors} value={get('orb_stocks_mode', false) ? 'Stocks' : 'Futures'} />
+                )}
+              </SettingRow>
+
+              <SettingRow
+                label="LLM Filter"
+                description="Use AI to filter out low-quality setups based on market context."
+                colors={colors}
+              >
+                {isAdmin ? (
+                  <button
+                    onClick={() => set('orb_llm_filter', !get('orb_llm_filter', true))}
+                    style={get('orb_llm_filter', true) ? toggleOnStyle : toggleOffStyle}
+                  >
+                    <span style={{
+                      position: 'absolute',
+                      left: get('orb_llm_filter', true) ? 'calc(100% - 24px)' : '4px',
+                      top: '4px',
+                      width: 18,
+                      height: 18,
+                      borderRadius: '50%',
+                      background: '#fff',
+                      transition: 'left 0.2s ease',
+                    }} />
+                  </button>
+                ) : (
+                  <ReadOnlyValue colors={colors} value={get('orb_llm_filter', true) ? 'Active' : 'Inactive'} />
+                )}
+              </SettingRow>
+            </SettingsSection>
+
+            <SettingsSection
+              title="Entry Filters"
+              subtitle="Minimum thresholds for entering ORB trades."
+              colors={colors}
+              icon={TAB_ICONS.entry}
+            >
+              <SettingRow
+                label="Min Displacement Ratio"
+                description="Minimum displacement from the opening range before considering a break. Higher values = stronger breaks only."
+                colors={colors}
+              >
+                {isAdmin ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="1.0"
+                      max="3.0"
+                      value={get('orb_displacement_min', 1.5)}
+                      onChange={(e) => set('orb_displacement_min', parseFloat(e.target.value))}
+                      style={{ ...inputStyle, width: 80, textAlign: 'center' }}
+                    />
+                    <span style={{ fontSize: 13, color: colors.textMuted }}>x ATR</span>
+                  </div>
+                ) : (
+                  <ReadOnlyValue colors={colors} value={`${get('orb_displacement_min', 1.5)}x ATR`} />
+                )}
+              </SettingRow>
+
+              <SettingRow
+                label="Min Volume Ratio"
+                description="Minimum volume compared to average during breakout candle."
+                colors={colors}
+              >
+                {isAdmin ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="1.0"
+                      max="3.0"
+                      value={get('orb_volume_min', 1.2)}
+                      onChange={(e) => set('orb_volume_min', parseFloat(e.target.value))}
+                      style={{ ...inputStyle, width: 80, textAlign: 'center' }}
+                    />
+                    <span style={{ fontSize: 13, color: colors.textMuted }}>x avg</span>
+                  </div>
+                ) : (
+                  <ReadOnlyValue colors={colors} value={`${get('orb_volume_min', 1.2)}x avg`} />
+                )}
+              </SettingRow>
+
+              <SettingRow
+                label="Min Confluence Score"
+                description="Number of confluence factors that must align (index direction, EMA slope, relative strength, etc.)."
+                colors={colors}
+              >
+                {isAdmin ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      type="number"
+                      step="1"
+                      min="1"
+                      max="5"
+                      value={get('confluence_min', 2)}
+                      onChange={(e) => set('confluence_min', parseInt(e.target.value))}
+                      style={{ ...inputStyle, width: 80, textAlign: 'center' }}
+                    />
+                    <span style={{ fontSize: 13, color: colors.textMuted }}>/ 5 factors</span>
+                  </div>
+                ) : (
+                  <ReadOnlyValue colors={colors} value={`${get('confluence_min', 2)} / 5 factors`} />
+                )}
+              </SettingRow>
+
+              <SettingRow
+                label="Min Risk/Reward Ratio"
+                description="Minimum reward-to-risk ratio required to take an ORB trade."
+                colors={colors}
+              >
+                {isAdmin ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="1.0"
+                      max="5.0"
+                      value={get('orb_min_rr_ratio', 2.0)}
+                      onChange={(e) => set('orb_min_rr_ratio', parseFloat(e.target.value))}
+                      style={{ ...inputStyle, width: 80, textAlign: 'center' }}
+                    />
+                    <span style={{ fontSize: 13, color: colors.textMuted }}>: 1</span>
+                  </div>
+                ) : (
+                  <ReadOnlyValue colors={colors} value={`${get('orb_min_rr_ratio', 2.0)} : 1`} />
+                )}
+              </SettingRow>
+            </SettingsSection>
+
+            <SettingsSection
+              title="Daily Limits"
+              subtitle="Control how many ORB trades can be taken per day."
+              colors={colors}
+              icon={TAB_ICONS.limits}
+            >
+              <SettingRow
+                label="Max Trades Per Day"
+                description="Maximum number of ORB trades allowed per day across all symbols."
+                colors={colors}
+              >
+                {isAdmin ? (
+                  <input
+                    type="number"
+                    step="1"
+                    min="1"
+                    max="10"
+                    value={get('orb_max_trades_per_day', 2)}
+                    onChange={(e) => set('orb_max_trades_per_day', parseInt(e.target.value))}
+                    style={{ ...inputStyle, width: 80, textAlign: 'center' }}
+                  />
+                ) : (
+                  <ReadOnlyValue colors={colors} value={get('orb_max_trades_per_day', 2)} />
+                )}
+              </SettingRow>
+            </SettingsSection>
+
+            <QuickTip
+              text="ORB Strategy trades the 5-minute Opening Range using a Break & Retest pattern. It works best during the first 90 minutes of market open (9:30-11:00 AM EST) when volatility is highest."
+              colors={colors}
+            />
           </div>
         )}
 
