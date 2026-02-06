@@ -38,7 +38,11 @@ export default function ORBDashboard() {
         setActiveSetups(statusRes.value?.active_setups || []);
       }
       if (settingsRes.status === 'fulfilled') {
-        setSettings(settingsRes.value?.orb || settingsRes.value?.settings || settingsRes.value);
+        console.log('ORB API Response:', settingsRes.value);
+        const extractedSettings = settingsRes.value?.orb || settingsRes.value?.settings || settingsRes.value;
+        console.log('Extracted settings:', extractedSettings);
+        console.log('orb_enabled:', extractedSettings?.orb_enabled);
+        setSettings(extractedSettings);
       }
       if (analyticsRes.status === 'fulfilled') {
         setAnalytics(analyticsRes.value?.analytics || analyticsRes.value);
