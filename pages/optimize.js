@@ -24,43 +24,42 @@ import {
 
 const colors = darkTheme;
 
-// Setting display names and descriptions
+// Setting display names and descriptions - ORB Strategy Parameters
 const SETTING_META = {
-  stop_loss_pct: {
-    name: 'Stop Loss',
-    unit: '%',
-    description: 'Maximum loss before position closes',
-    icon: '🛡️',
+  orb_displacement_min: {
+    name: 'Min Displacement',
+    unit: 'x',
+    description: 'Minimum break candle body vs average body ratio. Higher = stronger breaks only.',
+    icon: '📊',
+    format: (v) => `${Number(v).toFixed(1)}x`,
   },
-  take_profit_pct: {
-    name: 'Take Profit',
-    unit: '%',
-    description: 'Target profit to lock in gains',
-    icon: '🎯',
-  },
-  entry_momentum_threshold: {
-    name: 'Entry Momentum',
-    unit: '%',
-    description: 'Minimum momentum for trade entry',
+  orb_volume_min: {
+    name: 'Min Volume',
+    unit: 'x',
+    description: 'Minimum volume ratio on break candle. Higher = more volume confirmation.',
     icon: '📈',
+    format: (v) => `${Number(v).toFixed(1)}x`,
   },
-  trailing_stop_activation: {
-    name: 'Trailing Activation',
-    unit: '%',
-    description: 'Profit level to activate trailing stop',
-    icon: '🔄',
+  confluence_min: {
+    name: 'Min Confluence',
+    unit: '/5',
+    description: 'Minimum confluence factors required (QQQ direction, EMA slope, etc.). Higher = more filters.',
+    icon: '🎯',
+    format: (v) => `${v}/5`,
   },
-  trailing_stop_distance: {
-    name: 'Trailing Distance',
-    unit: '%',
-    description: 'Distance from peak before stop triggers',
-    icon: '📏',
+  orb_min_rr_ratio: {
+    name: 'Min R:R Ratio',
+    unit: ':1',
+    description: 'Minimum reward-to-risk ratio. Higher = better risk/reward required.',
+    icon: '⚖️',
+    format: (v) => `${Number(v).toFixed(1)}:1`,
   },
-  max_hold_hours: {
-    name: 'Max Hold Time',
-    unit: 'hrs',
-    description: 'Maximum time to hold a position',
-    icon: '⏱️',
+  orb_max_trades_per_day: {
+    name: 'Max Daily Trades',
+    unit: '',
+    description: 'Maximum ORB trades per day. Fewer = more selective.',
+    icon: '🔢',
+    format: (v) => `${v}`,
   },
 };
 
@@ -145,13 +144,15 @@ export default function OptimizePage() {
       }
 
       // Map backend response to expected frontend structure
-      // Backend uses: current_performance, optimized_performance
-      // Frontend expects: current, optimized
+      // ORB backtest uses: current_performance, proposed_performance (or current, proposed)
+      // Also includes: filtered_trades, filter_impact, trade_reduction_pct
       const mappedBacktest = {
         current: bt.current_performance || bt.current,
-        optimized: bt.optimized_performance || bt.optimized,
+        optimized: bt.proposed_performance || bt.proposed || bt.optimized_performance || bt.optimized,
         improvement: bt.improvement,
         has_suggestions: bt.has_suggestions,
+        trade_reduction_pct: bt.trade_reduction_pct || 0,
+        strategy_type: bt.strategy_type || 'orb',
       };
       console.log('[Optimize] Mapped backtest:', mappedBacktest);
 
@@ -211,7 +212,17 @@ export default function OptimizePage() {
         throw new Error(result.error || 'Backtest failed');
       }
 
-      setBacktest(result);
+      // Map the result to expected structure (handles both old and ORB formats)
+      const mappedResult = {
+        current: result.current,
+        optimized: result.proposed || result.optimized,
+        improvement: result.improvement,
+        has_suggestions: true,
+        trade_reduction_pct: result.trade_reduction_pct || 0,
+        strategy_type: result.strategy_type || 'orb',
+      };
+
+      setBacktest(mappedResult);
       setIsCustomBacktest(true);
       setShowCustomBanner(true);
       setSuccess('Backtest complete! Review the updated metrics below.');
@@ -436,13 +447,13 @@ export default function OptimizePage() {
             gap: spacing.sm,
           }}>
             <span style={{ fontSize: '28px' }}>✨</span>
-            Optimize Settings
+            Optimize ORB Settings
           </h1>
           <p style={{
             ...typography.bodySmall,
             marginTop: spacing.xs,
           }}>
-            ML-powered suggestions based on your trading history
+            Data-driven suggestions to tune your ORB entry filters
           </p>
         </div>
 
@@ -746,17 +757,6 @@ export default function OptimizePage() {
                     ) : null}
                   />
                   <MetricRow
-                    label="Max Drawdown"
-                    value={`${(backtest.current?.max_drawdown_pct || 0).toFixed(2)}%`}
-                    color={colors.error}
-                    delta={isCustomBacktest && previousBacktest ? calcDelta(
-                      backtest.current?.max_drawdown_pct,
-                      previousBacktest.current?.max_drawdown_pct,
-                      true,
-                      false // lower is better for drawdown
-                    ) : null}
-                  />
-                  <MetricRow
                     label="Profit Factor"
                     value={(backtest.current?.profit_factor || 0).toFixed(2)}
                     color={colors.textPrimary}
@@ -767,9 +767,10 @@ export default function OptimizePage() {
                     ) : null}
                   />
                   <MetricRow
-                    label="Total Trades"
-                    value={backtest.current?.total_trades || 0}
+                    label="Filtered Trades"
+                    value={`${backtest.current?.filtered_trades || backtest.current?.total_trades || 0}`}
                     color={colors.textMuted}
+                    subtitle={backtest.current?.total_trades ? `of ${backtest.current.total_trades} total` : null}
                   />
                 </div>
               </div>
@@ -822,7 +823,7 @@ export default function OptimizePage() {
                     delta={
                       isCustomBacktest && previousBacktest
                         ? calcDelta(backtest.optimized?.win_rate * 100, previousBacktest.optimized?.win_rate * 100)
-                        : (backtest.improvement?.win_rate_delta ? formatDelta(backtest.improvement.win_rate_delta * 100) : null)
+                        : (backtest.improvement?.win_rate ? formatDelta(backtest.improvement.win_rate * 100) : null)
                     }
                   />
                   <MetricRow
@@ -832,17 +833,7 @@ export default function OptimizePage() {
                     delta={
                       isCustomBacktest && previousBacktest
                         ? calcDelta(backtest.optimized?.total_return_pct, previousBacktest.optimized?.total_return_pct)
-                        : (backtest.improvement?.return_delta ? formatDelta(backtest.improvement.return_delta) : null)
-                    }
-                  />
-                  <MetricRow
-                    label="Max Drawdown"
-                    value={`${(backtest.optimized?.max_drawdown_pct || 0).toFixed(2)}%`}
-                    color={colors.warning}
-                    delta={
-                      isCustomBacktest && previousBacktest
-                        ? calcDelta(backtest.optimized?.max_drawdown_pct, previousBacktest.optimized?.max_drawdown_pct, true, false)
-                        : (backtest.improvement?.drawdown_delta ? formatDelta(backtest.improvement.drawdown_delta) : null)
+                        : (backtest.improvement?.total_return_pct ? formatDelta(backtest.improvement.total_return_pct) : null)
                     }
                   />
                   <MetricRow
@@ -852,13 +843,14 @@ export default function OptimizePage() {
                     delta={
                       isCustomBacktest && previousBacktest
                         ? calcDelta(backtest.optimized?.profit_factor, previousBacktest.optimized?.profit_factor, false)
-                        : (backtest.improvement?.profit_factor_delta ? formatDelta(backtest.improvement.profit_factor_delta, false) : null)
+                        : (backtest.improvement?.profit_factor ? formatDelta(backtest.improvement.profit_factor, false) : null)
                     }
                   />
                   <MetricRow
-                    label="Total Trades"
-                    value={backtest.optimized?.total_trades || 0}
+                    label="Filtered Trades"
+                    value={`${backtest.optimized?.filtered_trades || backtest.optimized?.total_trades || 0}`}
                     color={colors.textMuted}
+                    subtitle={backtest.trade_reduction_pct > 0 ? `${(backtest.trade_reduction_pct * 100).toFixed(0)}% fewer trades` : null}
                   />
                 </div>
               </div>
@@ -1056,11 +1048,11 @@ export default function OptimizePage() {
                         fontSize: fontSize.sm,
                       }}>
                         <span style={{ color: colors.textMuted }}>
-                          {suggestion.current_value}{meta.unit}
+                          {meta.format ? meta.format(suggestion.current_value) : `${suggestion.current_value}${meta.unit}`}
                         </span>
                         <span style={{ color: colors.accent }}>→</span>
                         <span style={{ color: colors.accent, fontWeight: fontWeight.bold }}>
-                          {suggestion.suggested_value}{meta.unit}
+                          {meta.format ? meta.format(suggestion.suggested_value) : `${suggestion.suggested_value}${meta.unit}`}
                         </span>
                       </div>
 
@@ -1225,7 +1217,7 @@ export default function OptimizePage() {
               {suggestions
                 .filter(s => selectedSuggestions.has(s.setting_name))
                 .map(s => {
-                  const meta = SETTING_META[s.setting_name] || { name: s.setting_name, unit: '' };
+                  const meta = SETTING_META[s.setting_name] || { name: s.setting_name, unit: '', format: null };
                   return (
                     <div
                       key={s.setting_name}
@@ -1239,10 +1231,12 @@ export default function OptimizePage() {
                     >
                       <span style={{ color: colors.textSecondary }}>{meta.name}</span>
                       <span style={{ fontFamily: fontFamily.mono }}>
-                        <span style={{ color: colors.textMuted }}>{s.current_value}</span>
+                        <span style={{ color: colors.textMuted }}>
+                          {meta.format ? meta.format(s.current_value) : s.current_value}
+                        </span>
                         {' → '}
                         <span style={{ color: colors.accent, fontWeight: fontWeight.bold }}>
-                          {s.suggested_value}{meta.unit}
+                          {meta.format ? meta.format(s.suggested_value) : `${s.suggested_value}${meta.unit}`}
                         </span>
                       </span>
                     </div>
@@ -1318,7 +1312,7 @@ export default function OptimizePage() {
 }
 
 // Metric row component
-function MetricRow({ label, value, color, delta }) {
+function MetricRow({ label, value, color, delta, subtitle }) {
   return (
     <div style={{
       display: 'flex',
@@ -1332,14 +1326,25 @@ function MetricRow({ label, value, color, delta }) {
         {label}
       </span>
       <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
-        <span style={{
-          fontFamily: fontFamily.mono,
-          fontSize: fontSize.md,
-          fontWeight: fontWeight.bold,
-          color: color,
-        }}>
-          {value}
-        </span>
+        <div style={{ textAlign: 'right' }}>
+          <span style={{
+            fontFamily: fontFamily.mono,
+            fontSize: fontSize.md,
+            fontWeight: fontWeight.bold,
+            color: color,
+            display: 'block',
+          }}>
+            {value}
+          </span>
+          {subtitle && (
+            <span style={{
+              fontSize: fontSize.xs,
+              color: colors.textMuted,
+            }}>
+              {subtitle}
+            </span>
+          )}
+        </div>
         {delta && (
           <span style={{
             fontSize: fontSize.xs,
