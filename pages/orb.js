@@ -38,7 +38,7 @@ export default function ORBDashboard() {
         setActiveSetups(statusRes.value?.active_setups || []);
       }
       if (settingsRes.status === 'fulfilled') {
-        setSettings(settingsRes.value?.settings || settingsRes.value);
+        setSettings(settingsRes.value?.orb || settingsRes.value?.settings || settingsRes.value);
       }
       if (analyticsRes.status === 'fulfilled') {
         setAnalytics(analyticsRes.value?.analytics || analyticsRes.value);
@@ -262,7 +262,7 @@ export default function ORBDashboard() {
               fontSize: fontSize.xs,
               fontWeight: fontWeight.semibold,
             }}>
-              Mode: {settings.orb_stocks_mode ? 'Stocks' : 'Futures'}
+              Mode: {settings.stocks_mode ? 'Stocks' : 'Futures'}
             </span>
             <span style={{
               padding: '4px 12px',
