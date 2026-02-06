@@ -28,19 +28,19 @@ import {
 // Check if current user is admin
 const ADMIN_USER_ID = process.env.NEXT_PUBLIC_ADMIN_USER_ID;
 
-// Guardrails for display
+// Guardrails for display - ORB Strategy focused
+// Note: Most trading parameters are now handled by ORB strategy (range-based stops, 2R/3R targets)
+// These guardrails are for safety fallbacks only
 const DEFAULT_GUARDRAILS = {
-  conf_threshold: { min: 0.50, max: 0.80, default: 0.60, recommended: 0.60 },
-  trades_per_ticker_per_day: { min: 1, max: 3, default: 1, recommended: 1 },
-  max_open_positions: { min: 1, max: 10, default: 5, recommended: 5 },
-  stop_loss_pct: { min: 0.005, max: 0.03, default: 0.01, recommended: 0.01 },
-  take_profit_pct: { min: 0.005, max: 0.05, default: 0.02, recommended: 0.02 },
-  risk_per_trade_pct: { min: 0.001, max: 0.01, default: 0.005, recommended: 0.005 },
+  // Safety fallbacks - apply regardless of ORB strategy
+  max_open_positions: { min: 1, max: 10, default: 5, recommended: 3 },
   max_hold_min: { min: 15, max: 390, default: 120, recommended: 120 },
-  trailing_stop_activation: { min: 0.30, max: 0.95, default: 0.70, recommended: 0.70 },
-  trailing_stop_distance: { min: 0.00, max: 1.00, default: 1.00, recommended: 1.00 },
-  mom_entry_pct: { min: 0.001, max: 0.01, default: 0.002, recommended: 0.002 },
-  mom_lookback: { min: 3, max: 20, default: 8, recommended: 8 },
+  // ORB-specific (for reference, actual validation in backend)
+  orb_displacement_min: { min: 1.0, max: 3.0, default: 1.5, recommended: 1.5 },
+  orb_volume_min: { min: 1.0, max: 3.0, default: 1.2, recommended: 1.2 },
+  orb_min_rr_ratio: { min: 1.0, max: 5.0, default: 2.0, recommended: 2.0 },
+  orb_max_trades_per_day: { min: 1, max: 5, default: 2, recommended: 2 },
+  confluence_min: { min: 1, max: 5, default: 2, recommended: 2 },
 };
 
 // Detailed explanations for each setting
@@ -112,12 +112,12 @@ const SETTING_EXPLANATIONS = {
     tip: 'Professional traders typically risk 0.5-2% per trade maximum.',
   },
   max_hold_min: {
-    title: 'Max Hold Time',
-    description: 'Maximum duration before forcing an exit.',
-    details: 'Positions held longer than this will be automatically closed, regardless of profit or loss. Prevents capital from being tied up in stagnant trades.',
-    lowImpact: 'Shorter (15-30 min): Forces quick decisions, avoids holding losers.',
-    highImpact: 'Longer (2-4 hours): Gives trades time to work, but ties up capital.',
-    tip: 'For day trading, 60-120 minutes usually provides enough time for a move.',
+    title: 'Max Hold Time (Safety)',
+    description: 'Absolute maximum duration before forcing an exit - acts as a safety net.',
+    details: 'The ORB strategy has its own exit rules (11:15 AM deadline, 30-min time exit if no 1R hit). This setting is a safety fallback that catches edge cases if those rules fail.',
+    lowImpact: 'Shorter (60 min): Tighter safety net, may exit before ORB exit rules trigger.',
+    highImpact: 'Longer (2-4 hours): More room for ORB exit rules to work, but ties up capital longer if they fail.',
+    tip: 'Keep at 120 minutes as a reasonable safety buffer beyond the ORB exit deadline.',
   },
   trades_per_ticker_per_day: {
     title: 'Trades Per Symbol',
@@ -128,12 +128,12 @@ const SETTING_EXPLANATIONS = {
     tip: 'Start with 1-2 to prevent overtrading the same name.',
   },
   max_open_positions: {
-    title: 'Max Open Positions',
-    description: 'Maximum concurrent positions at any time.',
-    details: 'Limits total exposure. With 5 max positions and 0.5% risk each, your max portfolio risk is 2.5%. Diversification reduces single-stock risk.',
-    lowImpact: 'Fewer (1-3): Concentrated bets, higher conviction required.',
-    highImpact: 'More (5-10): Diversified exposure, but diluted focus.',
-    tip: 'Match your position count to your ability to monitor trades.',
+    title: 'Max Open Positions (Safety)',
+    description: 'Maximum concurrent positions at any time - prevents overexposure.',
+    details: 'The ORB strategy monitors 20 tickers for setups. If multiple setups trigger at once, this limit prevents taking on too many positions. Each ORB trade uses range-based position sizing.',
+    lowImpact: 'Fewer (1-2): Very conservative, may miss good setups if already in a position.',
+    highImpact: 'More (5-10): Can take multiple ORB setups simultaneously, but increases total exposure.',
+    tip: 'Start with 3 positions max to balance opportunity capture with risk management.',
   },
   mq_velocity_enabled: {
     title: 'Quick Reversal Protection',
@@ -217,14 +217,17 @@ const TAB_ICONS = {
   ),
 };
 
-// Consolidated tabs for cleaner organization
+// Consolidated tabs for cleaner organization - ORB Strategy focused
+// Phase 1: Simplified for ORB-first approach
 const TABS = [
   { id: 'profile', label: 'Profile', icon: TAB_ICONS.profile },
-  { id: 'schedule', label: 'Schedule', icon: TAB_ICONS.schedule },
-  { id: 'entry', label: 'Entry Rules', icon: TAB_ICONS.entry },
-  { id: 'risk', label: 'Risk', icon: TAB_ICONS.risk },
-  { id: 'limits', label: 'Limits', icon: TAB_ICONS.limits },
-  { id: 'orb', label: 'ORB Strategy', icon: TAB_ICONS.orb, badge: 'NEW' },
+  { id: 'orb', label: 'ORB Strategy', icon: TAB_ICONS.orb },  // Primary trading tab
+  { id: 'safety', label: 'Safety', icon: TAB_ICONS.risk },    // Safety fallbacks
+  // PHASED OUT - These settings don't apply to ORB strategy:
+  // { id: 'schedule', label: 'Schedule', icon: TAB_ICONS.schedule },  // ORB has fixed 10:00-11:00 window
+  // { id: 'entry', label: 'Entry Rules', icon: TAB_ICONS.entry },     // Momentum override removed per PRD
+  // { id: 'risk', label: 'Risk', icon: TAB_ICONS.risk },              // ORB uses range-based stops
+  // { id: 'limits', label: 'Limits', icon: TAB_ICONS.limits },        // Merged into Safety
 ];
 
 export default function SettingsPage() {
@@ -1351,21 +1354,21 @@ export default function SettingsPage() {
 
               <SettingRow
                 label="Trading Mode"
-                description="Stocks mode uses different timing windows and parameters than futures."
+                description="Stocks mode uses tighter stops (retest candle) and different timing windows."
                 colors={colors}
               >
                 {isAdmin ? (
                   <div style={{ display: 'flex', gap: 8 }}>
-                    {[{ id: false, label: 'Futures' }, { id: true, label: 'Stocks' }].map(mode => (
+                    {[{ id: true, label: 'Stocks' }, { id: false, label: 'Futures' }].map(mode => (
                       <button
                         key={String(mode.id)}
                         onClick={() => set('orb_stocks_mode', mode.id)}
                         style={{
                           padding: '10px 20px',
                           borderRadius: borderRadius.md,
-                          border: `2px solid ${get('orb_stocks_mode', false) === mode.id ? colors.accent : colors.border}`,
-                          background: get('orb_stocks_mode', false) === mode.id ? colors.accentDark : 'transparent',
-                          color: get('orb_stocks_mode', false) === mode.id ? colors.accent : colors.textMuted,
+                          border: `2px solid ${get('orb_stocks_mode', true) === mode.id ? colors.accent : colors.border}`,
+                          background: get('orb_stocks_mode', true) === mode.id ? colors.accentDark : 'transparent',
+                          color: get('orb_stocks_mode', true) === mode.id ? colors.accent : colors.textMuted,
                           fontWeight: 600,
                           fontSize: 13,
                           cursor: 'pointer',
@@ -1377,7 +1380,7 @@ export default function SettingsPage() {
                     ))}
                   </div>
                 ) : (
-                  <ReadOnlyValue colors={colors} value={get('orb_stocks_mode', false) ? 'Stocks' : 'Futures'} />
+                  <ReadOnlyValue colors={colors} value={get('orb_stocks_mode', true) ? 'Stocks' : 'Futures'} />
                 )}
               </SettingRow>
 
@@ -1536,6 +1539,134 @@ export default function SettingsPage() {
 
             <QuickTip
               text="ORB Strategy trades the 5-minute Opening Range using a Break & Retest pattern. It works best during the first 90 minutes of market open (9:30-11:00 AM EST) when volatility is highest."
+              colors={colors}
+            />
+          </div>
+        )}
+
+        {/* Safety Tab - Emergency controls and safety fallbacks */}
+        {activeTab === 'safety' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <SettingsSection
+              title="Emergency Controls"
+              subtitle="Immediately halt all trading activity when needed."
+              colors={colors}
+              icon={
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              }
+            >
+              <SettingRow
+                label="Execute Trades"
+                description="When enabled, the bot will actively place trades. Disable to pause all trading."
+                colors={colors}
+                explanation={SETTING_EXPLANATIONS.execute_trades}
+                expandedExplanations={expandedExplanations}
+                setExpandedExplanations={setExpandedExplanations}
+                settingKey="execute_trades"
+              >
+                {isAdmin ? (
+                  <Toggle
+                    value={get('kill_switch', 'off') === 'off'}
+                    onChange={(v) => set('kill_switch', v ? 'off' : 'on')}
+                  />
+                ) : (
+                  <ReadOnlyToggle value={get('kill_switch', 'off') === 'off'} />
+                )}
+              </SettingRow>
+
+              {get('kill_switch', 'off') === 'on' && (
+                <div style={{
+                  padding: '14px 18px',
+                  background: colors.errorDark,
+                  border: `1px solid ${colors.error}`,
+                  borderRadius: 10,
+                  color: colors.error,
+                  fontSize: 13,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  marginTop: 8,
+                }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={colors.error} strokeWidth="2" style={{ flexShrink: 0 }}>
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                  </svg>
+                  <div>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Trading is paused</div>
+                    <div style={{ opacity: 0.9 }}>No new trades will be placed. Existing positions are not affected.</div>
+                  </div>
+                </div>
+              )}
+            </SettingsSection>
+
+            <SettingsSection
+              title="Safety Limits"
+              subtitle="Fallback protections that apply regardless of strategy. These catch edge cases the ORB strategy may not handle."
+              colors={colors}
+              icon={TAB_ICONS.risk}
+            >
+              <SettingRow
+                label="Max Hold Time"
+                description="Absolute maximum time a position can be held. ORB positions typically exit by 11:15 AM EST, but this provides a safety net."
+                guardrail={guardrails.max_hold_min}
+                value={get('max_hold_min', 120)}
+                colors={colors}
+                explanation={SETTING_EXPLANATIONS.max_hold_min}
+                expandedExplanations={expandedExplanations}
+                setExpandedExplanations={setExpandedExplanations}
+                settingKey="max_hold_min"
+              >
+                {isAdmin ? (
+                  <ValidatedNumberInput
+                    value={get('max_hold_min', 120)}
+                    onChange={(v) => set('max_hold_min', v)}
+                    onValidate={(v) => validate('max_hold_min', v, 'max_hold_min')}
+                    error={errors['max_hold_min']}
+                    step={5}
+                    min={guardrails.max_hold_min?.min}
+                    max={guardrails.max_hold_min?.max}
+                    suffix="min"
+                    colors={colors}
+                  />
+                ) : (
+                  <ReadOnlyValue colors={colors} value={`${get('max_hold_min', 120)} min`} />
+                )}
+              </SettingRow>
+
+              <SettingRow
+                label="Max Open Positions"
+                description="Maximum concurrent positions at any time. Prevents overexposure if multiple ORB setups trigger simultaneously."
+                guardrail={guardrails.max_open_positions}
+                value={get('max_open_positions', 5)}
+                colors={colors}
+                explanation={SETTING_EXPLANATIONS.max_open_positions}
+                expandedExplanations={expandedExplanations}
+                setExpandedExplanations={setExpandedExplanations}
+                settingKey="max_open_positions"
+              >
+                {isAdmin ? (
+                  <ValidatedNumberInput
+                    value={get('max_open_positions', 5)}
+                    onChange={(v) => set('max_open_positions', v)}
+                    onValidate={(v) => validate('max_open_positions', v, 'max_open_positions')}
+                    error={errors['max_open_positions']}
+                    step={1}
+                    min={guardrails.max_open_positions?.min}
+                    max={guardrails.max_open_positions?.max}
+                    colors={colors}
+                  />
+                ) : (
+                  <ReadOnlyValue colors={colors} value={get('max_open_positions', 5)} />
+                )}
+              </SettingRow>
+            </SettingsSection>
+
+            <QuickTip
+              text="These safety settings act as fallbacks. The ORB strategy has its own exit rules (11:15 AM deadline, 30-min time exit, 2 consecutive loss halt), but these settings catch any edge cases."
               colors={colors}
             />
           </div>
