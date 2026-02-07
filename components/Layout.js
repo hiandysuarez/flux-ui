@@ -465,6 +465,39 @@ export default function Layout({ children, active = 'dashboard' }) {
                 Settings
               </a>
 
+              {/* Admin link */}
+              <a
+                href="/admin"
+                className="menu-link"
+                onClick={() => setMenuOpen(false)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '14px 20px',
+                  color: active === 'admin' ? colors.accent : colors.textPrimary,
+                  fontSize: fontSize.base,
+                  fontWeight: active === 'admin' ? fontWeight.bold : fontWeight.medium,
+                  textDecoration: 'none',
+                  background: active === 'admin' ? colors.accentDark : 'transparent',
+                  borderLeft: active === 'admin' ? `3px solid ${colors.accent}` : '3px solid transparent',
+                }}
+              >
+                Admin
+                <span style={{
+                  marginLeft: 'auto',
+                  padding: '2px 8px',
+                  borderRadius: borderRadius.full,
+                  background: colors.bgTertiary,
+                  border: `1px solid ${colors.border}`,
+                  color: colors.textMuted,
+                  fontSize: fontSize.xs,
+                  fontWeight: fontWeight.medium,
+                }}>
+                  Restricted
+                </span>
+              </a>
+
               {/* Logout button */}
               <button
                 onClick={handleLogout}
