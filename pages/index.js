@@ -770,10 +770,12 @@ function ActivityRow({ trade, colors, index }) {
     }}>
       {/* Date & Time */}
       <div style={{
-        width: 130,
+        width: 160,
+        minWidth: 160,
         fontSize: fontSize.sm,
         color: colors.textMuted,
         fontFamily: fontFamily.mono,
+        whiteSpace: 'nowrap',
       }}>
         {formatDateTime(trade.ts)}
       </div>
