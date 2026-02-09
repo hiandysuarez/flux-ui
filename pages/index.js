@@ -762,7 +762,7 @@ function ActivityRow({ trade, colors, index }) {
     <div style={{
       display: 'flex',
       alignItems: 'center',
-      padding: `${spacing.md} ${spacing.lg}`,
+      padding: `18px ${spacing.lg}`,
       borderBottom: `1px solid ${colors.border}`,
       animation: 'slideIn 0.3s ease-out forwards',
       animationDelay: `${index * 0.1}s`,
