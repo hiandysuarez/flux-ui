@@ -596,7 +596,7 @@ function Dashboard() {
                     <tr style={{ background: colors.bgTertiary }}>
                       <ThCell colors={colors}>Date</ThCell>
                       <ThCell colors={colors}>Symbol</ThCell>
-                      <ThCell colors={colors}>Side</ThCell>
+                      <ThCell colors={colors}>Direction</ThCell>
                       <ThCell colors={colors}>Qty</ThCell>
                       <ThCell colors={colors}>Price</ThCell>
                       <ThCell colors={colors}>P&L</ThCell>
@@ -818,10 +818,10 @@ function TradeRow({ trade, colors }) {
       <TdCell style={{ fontWeight: fontWeight.bold, fontFamily: fontFamily.mono, color: colors.textPrimary }}>
         {trade.symbol}
       </TdCell>
-      {/* Side */}
+      {/* Direction */}
       <TdCell>
-        <span style={{ color: trade.side === 'BUY' ? colors.success : colors.error, fontWeight: fontWeight.semibold }}>
-          {trade.side}
+        <span style={{ color: trade.direction === 'LONG' ? colors.success : colors.error, fontWeight: fontWeight.semibold }}>
+          {trade.direction || (trade.side === 'SELL' ? 'LONG' : 'SHORT')}
         </span>
       </TdCell>
       {/* Qty */}
