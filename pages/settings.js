@@ -176,6 +176,34 @@ const SETTING_EXPLANATIONS = {
   },
 };
 
+// Available tickers grouped by category
+const AVAILABLE_TICKERS = {
+  tech: {
+    label: 'Tech',
+    tickers: ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'META', 'AMZN', 'TSLA', 'AMD', 'CRM'],
+  },
+  etfs: {
+    label: 'ETFs',
+    tickers: ['SPY', 'QQQ', 'IWM'],
+  },
+  finance: {
+    label: 'Finance',
+    tickers: ['JPM', 'BAC'],
+  },
+  energy: {
+    label: 'Energy',
+    tickers: ['XOM', 'CVX'],
+  },
+  consumer: {
+    label: 'Consumer',
+    tickers: ['WMT', 'HD'],
+  },
+  healthcare: {
+    label: 'Healthcare',
+    tickers: ['UNH', 'JNJ'],
+  },
+};
+
 // Icons for tabs
 const TAB_ICONS = {
   profile: (
@@ -967,45 +995,9 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Entry Rules Tab - Confidence, Momentum, Symbols */}
+        {/* Entry Rules Tab - Confidence, Momentum */}
         {activeTab === 'entry' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <SettingsSection
-              title="Symbols"
-              subtitle="Define which tickers the bot will analyze and trade."
-              colors={colors}
-              icon={
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-                </svg>
-              }
-            >
-              <SettingRow
-                label="Trading Symbols"
-                description="Enter stock symbols separated by commas. Only highly liquid ETFs and stocks are recommended."
-                colors={colors}
-                explanation={SETTING_EXPLANATIONS.symbols}
-                expandedExplanations={expandedExplanations}
-                setExpandedExplanations={setExpandedExplanations}
-                settingKey="symbols"
-              >
-                {isAdmin ? (
-                  <input
-                    type="text"
-                    value={get('symbols', 'QQQ,SPY')}
-                    onChange={(e) => set('symbols', e.target.value)}
-                    style={{
-                      ...inputStyle,
-                      maxWidth: 200,
-                    }}
-                    placeholder="QQQ,SPY"
-                  />
-                ) : (
-                  <ReadOnlyValue colors={colors} value={get('symbols', 'QQQ,SPY')} />
-                )}
-              </SettingRow>
-            </SettingsSection>
-
             <SettingsSection
               title="Entry Conditions"
               subtitle="Fine-tune when the bot should enter positions. These filters help avoid low-quality trades."
@@ -1805,6 +1797,64 @@ export default function SettingsPage() {
               </SettingRow>
             </SettingsSection>
 
+            <SettingsSection
+              title="Trading Symbols"
+              subtitle="Select which tickers the bot will analyze and trade."
+              colors={colors}
+              icon={
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+              }
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {Object.entries(AVAILABLE_TICKERS).map(([categoryKey, category]) => {
+                  const currentSymbols = get('symbols', 'QQQ,SPY').split(',').map(s => s.trim()).filter(Boolean);
+
+                  const handleTickerToggle = (ticker, checked) => {
+                    let newSymbols;
+                    if (checked) {
+                      newSymbols = [...currentSymbols, ticker];
+                    } else {
+                      newSymbols = currentSymbols.filter(s => s !== ticker);
+                    }
+                    set('symbols', newSymbols.join(','));
+                  };
+
+                  return (
+                    <div key={categoryKey}>
+                      <div style={{
+                        fontSize: fontSize.xs,
+                        color: colors.textSecondary,
+                        fontWeight: fontWeight.medium,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        marginBottom: 8,
+                      }}>
+                        {category.label}
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 8,
+                      }}>
+                        {category.tickers.map(ticker => (
+                          <TickerCheckbox
+                            key={ticker}
+                            ticker={ticker}
+                            checked={currentSymbols.includes(ticker)}
+                            onChange={(checked) => handleTickerToggle(ticker, checked)}
+                            disabled={!isAdmin}
+                            colors={colors}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </SettingsSection>
+
             {(activeStrategy === 'orb' || activeStrategy === 'momentum') && (
               <QuickTip
                 text={`These LLM settings are used as a fallback when ${activeStrategy === 'orb' ? 'ORB' : 'Momentum'} doesn't find a valid setup. The AI will analyze market conditions and make trading decisions based on these parameters.`}
@@ -2211,6 +2261,47 @@ function ReadOnlyToggle({ value }) {
     }}>
       {value ? 'ON' : 'OFF'}
     </div>
+  );
+}
+
+function TickerCheckbox({ ticker, checked, onChange, disabled, colors = darkTheme }) {
+  return (
+    <label
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '8px 12px',
+        background: checked ? `${colors.accent}15` : colors.bgTertiary,
+        border: `1px solid ${checked ? colors.accent : colors.border}`,
+        borderRadius: 8,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+        transition: 'all 0.15s ease',
+        minWidth: 90,
+      }}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => !disabled && onChange(e.target.checked)}
+        disabled={disabled}
+        style={{
+          width: 16,
+          height: 16,
+          accentColor: colors.accent,
+          cursor: disabled ? 'not-allowed' : 'pointer',
+        }}
+      />
+      <span style={{
+        color: checked ? colors.accent : colors.textPrimary,
+        fontSize: fontSize.sm,
+        fontWeight: checked ? fontWeight.medium : fontWeight.normal,
+        fontFamily: fontFamily.mono,
+      }}>
+        {ticker}
+      </span>
+    </label>
   );
 }
 
