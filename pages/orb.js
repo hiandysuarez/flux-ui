@@ -1,5 +1,5 @@
 // pages/orb.js - ORB Strategy Dashboard
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Layout from '../components/Layout';
 import { fetchORBStatus, fetchORBSettings, fetchORBAnalytics } from '../lib/api';
 import { DEFAULT_TICKERS, ORB_STATE_COLORS, ORB_STATE_LABELS, CATEGORY_COLORS } from '../lib/tickers';
@@ -14,9 +14,21 @@ import {
   cardStyle,
 } from '../lib/theme';
 
+// State priority for grouping (most important first)
+const STATE_PRIORITY = [
+  'SETUP_READY',
+  'BREAK_DETECTED',
+  'WAITING_FOR_RETEST',
+  'RANGE_SET',
+  'FORMING_RANGE',
+  'TRADED',
+  'EXPIRED',
+  'WAITING_FOR_OPEN',
+];
+
 export default function ORBDashboard() {
   const [trackers, setTrackers] = useState({});
-  const [activeSetups, setActiveSetups] = useState([]);
+  const [sessionInfo, setSessionInfo] = useState(null);
   const [settings, setSettings] = useState(null);
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -33,15 +45,13 @@ export default function ORBDashboard() {
         fetchORBAnalytics(),
       ]);
 
-      if (statusRes.status === 'fulfilled') {
-        setTrackers(statusRes.value?.trackers || {});
-        setActiveSetups(statusRes.value?.active_setups || []);
+      if (statusRes.status === 'fulfilled' && statusRes.value?.ok) {
+        // API returns 'symbols', not 'trackers'
+        setTrackers(statusRes.value?.symbols || {});
+        setSessionInfo(statusRes.value?.session || null);
       }
       if (settingsRes.status === 'fulfilled') {
-        console.log('ORB API Response:', settingsRes.value);
         const extractedSettings = settingsRes.value?.orb || settingsRes.value?.settings || settingsRes.value;
-        console.log('Extracted settings:', extractedSettings);
-        console.log('orb_enabled:', extractedSettings?.orb_enabled);
         setSettings(extractedSettings);
       }
       if (analyticsRes.status === 'fulfilled') {
@@ -68,6 +78,32 @@ export default function ORBDashboard() {
   const displayTickers = settings?.tickers
     ? DEFAULT_TICKERS.filter((t) => settings.tickers.includes(t.symbol))
     : DEFAULT_TICKERS.filter((t) => t.enabled);
+
+  // Group tickers by their current state
+  const tickersByState = useMemo(() => {
+    const groups = {};
+
+    // Initialize all state groups
+    STATE_PRIORITY.forEach(state => {
+      groups[state] = [];
+    });
+
+    displayTickers.forEach((ticker) => {
+      const status = trackers[ticker.symbol];
+      const state = status?.state || 'WAITING_FOR_OPEN';
+      if (!groups[state]) {
+        groups[state] = [];
+      }
+      groups[state].push({ ...ticker, status });
+    });
+
+    return groups;
+  }, [displayTickers, trackers]);
+
+  // Get active setups (SETUP_READY state)
+  const activeSetups = useMemo(() => {
+    return tickersByState['SETUP_READY'] || [];
+  }, [tickersByState]);
 
   // Card style
   const card = {
@@ -131,6 +167,72 @@ export default function ORBDashboard() {
           </button>
         </div>
 
+        {/* Session Timing Bar */}
+        {sessionInfo && (
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: spacing.md,
+            padding: spacing.md,
+            background: colors.bgSecondary,
+            borderRadius: borderRadius.md,
+            border: `1px solid ${colors.border}`,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+              <span style={{ fontSize: fontSize.xs, color: colors.textMuted }}>EST:</span>
+              <span style={{
+                fontSize: fontSize.sm,
+                fontWeight: fontWeight.bold,
+                color: colors.textPrimary,
+                fontFamily: fontFamily.mono,
+              }}>
+                {sessionInfo.current_time_est}
+              </span>
+            </div>
+            <div style={{
+              width: 1,
+              height: 20,
+              background: colors.border,
+            }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+              <span style={{ fontSize: fontSize.xs, color: colors.textMuted }}>Range:</span>
+              <span style={{ fontSize: fontSize.sm, color: colors.textSecondary }}>
+                {sessionInfo.market_open} - {sessionInfo.range_set_time}
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+              <span style={{ fontSize: fontSize.xs, color: colors.textMuted }}>Entry:</span>
+              <span style={{ fontSize: fontSize.sm, color: colors.textSecondary }}>
+                {sessionInfo.entry_start} - {sessionInfo.entry_deadline}
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+              <span style={{ fontSize: fontSize.xs, color: colors.textMuted }}>Exit:</span>
+              <span style={{ fontSize: fontSize.sm, color: colors.textSecondary }}>
+                by {sessionInfo.exit_deadline}
+              </span>
+            </div>
+            <div style={{
+              width: 1,
+              height: 20,
+              background: colors.border,
+            }} />
+            <span style={{
+              padding: '4px 10px',
+              borderRadius: borderRadius.full,
+              background: sessionInfo.is_entry_window ? colors.successDark : colors.bgTertiary,
+              border: `1px solid ${sessionInfo.is_entry_window ? colors.success : colors.border}`,
+              color: sessionInfo.is_entry_window ? colors.success : colors.textMuted,
+              fontSize: fontSize.xs,
+              fontWeight: fontWeight.medium,
+            }}>
+              {sessionInfo.is_entry_window ? 'Entry Window Open' :
+               sessionInfo.is_past_exit_deadline ? 'Session Ended' :
+               sessionInfo.is_market_hours ? 'Waiting for Entry Window' : 'Pre-Market'}
+            </span>
+          </div>
+        )}
+
         {/* Error Alert */}
         {error && (
           <div style={{
@@ -148,44 +250,56 @@ export default function ORBDashboard() {
         {/* Active Setups Alert */}
         {activeSetups.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.sm }}>
-            {activeSetups.map((setup) => (
-              <div
-                key={setup.symbol}
-                style={{
-                  padding: spacing.md,
-                  background: colors.successDark,
-                  border: `1px solid ${colors.success}`,
-                  borderRadius: borderRadius.md,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md }}>
-                  <span style={{
-                    fontSize: fontSize.lg,
-                    fontWeight: fontWeight.bold,
-                    color: colors.success,
-                  }}>
-                    {setup.symbol}
-                  </span>
-                  <span style={{
-                    padding: '4px 8px',
-                    borderRadius: borderRadius.sm,
-                    background: setup.direction === 'long' ? colors.successDark : colors.errorDark,
-                    color: setup.direction === 'long' ? colors.success : colors.error,
-                    fontSize: fontSize.xs,
-                    fontWeight: fontWeight.semibold,
-                    textTransform: 'uppercase',
-                  }}>
-                    {setup.direction}
-                  </span>
+            {activeSetups.map((setup) => {
+              const breakInfo = setup.status?.break_info;
+              const direction = breakInfo?.direction || 'unknown';
+              const openingRange = setup.status?.opening_range;
+              return (
+                <div
+                  key={setup.symbol}
+                  style={{
+                    padding: spacing.md,
+                    background: colors.successDark,
+                    border: `1px solid ${colors.success}`,
+                    borderRadius: borderRadius.md,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md }}>
+                    <span style={{
+                      fontSize: fontSize.lg,
+                      fontWeight: fontWeight.bold,
+                      color: colors.success,
+                    }}>
+                      {setup.symbol}
+                    </span>
+                    <span style={{
+                      padding: '4px 8px',
+                      borderRadius: borderRadius.sm,
+                      background: direction === 'LONG' ? colors.successDark : colors.errorDark,
+                      color: direction === 'LONG' ? colors.success : colors.error,
+                      fontSize: fontSize.xs,
+                      fontWeight: fontWeight.semibold,
+                      textTransform: 'uppercase',
+                    }}>
+                      {direction}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: fontSize.sm, color: colors.textSecondary }}>
+                    {openingRange && (
+                      <>Range: ${openingRange.high?.toFixed(2)} - ${openingRange.low?.toFixed(2)}</>
+                    )}
+                    {breakInfo && (
+                      <span style={{ marginLeft: 12 }}>
+                        | Displacement: {breakInfo.displacement_ratio?.toFixed(2)}x
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div style={{ fontSize: fontSize.sm, color: colors.textSecondary }}>
-                  Entry: ${setup.entry_price?.toFixed(2)} | Target: ${setup.target_2?.toFixed(2)}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -306,93 +420,164 @@ export default function ORBDashboard() {
           </div>
         )}
 
-        {/* Ticker Grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-          gap: spacing.md,
-        }}>
-          {displayTickers.map((ticker) => {
-            const status = trackers[ticker.symbol];
-            const state = status?.state || 'WAITING_FOR_OPEN';
+        {/* Tickers Grouped by Status */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.lg }}>
+          {STATE_PRIORITY.map((state) => {
+            const tickers = tickersByState[state];
+            if (!tickers || tickers.length === 0) return null;
+
             const stateColor = ORB_STATE_COLORS[state] || colors.textMuted;
             const stateLabel = ORB_STATE_LABELS[state] || state;
-            const categoryColor = CATEGORY_COLORS[ticker.category] || colors.textMuted;
 
             return (
-              <div
-                key={ticker.symbol}
-                style={{
-                  ...card,
-                  ...cardBody,
-                  borderLeft: `3px solid ${stateColor}`,
-                  transition: 'all 0.2s ease',
-                }}
-              >
+              <div key={state}>
+                {/* State Group Header */}
                 <div style={{
                   display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
+                  alignItems: 'center',
+                  gap: spacing.sm,
                   marginBottom: spacing.sm,
                 }}>
                   <div style={{
-                    fontSize: fontSize.md,
-                    fontWeight: fontWeight.bold,
-                    color: colors.textPrimary,
-                  }}>
-                    {ticker.symbol}
-                  </div>
-                  <div style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
+                    width: 12,
+                    height: 12,
+                    borderRadius: borderRadius.sm,
                     background: stateColor,
                     boxShadow: state === 'SETUP_READY' ? `0 0 8px ${stateColor}` : 'none',
-                    animation: state === 'SETUP_READY' ? 'pulse 2s infinite' : 'none',
                   }} />
-                </div>
-
-                <div style={{
-                  fontSize: fontSize.xs,
-                  color: colors.textMuted,
-                  marginBottom: spacing.xs,
-                }}>
-                  {ticker.name}
-                </div>
-
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}>
                   <span style={{
-                    fontSize: fontSize.xs,
+                    fontSize: fontSize.md,
+                    fontWeight: fontWeight.semibold,
                     color: stateColor,
-                    fontWeight: fontWeight.medium,
                   }}>
                     {stateLabel}
                   </span>
                   <span style={{
-                    fontSize: '10px',
-                    color: categoryColor,
-                    textTransform: 'uppercase',
+                    fontSize: fontSize.sm,
+                    color: colors.textMuted,
                   }}>
-                    {ticker.category}
+                    ({tickers.length})
                   </span>
                 </div>
 
-                {/* Show range info if available */}
-                {status?.orb_high && status?.orb_low && (
-                  <div style={{
-                    marginTop: spacing.xs,
-                    paddingTop: spacing.xs,
-                    borderTop: `1px solid ${colors.border}`,
-                    fontSize: fontSize.xs,
-                    color: colors.textSecondary,
-                  }}>
-                    H: ${status.orb_high.toFixed(2)} | L: ${status.orb_low.toFixed(2)}
-                  </div>
-                )}
+                {/* Ticker Grid for this State */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                  gap: spacing.md,
+                }}>
+                  {tickers.map((ticker) => {
+                    const status = ticker.status;
+                    const categoryColor = CATEGORY_COLORS[ticker.category] || colors.textMuted;
+                    const openingRange = status?.opening_range;
+                    const breakInfo = status?.break_info;
+
+                    return (
+                      <div
+                        key={ticker.symbol}
+                        style={{
+                          ...card,
+                          ...cardBody,
+                          borderLeft: `3px solid ${stateColor}`,
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          marginBottom: spacing.sm,
+                        }}>
+                          <div style={{
+                            fontSize: fontSize.md,
+                            fontWeight: fontWeight.bold,
+                            color: colors.textPrimary,
+                          }}>
+                            {ticker.symbol}
+                          </div>
+                          <div style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            background: stateColor,
+                            boxShadow: state === 'SETUP_READY' ? `0 0 8px ${stateColor}` : 'none',
+                            animation: state === 'SETUP_READY' ? 'pulse 2s infinite' : 'none',
+                          }} />
+                        </div>
+
+                        <div style={{
+                          fontSize: fontSize.xs,
+                          color: colors.textMuted,
+                          marginBottom: spacing.xs,
+                        }}>
+                          {ticker.name}
+                        </div>
+
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                        }}>
+                          <span style={{
+                            fontSize: '10px',
+                            color: categoryColor,
+                            textTransform: 'uppercase',
+                          }}>
+                            {ticker.category}
+                          </span>
+                          {breakInfo && (
+                            <span style={{
+                              padding: '2px 6px',
+                              borderRadius: borderRadius.sm,
+                              background: breakInfo.direction === 'LONG' ? colors.successDark : colors.errorDark,
+                              color: breakInfo.direction === 'LONG' ? colors.success : colors.error,
+                              fontSize: '10px',
+                              fontWeight: fontWeight.semibold,
+                            }}>
+                              {breakInfo.direction}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Show range info if available */}
+                        {openingRange && (
+                          <div style={{
+                            marginTop: spacing.xs,
+                            paddingTop: spacing.xs,
+                            borderTop: `1px solid ${colors.border}`,
+                            fontSize: fontSize.xs,
+                            color: colors.textSecondary,
+                          }}>
+                            H: ${openingRange.high?.toFixed(2)} | L: ${openingRange.low?.toFixed(2)}
+                          </div>
+                        )}
+
+                        {/* Show break info if available */}
+                        {breakInfo && (
+                          <div style={{
+                            marginTop: spacing.xs,
+                            fontSize: '10px',
+                            color: colors.textMuted,
+                          }}>
+                            Disp: {breakInfo.displacement_ratio?.toFixed(2)}x | Vol: {breakInfo.volume_ratio?.toFixed(2)}x
+                          </div>
+                        )}
+
+                        {/* Show invalidation reason if expired */}
+                        {state === 'EXPIRED' && status?.invalidation_reason && (
+                          <div style={{
+                            marginTop: spacing.xs,
+                            fontSize: '10px',
+                            color: colors.error,
+                            fontStyle: 'italic',
+                          }}>
+                            {status.invalidation_reason}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}
