@@ -6,7 +6,8 @@ import PresetSelector from '../components/PresetSelector';
 import GuardrailHint from '../components/GuardrailHint';
 import {
   fetchUserSettings, saveUserSettings, fetchPresets, applyPreset, fetchGuardrails,
-  fetchSettings, saveSettings, fetchAdminSettings, saveAdminSettings
+  fetchSettings, saveSettings, fetchAdminSettings, saveAdminSettings,
+  fetchStrategies, setActiveStrategy
 } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import {
@@ -215,20 +216,68 @@ const TAB_ICONS = {
       <path d="M12 7v-4M12 21v-4"/>
     </svg>
   ),
+  llm: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/>
+      <path d="M12 12v10"/>
+      <path d="M8 18h8"/>
+      <circle cx="12" cy="6" r="1"/>
+    </svg>
+  ),
+  strategy: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M12 2v4"/>
+      <path d="M12 18v4"/>
+      <path d="M4.93 4.93l2.83 2.83"/>
+      <path d="M16.24 16.24l2.83 2.83"/>
+      <path d="M2 12h4"/>
+      <path d="M18 12h4"/>
+      <path d="M4.93 19.07l2.83-2.83"/>
+      <path d="M16.24 7.76l2.83-2.83"/>
+    </svg>
+  ),
 };
 
-// Consolidated tabs for cleaner organization - ORB Strategy focused
-// Phase 1: Simplified for ORB-first approach
-const TABS = [
-  { id: 'profile', label: 'Profile', icon: TAB_ICONS.profile },
-  { id: 'orb', label: 'ORB Strategy', icon: TAB_ICONS.orb },  // Primary trading tab
-  { id: 'safety', label: 'Safety', icon: TAB_ICONS.risk },    // Safety fallbacks
-  // PHASED OUT - These settings don't apply to ORB strategy:
-  // { id: 'schedule', label: 'Schedule', icon: TAB_ICONS.schedule },  // ORB has fixed 10:00-11:00 window
-  // { id: 'entry', label: 'Entry Rules', icon: TAB_ICONS.entry },     // Momentum override removed per PRD
-  // { id: 'risk', label: 'Risk', icon: TAB_ICONS.risk },              // ORB uses range-based stops
-  // { id: 'limits', label: 'Limits', icon: TAB_ICONS.limits },        // Merged into Safety
-];
+// Strategy metadata for UI display
+const STRATEGY_META = {
+  orb: {
+    name: 'ORB Strategy',
+    description: 'Opening Range Breakout - trades the 5-minute opening range',
+    color: '#D4A574',
+  },
+  momentum: {
+    name: 'Momentum',
+    description: 'Momentum-based trading strategy (coming soon)',
+    color: '#3B82F6',
+    disabled: true,
+  },
+  llm: {
+    name: 'LLM Only',
+    description: 'Pure AI-driven decisions with ML veto',
+    color: '#10B981',
+  },
+};
+
+// Function to get tabs based on active strategy
+function getTabs(activeStrategy) {
+  const baseTabs = [
+    { id: 'profile', label: 'Profile', icon: TAB_ICONS.profile },
+  ];
+
+  // Add strategy-specific tab based on active strategy
+  if (activeStrategy === 'orb') {
+    baseTabs.push({ id: 'orb', label: 'ORB Strategy', icon: TAB_ICONS.orb });
+  }
+
+  // LLM settings always shown (used as fallback or primary)
+  baseTabs.push({ id: 'llm', label: 'LLM Settings', icon: TAB_ICONS.llm });
+
+  // Safety tab always at the end
+  baseTabs.push({ id: 'safety', label: 'Safety', icon: TAB_ICONS.risk });
+
+  return baseTabs;
+}
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -246,6 +295,14 @@ export default function SettingsPage() {
   const [errors, setErrors] = useState({});
   const [expandedExplanations, setExpandedExplanations] = useState({});
   const [loadError, setLoadError] = useState(null);
+  const [strategies, setStrategies] = useState([]);
+  const [changingStrategy, setChangingStrategy] = useState(false);
+
+  // Get active strategy from settings, default to 'orb'
+  const activeStrategy = settings?.active_strategy || 'orb';
+
+  // Dynamic tabs based on active strategy
+  const TABS = getTabs(activeStrategy);
 
   // All authenticated users can edit their own settings
   const isAdmin = true;
@@ -272,10 +329,11 @@ export default function SettingsPage() {
 
       try {
         // All users load their own settings via fetchUserSettings
-        const [settingsRes, presetsRes, guardrailsRes] = await Promise.all([
+        const [settingsRes, presetsRes, guardrailsRes, strategiesRes] = await Promise.all([
           fetchUserSettings(),
           fetchPresets(),
           fetchGuardrails().catch(() => ({ ok: true, guardrails: DEFAULT_GUARDRAILS })),
+          fetchStrategies().catch(() => ({ ok: true, strategies: [] })),
         ]);
 
         if (settingsRes.ok && settingsRes.settings) {
@@ -298,6 +356,10 @@ export default function SettingsPage() {
 
         if (guardrailsRes.ok && guardrailsRes.guardrails) {
           setGuardrails(guardrailsRes.guardrails);
+        }
+
+        if (strategiesRes.ok && strategiesRes.strategies) {
+          setStrategies(strategiesRes.strategies);
         }
       } catch (e) {
         const errorMsg = String(e?.message || e);
@@ -394,6 +456,31 @@ export default function SettingsPage() {
       setSaving(false);
     }
   }
+
+  // Handle strategy change
+  const handleStrategyChange = async (newStrategy) => {
+    if (changingStrategy) return;
+
+    setChangingStrategy(true);
+    try {
+      const res = await setActiveStrategy(newStrategy);
+      if (res.ok || res.settings) {
+        setSettings(s => ({ ...s, active_strategy: newStrategy }));
+        addToast(`Switched to ${STRATEGY_META[newStrategy || 'llm']?.name || 'LLM Only'}`, 'success');
+
+        // If switching away from current tab's strategy, go to profile
+        if (activeTab === 'orb' && newStrategy !== 'orb') {
+          setActiveTab('profile');
+        }
+      } else {
+        addToast(res.error || 'Failed to change strategy', 'error');
+      }
+    } catch (e) {
+      addToast(String(e?.message || e), 'error');
+    } finally {
+      setChangingStrategy(false);
+    }
+  };
 
   // Find current preset name
   const currentPreset = presets.find(p => p.id === settings?.preset_id);
@@ -690,6 +777,84 @@ export default function SettingsPage() {
                   colors={colors}
                 />
               )}
+            </SettingsSection>
+
+            {/* Strategy Selection */}
+            <SettingsSection
+              title="Trading Strategy"
+              subtitle="Choose your primary trading strategy. LLM is always available as a fallback."
+              colors={colors}
+              icon={TAB_ICONS.strategy}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Strategy Cards */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gap: 12,
+                }}>
+                  {/* ORB Strategy */}
+                  <StrategyCard
+                    id="orb"
+                    name={STRATEGY_META.orb.name}
+                    description={STRATEGY_META.orb.description}
+                    color={STRATEGY_META.orb.color}
+                    isActive={activeStrategy === 'orb'}
+                    disabled={changingStrategy}
+                    onClick={() => handleStrategyChange('orb')}
+                    colors={colors}
+                  />
+
+                  {/* Momentum Strategy (Coming Soon) */}
+                  <StrategyCard
+                    id="momentum"
+                    name={STRATEGY_META.momentum.name}
+                    description={STRATEGY_META.momentum.description}
+                    color={STRATEGY_META.momentum.color}
+                    isActive={activeStrategy === 'momentum'}
+                    disabled={true}
+                    comingSoon={true}
+                    onClick={() => {}}
+                    colors={colors}
+                  />
+
+                  {/* LLM Only */}
+                  <StrategyCard
+                    id="llm"
+                    name={STRATEGY_META.llm.name}
+                    description={STRATEGY_META.llm.description}
+                    color={STRATEGY_META.llm.color}
+                    isActive={activeStrategy === null || activeStrategy === '' || activeStrategy === 'llm'}
+                    disabled={changingStrategy}
+                    onClick={() => handleStrategyChange(null)}
+                    colors={colors}
+                  />
+                </div>
+
+                {/* Strategy Info */}
+                <div style={{
+                  padding: '12px 16px',
+                  background: colors.bgTertiary,
+                  borderRadius: 8,
+                  fontSize: 12,
+                  color: colors.textSecondary,
+                  lineHeight: 1.6,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 10,
+                  borderLeft: `3px solid ${STRATEGY_META[activeStrategy]?.color || colors.accent}`,
+                }}>
+                  <span style={{ fontSize: 14, flexShrink: 0 }}>
+                    {activeStrategy === 'orb' ? '📊' : activeStrategy === 'momentum' ? '📈' : '🤖'}
+                  </span>
+                  <span>
+                    {activeStrategy === 'orb' && 'ORB trades the 5-minute opening range breakout. It monitors 20 liquid stocks for mechanical setups with confluence validation.'}
+                    {activeStrategy === 'momentum' && 'Momentum strategy uses price momentum and ML signals for entries.'}
+                    {(!activeStrategy || activeStrategy === 'llm') && 'LLM-only mode uses AI analysis with ML veto for all trading decisions. No mechanical strategy patterns.'}
+                    <span style={{ color: colors.textMuted }}> LLM settings below are used when no strategy setup is found.</span>
+                  </span>
+                </div>
+              </div>
             </SettingsSection>
 
           </div>
@@ -1544,6 +1709,118 @@ export default function SettingsPage() {
           </div>
         )}
 
+        {/* LLM Settings Tab - AI decision parameters */}
+        {activeTab === 'llm' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <SettingsSection
+              title="LLM Decision Settings"
+              subtitle={activeStrategy === 'orb' || activeStrategy === 'momentum'
+                ? "These settings are used when no strategy setup is found (fallback mode)."
+                : "Primary AI decision parameters for LLM-only trading mode."}
+              colors={colors}
+              icon={TAB_ICONS.llm}
+            >
+              <SettingRow
+                label="Confidence Threshold"
+                description="Minimum AI confidence score required to enter a trade."
+                guardrail={guardrails.llm_conf_threshold || guardrails.conf_threshold}
+                value={get('llm_conf_threshold', get('conf_threshold', 0.60))}
+                colors={colors}
+                explanation={SETTING_EXPLANATIONS.conf_threshold}
+                expandedExplanations={expandedExplanations}
+                setExpandedExplanations={setExpandedExplanations}
+                settingKey="llm_conf_threshold"
+              >
+                {isAdmin ? (
+                  <ValidatedNumberInput
+                    value={get('llm_conf_threshold', get('conf_threshold', 0.60))}
+                    onChange={(v) => set('llm_conf_threshold', v)}
+                    onValidate={(v) => validate('llm_conf_threshold', v, 'llm_conf_threshold')}
+                    error={errors['llm_conf_threshold']}
+                    step={0.01}
+                    min={guardrails.llm_conf_threshold?.min || 0.50}
+                    max={guardrails.llm_conf_threshold?.max || 0.80}
+                    isPercent
+                    colors={colors}
+                  />
+                ) : (
+                  <ReadOnlyPercent colors={colors} value={get('llm_conf_threshold', get('conf_threshold', 0.60))} />
+                )}
+              </SettingRow>
+
+              <SettingRow
+                label="Momentum Entry Threshold"
+                description="Minimum recent price movement required to consider entry."
+                guardrail={guardrails.llm_mom_entry_pct || guardrails.mom_entry_pct}
+                value={get('llm_mom_entry_pct', get('mom_entry_pct', 0.002))}
+                colors={colors}
+                explanation={SETTING_EXPLANATIONS.mom_entry_pct}
+                expandedExplanations={expandedExplanations}
+                setExpandedExplanations={setExpandedExplanations}
+                settingKey="llm_mom_entry_pct"
+              >
+                {isAdmin ? (
+                  <ValidatedNumberInput
+                    value={get('llm_mom_entry_pct', get('mom_entry_pct', 0.002))}
+                    onChange={(v) => set('llm_mom_entry_pct', v)}
+                    onValidate={(v) => validate('llm_mom_entry_pct', v, 'llm_mom_entry_pct')}
+                    error={errors['llm_mom_entry_pct']}
+                    step={0.0005}
+                    min={guardrails.llm_mom_entry_pct?.min || 0.001}
+                    max={guardrails.llm_mom_entry_pct?.max || 0.01}
+                    isPercent
+                    colors={colors}
+                  />
+                ) : (
+                  <ReadOnlyPercent colors={colors} value={get('llm_mom_entry_pct', get('mom_entry_pct', 0.002))} />
+                )}
+              </SettingRow>
+
+              <SettingRow
+                label="Momentum Lookback"
+                description="How many 1-minute bars to analyze when measuring momentum."
+                guardrail={guardrails.llm_mom_lookback || guardrails.mom_lookback}
+                value={get('llm_mom_lookback', get('mom_lookback', 8))}
+                colors={colors}
+                explanation={SETTING_EXPLANATIONS.mom_lookback}
+                expandedExplanations={expandedExplanations}
+                setExpandedExplanations={setExpandedExplanations}
+                settingKey="llm_mom_lookback"
+              >
+                {isAdmin ? (
+                  <ValidatedNumberInput
+                    value={get('llm_mom_lookback', get('mom_lookback', 8))}
+                    onChange={(v) => set('llm_mom_lookback', v)}
+                    onValidate={(v) => validate('llm_mom_lookback', v, 'llm_mom_lookback')}
+                    error={errors['llm_mom_lookback']}
+                    step={1}
+                    min={guardrails.llm_mom_lookback?.min || 3}
+                    max={guardrails.llm_mom_lookback?.max || 20}
+                    suffix="bars"
+                    colors={colors}
+                  />
+                ) : (
+                  <ReadOnlyValue colors={colors} value={`${get('llm_mom_lookback', get('mom_lookback', 8))} bars`} />
+                )}
+              </SettingRow>
+            </SettingsSection>
+
+            {(activeStrategy === 'orb' || activeStrategy === 'momentum') && (
+              <QuickTip
+                text={`These LLM settings are used as a fallback when ${activeStrategy === 'orb' ? 'ORB' : 'Momentum'} doesn't find a valid setup. The AI will analyze market conditions and make trading decisions based on these parameters.`}
+                colors={colors}
+              />
+            )}
+
+            {(!activeStrategy || activeStrategy === 'llm') && (
+              <QuickTip
+                text="In LLM-only mode, the AI analyzes price action, EMAs, VWAP, and momentum to generate trading signals. The ML model can veto trades it strongly disagrees with (HOLD probability >= 70%)."
+                colors={colors}
+              />
+            )}
+          </div>
+        )}
+
         {/* Safety Tab - Emergency controls and safety fallbacks */}
         {activeTab === 'safety' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -2207,6 +2484,86 @@ function WarningBanner({ text, colors = darkTheme }) {
       </svg>
       <span>{text}</span>
     </div>
+  );
+}
+
+// Strategy selection card component
+function StrategyCard({ id, name, description, color, isActive, disabled, comingSoon, onClick, colors = darkTheme }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        padding: '16px 20px',
+        background: isActive ? `${color}15` : colors.bgSecondary,
+        border: `2px solid ${isActive ? color : colors.border}`,
+        borderRadius: 12,
+        cursor: disabled ? (comingSoon ? 'default' : 'not-allowed') : 'pointer',
+        opacity: disabled && !comingSoon ? 0.5 : 1,
+        textAlign: 'left',
+        transition: 'all 0.2s ease',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Active indicator */}
+      {isActive && (
+        <div style={{
+          position: 'absolute',
+          top: 12,
+          right: 12,
+          width: 10,
+          height: 10,
+          borderRadius: '50%',
+          background: color,
+          boxShadow: `0 0 8px ${color}`,
+        }} />
+      )}
+
+      {/* Coming soon badge */}
+      {comingSoon && (
+        <div style={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          padding: '2px 8px',
+          background: colors.bgTertiary,
+          borderRadius: 12,
+          fontSize: 10,
+          fontWeight: 600,
+          color: colors.textMuted,
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px',
+        }}>
+          Soon
+        </div>
+      )}
+
+      {/* Strategy name */}
+      <div style={{
+        fontSize: 15,
+        fontWeight: 700,
+        color: isActive ? color : colors.textPrimary,
+        marginBottom: 4,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+      }}>
+        {id === 'orb' && '📊'}
+        {id === 'momentum' && '📈'}
+        {id === 'llm' && '🤖'}
+        {name}
+      </div>
+
+      {/* Description */}
+      <div style={{
+        fontSize: 12,
+        color: colors.textMuted,
+        lineHeight: 1.4,
+      }}>
+        {description}
+      </div>
+    </button>
   );
 }
 
