@@ -590,9 +590,28 @@ function Dashboard() {
                 No recent trades
               </div>
             ) : (
-              trades.slice(0, 5).map((trade, i) => (
-                <ActivityRow key={trade.id || i} trade={trade} colors={colors} index={i} />
-              ))
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
+                  <thead>
+                    <tr style={{ background: colors.bgTertiary }}>
+                      <ThCell colors={colors}>Date</ThCell>
+                      <ThCell colors={colors}>Symbol</ThCell>
+                      <ThCell colors={colors}>Side</ThCell>
+                      <ThCell colors={colors}>Qty</ThCell>
+                      <ThCell colors={colors}>Price</ThCell>
+                      <ThCell colors={colors}>P&L</ThCell>
+                      <ThCell colors={colors}>P&L %</ThCell>
+                      <ThCell colors={colors}>Hold</ThCell>
+                      <ThCell colors={colors}>Result</ThCell>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trades.slice(0, 10).map((trade, i) => (
+                      <TradeRow key={trade.id || i} trade={trade} colors={colors} />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </section>
@@ -741,122 +760,111 @@ function PositionCard({ position, colors, index }) {
   );
 }
 
-function ActivityRow({ trade, colors, index }) {
-  const isExit = trade.is_exit;
-  const pnl = parseFloat(trade.pnl || 0);
-  const isWin = trade.win === true;
-  const confidence = parseFloat(trade.confidence || 0) * 100;
+function ThCell({ children, colors }) {
+  return (
+    <th style={{
+      textAlign: 'left',
+      padding: '12px 14px',
+      fontSize: fontSize.xs,
+      fontWeight: fontWeight.bold,
+      color: colors.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: '0.5px',
+      fontFamily: fontFamily.sans,
+    }}>
+      {children}
+    </th>
+  );
+}
 
-  // Format date as MM-DD-YY
-  const formatDateTime = (ts) => {
-    if (!ts) return '';
-    const d = new Date(ts);
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const year = String(d.getFullYear()).slice(-2);
-    const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    return `${month}-${day}-${year} ${time}`;
-  };
+function TdCell({ children, style = {} }) {
+  return (
+    <td style={{
+      padding: '12px 14px',
+      fontSize: fontSize.sm,
+      fontFamily: fontFamily.sans,
+      ...style,
+    }}>
+      {children}
+    </td>
+  );
+}
+
+function TradeRow({ trade, colors }) {
+  const [hovered, setHovered] = useState(false);
+  const pnl = parseFloat(trade.pnl || 0);
+  const pnlPct = parseFloat(trade.pnl_pct || 0) * 100;
+  const isExit = trade.is_exit;
+
+  const bgTint = pnl > 0 ? 'rgba(212, 165, 116, 0.03)'
+               : pnl < 0 ? 'rgba(248, 81, 73, 0.03)'
+               : 'transparent';
 
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      padding: `18px ${spacing.lg}`,
-      borderBottom: `1px solid ${colors.border}`,
-      animation: 'slideIn 0.3s ease-out forwards',
-      animationDelay: `${index * 0.1}s`,
-      opacity: 0,
-    }}>
-      {/* Date & Time */}
-      <div style={{
-        width: 160,
-        minWidth: 160,
-        fontSize: fontSize.sm,
-        color: colors.textMuted,
-        fontFamily: fontFamily.mono,
-        whiteSpace: 'nowrap',
-      }}>
-        {formatDateTime(trade.ts)}
-      </div>
-
-      {/* Action */}
-      <div style={{
-        width: 60,
-        fontSize: fontSize.sm,
-        fontWeight: fontWeight.semibold,
-        color: trade.side === 'BUY' ? colors.success : colors.error,
-        fontFamily: fontFamily.sans,
-      }}>
-        {trade.side}
-      </div>
-
+    <tr
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        borderTop: `1px solid ${colors.border}`,
+        background: hovered ? colors.bgTertiary : bgTint,
+        transition: 'background 0.15s ease',
+      }}
+    >
+      {/* Date */}
+      <TdCell style={{ fontSize: fontSize.xs, color: colors.textMuted, fontFamily: fontFamily.mono }}>
+        {trade.ts ? new Date(trade.ts).toLocaleString() : '—'}
+      </TdCell>
       {/* Symbol */}
-      <div style={{
-        flex: 1,
-        fontFamily: fontFamily.mono,
-        fontSize: fontSize.base,
-        fontWeight: fontWeight.medium,
-        color: colors.textPrimary,
-      }}>
+      <TdCell style={{ fontWeight: fontWeight.bold, fontFamily: fontFamily.mono, color: colors.textPrimary }}>
         {trade.symbol}
-      </div>
-
-      {/* P&L (exits only) */}
-      {isExit ? (
-        <>
-          <div style={{
-            width: 80,
-            fontFamily: fontFamily.mono,
-            fontSize: fontSize.sm,
-            fontWeight: fontWeight.semibold,
-            color: pnl >= 0 ? colors.accent : colors.error,
-            textAlign: 'right',
-          }}>
-            {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)}
-          </div>
-          <div style={{
-            width: 50,
-            marginLeft: spacing.md,
+      </TdCell>
+      {/* Side */}
+      <TdCell>
+        <span style={{ color: trade.side === 'BUY' ? colors.success : colors.error, fontWeight: fontWeight.semibold }}>
+          {trade.side}
+        </span>
+      </TdCell>
+      {/* Qty */}
+      <TdCell style={{ fontFamily: fontFamily.mono }}>{trade.qty}</TdCell>
+      {/* Price */}
+      <TdCell style={{ fontFamily: fontFamily.mono }}>${Number(trade.fill_price || 0).toFixed(2)}</TdCell>
+      {/* P&L */}
+      <TdCell style={{
+        fontFamily: fontFamily.mono,
+        fontWeight: fontWeight.bold,
+        color: pnl > 0 ? colors.accent : pnl < 0 ? colors.error : colors.textPrimary,
+      }}>
+        {isExit ? `$${pnl.toFixed(2)}` : '—'}
+      </TdCell>
+      {/* P&L % */}
+      <TdCell style={{
+        fontFamily: fontFamily.mono,
+        color: pnlPct > 0 ? colors.accent : pnlPct < 0 ? colors.error : colors.textPrimary,
+      }}>
+        {isExit ? `${pnlPct.toFixed(2)}%` : '—'}
+      </TdCell>
+      {/* Hold Time */}
+      <TdCell style={{ fontFamily: fontFamily.mono, color: colors.textMuted }}>
+        {trade.hold_minutes != null ? `${Math.round(trade.hold_minutes)}m` : '—'}
+      </TdCell>
+      {/* Result */}
+      <TdCell>
+        {isExit ? (
+          <span style={{
+            padding: '2px 8px',
+            borderRadius: borderRadius.sm,
+            background: trade.win ? colors.accentDark : 'rgba(248, 81, 73, 0.15)',
+            color: trade.win ? colors.accent : colors.error,
+            fontWeight: fontWeight.bold,
             fontSize: fontSize.xs,
-            fontWeight: fontWeight.semibold,
-            color: isWin ? colors.success : colors.error,
-            textAlign: 'center',
           }}>
-            {isWin ? 'WIN' : 'LOSS'}
-          </div>
-        </>
-      ) : (
-        <div style={{
-          width: 130,
-          fontSize: fontSize.sm,
-          color: colors.textSecondary,
-          fontFamily: fontFamily.sans,
-          textAlign: 'right',
-        }}>
-          Entry @ ${parseFloat(trade.fill_price || 0).toFixed(2)}
-        </div>
-      )}
-
-      {/* Confidence Bar */}
-      {confidence > 0 && (
-        <div style={{
-          width: 60,
-          marginLeft: spacing.md,
-          height: 6,
-          background: colors.bgTertiary,
-          borderRadius: 3,
-          overflow: 'hidden',
-        }}>
-          <div style={{
-            width: `${confidence}%`,
-            height: '100%',
-            background: colors.accent,
-            borderRadius: 3,
-          }} />
-        </div>
-      )}
-    </div>
+            {trade.win ? 'WIN' : 'LOSS'}
+          </span>
+        ) : (
+          <span style={{ color: colors.textMuted, fontSize: fontSize.xs }}>ENTRY</span>
+        )}
+      </TdCell>
+    </tr>
   );
 }
 
