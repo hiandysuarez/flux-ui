@@ -1807,52 +1807,56 @@ export default function SettingsPage() {
                 </svg>
               }
             >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {Object.entries(AVAILABLE_TICKERS).map(([categoryKey, category]) => {
-                  const currentSymbols = get('symbols', 'QQQ,SPY').split(',').map(s => s.trim()).filter(Boolean);
+              {(() => {
+                const currentSymbols = get('symbols', 'QQQ,SPY').split(',').map(s => s.trim()).filter(Boolean);
 
-                  const handleTickerToggle = (ticker, checked) => {
-                    let newSymbols;
-                    if (checked) {
-                      newSymbols = [...currentSymbols, ticker];
-                    } else {
-                      newSymbols = currentSymbols.filter(s => s !== ticker);
-                    }
-                    set('symbols', newSymbols.join(','));
-                  };
+                const handleTickerToggle = (ticker, checked) => {
+                  // Get fresh value at click time to avoid stale closure
+                  const freshSymbols = get('symbols', 'QQQ,SPY').split(',').map(s => s.trim()).filter(Boolean);
+                  let newSymbols;
+                  if (checked) {
+                    newSymbols = [...freshSymbols, ticker];
+                  } else {
+                    newSymbols = freshSymbols.filter(s => s !== ticker);
+                  }
+                  set('symbols', newSymbols.join(','));
+                };
 
-                  return (
-                    <div key={categoryKey}>
-                      <div style={{
-                        fontSize: fontSize.xs,
-                        color: colors.textSecondary,
-                        fontWeight: fontWeight.medium,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                        marginBottom: 8,
-                      }}>
-                        {category.label}
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {Object.entries(AVAILABLE_TICKERS).map(([categoryKey, category]) => (
+                      <div key={categoryKey}>
+                        <div style={{
+                          fontSize: fontSize.xs,
+                          color: colors.textSecondary,
+                          fontWeight: fontWeight.medium,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                          marginBottom: 8,
+                        }}>
+                          {category.label}
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: 8,
+                        }}>
+                          {category.tickers.map(ticker => (
+                            <TickerCheckbox
+                              key={ticker}
+                              ticker={ticker}
+                              checked={currentSymbols.includes(ticker)}
+                              onChange={(checked) => handleTickerToggle(ticker, checked)}
+                              disabled={!isAdmin}
+                              colors={colors}
+                            />
+                          ))}
+                        </div>
                       </div>
-                      <div style={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: 8,
-                      }}>
-                        {category.tickers.map(ticker => (
-                          <TickerCheckbox
-                            key={ticker}
-                            ticker={ticker}
-                            checked={currentSymbols.includes(ticker)}
-                            onChange={(checked) => handleTickerToggle(ticker, checked)}
-                            disabled={!isAdmin}
-                            colors={colors}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </SettingsSection>
 
             {(activeStrategy === 'orb' || activeStrategy === 'momentum') && (
