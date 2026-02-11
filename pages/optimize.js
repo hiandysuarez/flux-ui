@@ -20,6 +20,8 @@ import {
   logSuggestionAction,
   saveUserSettings,
   fetchUserSettings,
+  runCycleReplay,
+  compareCycleReplay,
 } from '../lib/api';
 
 const colors = darkTheme;
@@ -185,6 +187,24 @@ export default function OptimizePage() {
   const [isCustomBacktest, setIsCustomBacktest] = useState(false);
   const [showCustomBanner, setShowCustomBanner] = useState(false);
   const [previousBacktest, setPreviousBacktest] = useState(null);
+
+  // What-If Analysis state
+  const [whatIfExpanded, setWhatIfExpanded] = useState(false);
+  const [whatIfRunning, setWhatIfRunning] = useState(false);
+  const [whatIfResults, setWhatIfResults] = useState(null);
+  const [whatIfConfig, setWhatIfConfig] = useState({
+    conf_threshold: 0.60,
+    win_prob_min: 0,
+    mq_required: true,
+    stop_loss_pct: 0.015,
+    take_profit_pct: 0.02,
+    max_hold_min: 120,
+    trailing_enabled: true,
+    trailing_activation: 0.70,
+    trailing_distance: 1.0,
+    max_trades_per_day: 5,
+    max_trades_per_symbol_per_day: 2,
+  });
 
   // Load initial data
   useEffect(() => {
@@ -394,6 +414,38 @@ export default function OptimizePage() {
     }
   }
 
+  // Run What-If Analysis
+  async function handleWhatIfAnalysis() {
+    setWhatIfRunning(true);
+    setError(null);
+    try {
+      console.log('[Optimize] Running What-If analysis with config:', whatIfConfig);
+      const result = await runCycleReplay({
+        days,
+        ...whatIfConfig,
+      });
+      console.log('[Optimize] What-If result:', result);
+
+      if (result?.ok === false) {
+        throw new Error(result.error || 'What-If analysis failed');
+      }
+
+      setWhatIfResults(result);
+      setSuccess('What-If analysis complete!');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (e) {
+      console.error('What-If analysis failed:', e);
+      setError(`What-If analysis failed: ${e.message || 'Please try again.'}`);
+    } finally {
+      setWhatIfRunning(false);
+    }
+  }
+
+  // Update What-If config
+  function updateWhatIfConfig(key, value) {
+    setWhatIfConfig(prev => ({ ...prev, [key]: value }));
+  }
+
   return (
     <Layout active="optimize">
       <style>{`
@@ -495,6 +547,43 @@ export default function OptimizePage() {
         @keyframes overlayFadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
+        }
+
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        input[type="range"] {
+          -webkit-appearance: none;
+          appearance: none;
+          height: 6px;
+          background: ${colors.bgTertiary};
+          border-radius: 3px;
+          outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 16px;
+          height: 16px;
+          background: ${colors.accent};
+          border-radius: 50%;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+          transform: scale(1.1);
+          box-shadow: 0 0 8px ${colors.accent};
+        }
+
+        input[type="checkbox"] {
+          width: 16px;
+          height: 16px;
+          accent-color: ${colors.accent};
+          cursor: pointer;
         }
       `}</style>
 
@@ -1266,6 +1355,552 @@ export default function OptimizePage() {
               trade analysis and market conditions may change. Always review changes before applying
               and trade responsibly.
             </p>
+          </div>
+
+          {/* What-If Analysis Section */}
+          <div className="optimize-card" style={{
+            ...cardStyle,
+            marginTop: spacing.xl,
+          }}>
+            <div
+              onClick={() => setWhatIfExpanded(!whatIfExpanded)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                marginBottom: whatIfExpanded ? spacing.lg : 0,
+              }}
+            >
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: spacing.sm,
+              }}>
+                <span style={{ fontSize: '20px' }}>🔬</span>
+                <h2 style={typography.h2}>What-If Analysis</h2>
+                <span style={{
+                  padding: '4px 10px',
+                  borderRadius: borderRadius.full,
+                  background: colors.infoDark || colors.bgTertiary,
+                  color: colors.info,
+                  fontSize: fontSize.xs,
+                  fontWeight: fontWeight.semibold,
+                }}>
+                  Cycle Replay
+                </span>
+              </div>
+              <button style={{
+                background: 'none',
+                border: 'none',
+                color: colors.textSecondary,
+                fontSize: fontSize.xl,
+                cursor: 'pointer',
+                transform: whatIfExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: `transform ${transitions.fast}`,
+              }}>
+                ▼
+              </button>
+            </div>
+
+            {whatIfExpanded && (
+              <>
+                <p style={{
+                  ...typography.bodySmall,
+                  marginBottom: spacing.lg,
+                }}>
+                  Replay historical decisions with different settings. See how parameter changes
+                  would have affected your trading performance over the last {days} days.
+                </p>
+
+                {/* Config Grid */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gap: spacing.md,
+                  marginBottom: spacing.lg,
+                }}>
+                  {/* Confidence Threshold */}
+                  <div style={{
+                    padding: spacing.md,
+                    background: colors.bgSecondary,
+                    borderRadius: borderRadius.md,
+                    border: `1px solid ${colors.border}`,
+                  }}>
+                    <label style={{
+                      fontSize: fontSize.sm,
+                      color: colors.textSecondary,
+                      display: 'block',
+                      marginBottom: spacing.xs,
+                    }}>
+                      Confidence Threshold
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+                      <input
+                        type="range"
+                        min="0.40"
+                        max="0.90"
+                        step="0.05"
+                        value={whatIfConfig.conf_threshold}
+                        onChange={(e) => updateWhatIfConfig('conf_threshold', parseFloat(e.target.value))}
+                        style={{ flex: 1 }}
+                      />
+                      <span style={{
+                        fontFamily: fontFamily.mono,
+                        fontSize: fontSize.sm,
+                        color: colors.accent,
+                        minWidth: 50,
+                        textAlign: 'right',
+                      }}>
+                        {(whatIfConfig.conf_threshold * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Stop Loss */}
+                  <div style={{
+                    padding: spacing.md,
+                    background: colors.bgSecondary,
+                    borderRadius: borderRadius.md,
+                    border: `1px solid ${colors.border}`,
+                  }}>
+                    <label style={{
+                      fontSize: fontSize.sm,
+                      color: colors.textSecondary,
+                      display: 'block',
+                      marginBottom: spacing.xs,
+                    }}>
+                      Stop Loss %
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+                      <input
+                        type="range"
+                        min="0.005"
+                        max="0.03"
+                        step="0.005"
+                        value={whatIfConfig.stop_loss_pct}
+                        onChange={(e) => updateWhatIfConfig('stop_loss_pct', parseFloat(e.target.value))}
+                        style={{ flex: 1 }}
+                      />
+                      <span style={{
+                        fontFamily: fontFamily.mono,
+                        fontSize: fontSize.sm,
+                        color: colors.error,
+                        minWidth: 50,
+                        textAlign: 'right',
+                      }}>
+                        {(whatIfConfig.stop_loss_pct * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Take Profit */}
+                  <div style={{
+                    padding: spacing.md,
+                    background: colors.bgSecondary,
+                    borderRadius: borderRadius.md,
+                    border: `1px solid ${colors.border}`,
+                  }}>
+                    <label style={{
+                      fontSize: fontSize.sm,
+                      color: colors.textSecondary,
+                      display: 'block',
+                      marginBottom: spacing.xs,
+                    }}>
+                      Take Profit %
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+                      <input
+                        type="range"
+                        min="0.01"
+                        max="0.05"
+                        step="0.005"
+                        value={whatIfConfig.take_profit_pct}
+                        onChange={(e) => updateWhatIfConfig('take_profit_pct', parseFloat(e.target.value))}
+                        style={{ flex: 1 }}
+                      />
+                      <span style={{
+                        fontFamily: fontFamily.mono,
+                        fontSize: fontSize.sm,
+                        color: colors.success,
+                        minWidth: 50,
+                        textAlign: 'right',
+                      }}>
+                        {(whatIfConfig.take_profit_pct * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Max Hold Time */}
+                  <div style={{
+                    padding: spacing.md,
+                    background: colors.bgSecondary,
+                    borderRadius: borderRadius.md,
+                    border: `1px solid ${colors.border}`,
+                  }}>
+                    <label style={{
+                      fontSize: fontSize.sm,
+                      color: colors.textSecondary,
+                      display: 'block',
+                      marginBottom: spacing.xs,
+                    }}>
+                      Max Hold (min)
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+                      <input
+                        type="range"
+                        min="30"
+                        max="240"
+                        step="15"
+                        value={whatIfConfig.max_hold_min}
+                        onChange={(e) => updateWhatIfConfig('max_hold_min', parseInt(e.target.value))}
+                        style={{ flex: 1 }}
+                      />
+                      <span style={{
+                        fontFamily: fontFamily.mono,
+                        fontSize: fontSize.sm,
+                        color: colors.textPrimary,
+                        minWidth: 50,
+                        textAlign: 'right',
+                      }}>
+                        {whatIfConfig.max_hold_min}m
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Max Trades Per Day */}
+                  <div style={{
+                    padding: spacing.md,
+                    background: colors.bgSecondary,
+                    borderRadius: borderRadius.md,
+                    border: `1px solid ${colors.border}`,
+                  }}>
+                    <label style={{
+                      fontSize: fontSize.sm,
+                      color: colors.textSecondary,
+                      display: 'block',
+                      marginBottom: spacing.xs,
+                    }}>
+                      Max Trades/Day
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+                      <input
+                        type="range"
+                        min="1"
+                        max="10"
+                        step="1"
+                        value={whatIfConfig.max_trades_per_day}
+                        onChange={(e) => updateWhatIfConfig('max_trades_per_day', parseInt(e.target.value))}
+                        style={{ flex: 1 }}
+                      />
+                      <span style={{
+                        fontFamily: fontFamily.mono,
+                        fontSize: fontSize.sm,
+                        color: colors.textPrimary,
+                        minWidth: 50,
+                        textAlign: 'right',
+                      }}>
+                        {whatIfConfig.max_trades_per_day}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Toggles Row */}
+                  <div style={{
+                    padding: spacing.md,
+                    background: colors.bgSecondary,
+                    borderRadius: borderRadius.md,
+                    border: `1px solid ${colors.border}`,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: spacing.sm,
+                  }}>
+                    <label style={{
+                      fontSize: fontSize.sm,
+                      color: colors.textSecondary,
+                    }}>
+                      Filters
+                    </label>
+                    <div style={{ display: 'flex', gap: spacing.md }}>
+                      <label style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: spacing.xs,
+                        cursor: 'pointer',
+                        fontSize: fontSize.sm,
+                        color: colors.textPrimary,
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={whatIfConfig.mq_required}
+                          onChange={(e) => updateWhatIfConfig('mq_required', e.target.checked)}
+                        />
+                        MQ Required
+                      </label>
+                      <label style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: spacing.xs,
+                        cursor: 'pointer',
+                        fontSize: fontSize.sm,
+                        color: colors.textPrimary,
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={whatIfConfig.trailing_enabled}
+                          onChange={(e) => updateWhatIfConfig('trailing_enabled', e.target.checked)}
+                        />
+                        Trailing Stop
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Run Button */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  marginBottom: spacing.lg,
+                }}>
+                  <button
+                    onClick={handleWhatIfAnalysis}
+                    disabled={whatIfRunning}
+                    style={{
+                      padding: '12px 32px',
+                      borderRadius: borderRadius.md,
+                      border: 'none',
+                      background: whatIfRunning ? colors.bgTertiary : colors.info,
+                      color: whatIfRunning ? colors.textMuted : colors.bgPrimary,
+                      fontSize: fontSize.base,
+                      fontWeight: fontWeight.bold,
+                      fontFamily: fontFamily.sans,
+                      cursor: whatIfRunning ? 'wait' : 'pointer',
+                      transition: `all ${transitions.fast}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: spacing.sm,
+                    }}
+                  >
+                    {whatIfRunning ? (
+                      <>
+                        <span style={{ animation: 'spin 1s linear infinite' }}>⏳</span>
+                        Running Analysis...
+                      </>
+                    ) : (
+                      <>
+                        <span>🔬</span>
+                        Run What-If Analysis
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Results */}
+                {whatIfResults && (
+                  <div style={{
+                    background: colors.bgTertiary,
+                    borderRadius: borderRadius.md,
+                    padding: spacing.lg,
+                    border: `1px solid ${colors.borderAccent}`,
+                  }}>
+                    <h3 style={{
+                      ...typography.h3,
+                      marginBottom: spacing.md,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: spacing.sm,
+                    }}>
+                      <span>📊</span>
+                      Analysis Results
+                    </h3>
+
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                      gap: spacing.md,
+                      marginBottom: spacing.lg,
+                    }}>
+                      <div className="metric-card" style={{
+                        padding: spacing.md,
+                        background: colors.bgSecondary,
+                        borderRadius: borderRadius.md,
+                        border: `1px solid ${colors.border}`,
+                        textAlign: 'center',
+                      }}>
+                        <div style={{
+                          fontSize: fontSize.xs,
+                          color: colors.textMuted,
+                          marginBottom: spacing.xs,
+                        }}>
+                          Total Trades
+                        </div>
+                        <div style={{
+                          fontSize: fontSize.xl,
+                          fontWeight: fontWeight.bold,
+                          color: colors.textPrimary,
+                          fontFamily: fontFamily.mono,
+                        }}>
+                          {whatIfResults.total_trades || 0}
+                        </div>
+                      </div>
+
+                      <div className="metric-card" style={{
+                        padding: spacing.md,
+                        background: colors.bgSecondary,
+                        borderRadius: borderRadius.md,
+                        border: `1px solid ${colors.border}`,
+                        textAlign: 'center',
+                      }}>
+                        <div style={{
+                          fontSize: fontSize.xs,
+                          color: colors.textMuted,
+                          marginBottom: spacing.xs,
+                        }}>
+                          Win Rate
+                        </div>
+                        <div style={{
+                          fontSize: fontSize.xl,
+                          fontWeight: fontWeight.bold,
+                          color: (whatIfResults.win_rate || 0) >= 0.5 ? colors.success : colors.warning,
+                          fontFamily: fontFamily.mono,
+                        }}>
+                          {((whatIfResults.win_rate || 0) * 100).toFixed(1)}%
+                        </div>
+                      </div>
+
+                      <div className="metric-card" style={{
+                        padding: spacing.md,
+                        background: colors.bgSecondary,
+                        borderRadius: borderRadius.md,
+                        border: `1px solid ${colors.border}`,
+                        textAlign: 'center',
+                      }}>
+                        <div style={{
+                          fontSize: fontSize.xs,
+                          color: colors.textMuted,
+                          marginBottom: spacing.xs,
+                        }}>
+                          Total P&L %
+                        </div>
+                        <div style={{
+                          fontSize: fontSize.xl,
+                          fontWeight: fontWeight.bold,
+                          color: (whatIfResults.total_pnl_pct || 0) >= 0 ? colors.success : colors.error,
+                          fontFamily: fontFamily.mono,
+                        }}>
+                          {((whatIfResults.total_pnl_pct || 0) * 100).toFixed(2)}%
+                        </div>
+                      </div>
+
+                      <div className="metric-card" style={{
+                        padding: spacing.md,
+                        background: colors.bgSecondary,
+                        borderRadius: borderRadius.md,
+                        border: `1px solid ${colors.border}`,
+                        textAlign: 'center',
+                      }}>
+                        <div style={{
+                          fontSize: fontSize.xs,
+                          color: colors.textMuted,
+                          marginBottom: spacing.xs,
+                        }}>
+                          Profit Factor
+                        </div>
+                        <div style={{
+                          fontSize: fontSize.xl,
+                          fontWeight: fontWeight.bold,
+                          color: (whatIfResults.profit_factor || 0) >= 1 ? colors.success : colors.warning,
+                          fontFamily: fontFamily.mono,
+                        }}>
+                          {(whatIfResults.profit_factor || 0).toFixed(2)}
+                        </div>
+                      </div>
+
+                      <div className="metric-card" style={{
+                        padding: spacing.md,
+                        background: colors.bgSecondary,
+                        borderRadius: borderRadius.md,
+                        border: `1px solid ${colors.border}`,
+                        textAlign: 'center',
+                      }}>
+                        <div style={{
+                          fontSize: fontSize.xs,
+                          color: colors.textMuted,
+                          marginBottom: spacing.xs,
+                        }}>
+                          Max Drawdown
+                        </div>
+                        <div style={{
+                          fontSize: fontSize.xl,
+                          fontWeight: fontWeight.bold,
+                          color: colors.error,
+                          fontFamily: fontFamily.mono,
+                        }}>
+                          {((whatIfResults.max_drawdown_pct || 0) * 100).toFixed(2)}%
+                        </div>
+                      </div>
+
+                      <div className="metric-card" style={{
+                        padding: spacing.md,
+                        background: colors.bgSecondary,
+                        borderRadius: borderRadius.md,
+                        border: `1px solid ${colors.border}`,
+                        textAlign: 'center',
+                      }}>
+                        <div style={{
+                          fontSize: fontSize.xs,
+                          color: colors.textMuted,
+                          marginBottom: spacing.xs,
+                        }}>
+                          Avg Hold (min)
+                        </div>
+                        <div style={{
+                          fontSize: fontSize.xl,
+                          fontWeight: fontWeight.bold,
+                          color: colors.textPrimary,
+                          fontFamily: fontFamily.mono,
+                        }}>
+                          {(whatIfResults.avg_hold_minutes || 0).toFixed(0)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Trade Summary */}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      gap: spacing.lg,
+                      marginBottom: spacing.md,
+                      fontSize: fontSize.sm,
+                    }}>
+                      <span style={{ color: colors.success }}>
+                        {whatIfResults.winning_trades || 0} Wins
+                      </span>
+                      <span style={{ color: colors.textMuted }}>|</span>
+                      <span style={{ color: colors.error }}>
+                        {whatIfResults.losing_trades || 0} Losses
+                      </span>
+                      <span style={{ color: colors.textMuted }}>|</span>
+                      <span style={{ color: colors.textSecondary }}>
+                        Avg P&L: {((whatIfResults.avg_pnl_pct || 0) * 100).toFixed(3)}%
+                      </span>
+                    </div>
+
+                    {/* Decision Stats */}
+                    <div style={{
+                      fontSize: fontSize.xs,
+                      color: colors.textMuted,
+                      textAlign: 'center',
+                    }}>
+                      Analyzed {whatIfResults.total_decisions || 0} historical decisions
+                      {whatIfResults.filtered_decisions > 0 && whatIfResults.filtered_decisions !== whatIfResults.total_decisions && (
+                        <> ({whatIfResults.filtered_decisions} passed filters, {whatIfResults.simulated_trades} simulated)</>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </>
       )}
