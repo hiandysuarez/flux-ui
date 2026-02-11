@@ -24,8 +24,24 @@ import {
 
 const colors = darkTheme;
 
+// Strategy definitions
+const STRATEGIES = {
+  orb: {
+    id: 'orb',
+    name: 'ORB Strategy',
+    description: 'Opening Range Breakout - Mechanical breakout trading',
+    icon: '📐',
+  },
+  llm: {
+    id: 'llm',
+    name: 'LLM Strategy',
+    description: 'AI-driven momentum and sentiment analysis',
+    icon: '🤖',
+  },
+};
+
 // Setting display names and descriptions - ORB Strategy Parameters
-const SETTING_META = {
+const ORB_SETTING_META = {
   orb_displacement_min: {
     name: 'Min Displacement',
     unit: 'x',
@@ -62,6 +78,57 @@ const SETTING_META = {
     format: (v) => `${v}`,
   },
 };
+
+// Setting display names and descriptions - LLM Strategy Parameters
+const LLM_SETTING_META = {
+  stop_loss_pct: {
+    name: 'Stop Loss',
+    unit: '%',
+    description: 'Distance from entry to stop loss. Lower = tighter protection, higher = more room.',
+    icon: '🛑',
+    format: (v) => `${(Number(v) * 100).toFixed(1)}%`,
+  },
+  take_profit_pct: {
+    name: 'Take Profit',
+    unit: '%',
+    description: 'Distance from entry to take profit. Higher = more profit potential.',
+    icon: '🎯',
+    format: (v) => `${(Number(v) * 100).toFixed(1)}%`,
+  },
+  mom_entry_pct: {
+    name: 'Momentum Threshold',
+    unit: '%',
+    description: 'Minimum momentum required for entry. Higher = stronger moves only.',
+    icon: '🚀',
+    format: (v) => `${(Number(v) * 100).toFixed(2)}%`,
+  },
+  trailing_stop_activation: {
+    name: 'Trailing Stop Activation',
+    unit: '%',
+    description: 'Profit level to activate trailing stop (as % of TP target).',
+    icon: '📈',
+    format: (v) => `${(Number(v) * 100).toFixed(0)}%`,
+  },
+  trailing_stop_distance: {
+    name: 'Trailing Stop Distance',
+    unit: 'x',
+    description: 'Distance for trailing stop as multiple of entry risk.',
+    icon: '📏',
+    format: (v) => `${Number(v).toFixed(2)}x`,
+  },
+  max_hold_min: {
+    name: 'Max Hold Time',
+    unit: 'min',
+    description: 'Maximum minutes to hold a position before force exit.',
+    icon: '⏱️',
+    format: (v) => `${v} min`,
+  },
+};
+
+// Get the appropriate setting meta based on strategy
+function getSettingMeta(strategy) {
+  return strategy === 'llm' ? LLM_SETTING_META : ORB_SETTING_META;
+}
 
 // Confidence level styling
 function getConfidenceStyle(confidence) {
@@ -113,6 +180,7 @@ export default function OptimizePage() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [days, setDays] = useState(30);
+  const [strategy, setStrategy] = useState('orb'); // 'orb' or 'llm'
   const [runningBacktest, setRunningBacktest] = useState(false);
   const [isCustomBacktest, setIsCustomBacktest] = useState(false);
   const [showCustomBanner, setShowCustomBanner] = useState(false);
@@ -121,16 +189,16 @@ export default function OptimizePage() {
   // Load initial data
   useEffect(() => {
     loadData();
-  }, [days]);
+  }, [days, strategy]);
 
   async function loadData() {
     setLoading(true);
     setError(null);
     try {
-      console.log('[Optimize] Loading data for', days, 'days...');
+      console.log('[Optimize] Loading data for', days, 'days, strategy:', strategy);
       const [bt, sugg] = await Promise.all([
-        fetchQuickBacktest(days),
-        fetchSettingsSuggestions(days),
+        fetchQuickBacktest(days, strategy),
+        fetchSettingsSuggestions(days, strategy),
       ]);
       console.log('[Optimize] Backtest response:', bt);
       console.log('[Optimize] Suggestions response:', sugg);
@@ -204,8 +272,8 @@ export default function OptimizePage() {
         }
       });
 
-      console.log('[Optimize] Running backtest with settings:', settings);
-      const result = await runBacktest(settings, days, true);
+      console.log('[Optimize] Running backtest with settings:', settings, 'strategy:', strategy);
+      const result = await runBacktest(settings, days, true, strategy);
       console.log('[Optimize] Backtest result:', result);
 
       if (result?.ok === false) {
@@ -446,46 +514,86 @@ export default function OptimizePage() {
             alignItems: 'center',
             gap: spacing.sm,
           }}>
-            <span style={{ fontSize: '28px' }}>✨</span>
-            Optimize ORB Settings
+            <span style={{ fontSize: '28px' }}>{STRATEGIES[strategy].icon}</span>
+            Optimize {STRATEGIES[strategy].name}
           </h1>
           <p style={{
             ...typography.bodySmall,
             marginTop: spacing.xs,
           }}>
-            Data-driven suggestions to tune your ORB entry filters
+            {strategy === 'orb'
+              ? 'Data-driven suggestions to tune your ORB entry filters'
+              : 'Data-driven suggestions to tune your LLM trading parameters'
+            }
           </p>
         </div>
 
-        {/* Period selector */}
-        <div style={{
-          display: 'flex',
-          gap: spacing.sm,
-          background: colors.bgSecondary,
-          padding: 4,
-          borderRadius: borderRadius.lg,
-          border: `1px solid ${colors.border}`,
-        }}>
-          {[7, 14, 30, 90].map(d => (
-            <button
-              key={d}
-              onClick={() => setDays(d)}
-              style={{
-                padding: '8px 16px',
-                borderRadius: borderRadius.md,
-                border: 'none',
-                background: days === d ? colors.accentDark : 'transparent',
-                color: days === d ? colors.accent : colors.textSecondary,
-                fontWeight: days === d ? fontWeight.bold : fontWeight.medium,
-                fontSize: fontSize.sm,
-                fontFamily: fontFamily.sans,
-                cursor: 'pointer',
-                transition: `all ${transitions.fast}`,
-              }}
-            >
-              {d}D
-            </button>
-          ))}
+        <div style={{ display: 'flex', gap: spacing.md, flexWrap: 'wrap' }}>
+          {/* Strategy selector */}
+          <div style={{
+            display: 'flex',
+            gap: spacing.sm,
+            background: colors.bgSecondary,
+            padding: 4,
+            borderRadius: borderRadius.lg,
+            border: `1px solid ${colors.border}`,
+          }}>
+            {Object.values(STRATEGIES).map(s => (
+              <button
+                key={s.id}
+                onClick={() => setStrategy(s.id)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: borderRadius.md,
+                  border: 'none',
+                  background: strategy === s.id ? colors.accentDark : 'transparent',
+                  color: strategy === s.id ? colors.accent : colors.textSecondary,
+                  fontWeight: strategy === s.id ? fontWeight.bold : fontWeight.medium,
+                  fontSize: fontSize.sm,
+                  fontFamily: fontFamily.sans,
+                  cursor: 'pointer',
+                  transition: `all ${transitions.fast}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: spacing.xs,
+                }}
+              >
+                <span>{s.icon}</span>
+                {s.id.toUpperCase()}
+              </button>
+            ))}
+          </div>
+
+          {/* Period selector */}
+          <div style={{
+            display: 'flex',
+            gap: spacing.sm,
+            background: colors.bgSecondary,
+            padding: 4,
+            borderRadius: borderRadius.lg,
+            border: `1px solid ${colors.border}`,
+          }}>
+            {[7, 14, 30, 90].map(d => (
+              <button
+                key={d}
+                onClick={() => setDays(d)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: borderRadius.md,
+                  border: 'none',
+                  background: days === d ? colors.accentDark : 'transparent',
+                  color: days === d ? colors.accent : colors.textSecondary,
+                  fontWeight: days === d ? fontWeight.bold : fontWeight.medium,
+                  fontSize: fontSize.sm,
+                  fontFamily: fontFamily.sans,
+                  cursor: 'pointer',
+                  transition: `all ${transitions.fast}`,
+                }}
+              >
+                {d}D
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -949,7 +1057,8 @@ export default function OptimizePage() {
             ) : (
               <div style={{ display: 'grid', gap: spacing.sm }}>
                 {suggestions.map((suggestion, idx) => {
-                  const meta = SETTING_META[suggestion.setting_name] || {
+                  const settingMeta = getSettingMeta(strategy);
+                  const meta = settingMeta[suggestion.setting_name] || {
                     name: suggestion.setting_name,
                     unit: '',
                     description: '',
@@ -1217,7 +1326,8 @@ export default function OptimizePage() {
               {suggestions
                 .filter(s => selectedSuggestions.has(s.setting_name))
                 .map(s => {
-                  const meta = SETTING_META[s.setting_name] || { name: s.setting_name, unit: '', format: null };
+                  const settingMeta = getSettingMeta(strategy);
+                  const meta = settingMeta[s.setting_name] || { name: s.setting_name, unit: '', format: null };
                   return (
                     <div
                       key={s.setting_name}
