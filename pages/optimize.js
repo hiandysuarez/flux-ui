@@ -1897,6 +1897,49 @@ export default function OptimizePage() {
                         <> ({whatIfResults.filtered_decisions} passed filters, {whatIfResults.simulated_trades} simulated)</>
                       )}
                     </div>
+
+                    {/* Debug: Filter Stats (show if no trades) */}
+                    {whatIfResults.total_trades === 0 && whatIfResults.filter_stats && (
+                      <div style={{
+                        marginTop: spacing.md,
+                        padding: spacing.md,
+                        background: colors.warningDark,
+                        borderRadius: borderRadius.md,
+                        border: `1px solid ${colors.warning}30`,
+                      }}>
+                        <div style={{
+                          fontSize: fontSize.sm,
+                          color: colors.warning,
+                          marginBottom: spacing.sm,
+                          fontWeight: fontWeight.semibold,
+                        }}>
+                          Why no trades? Filter breakdown:
+                        </div>
+                        <div style={{
+                          fontSize: fontSize.xs,
+                          color: colors.textSecondary,
+                          fontFamily: fontFamily.mono,
+                        }}>
+                          {whatIfResults.filter_stats.not_buy_sell > 0 && (
+                            <div>Not BUY/SELL: {whatIfResults.filter_stats.not_buy_sell}</div>
+                          )}
+                          {whatIfResults.filter_stats.low_confidence > 0 && (
+                            <div>Low confidence: {whatIfResults.filter_stats.low_confidence}</div>
+                          )}
+                          {whatIfResults.filter_stats.mq_failed > 0 && (
+                            <div>MQ failed: {whatIfResults.filter_stats.mq_failed}</div>
+                          )}
+                          {whatIfResults.filter_stats.no_price > 0 && (
+                            <div>No price: {whatIfResults.filter_stats.no_price}</div>
+                          )}
+                          {whatIfResults.filter_stats.decision_values && (
+                            <div style={{ marginTop: spacing.xs }}>
+                              Decision types: {JSON.stringify(whatIfResults.filter_stats.decision_values)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </>
