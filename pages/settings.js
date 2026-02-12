@@ -36,6 +36,7 @@ const DEFAULT_GUARDRAILS = {
   // Safety fallbacks - apply regardless of ORB strategy
   max_open_positions: { min: 1, max: 10, default: 5, recommended: 3 },
   max_hold_min: { min: 15, max: 390, default: 120, recommended: 120 },
+  risk_per_trade_pct: { min: 0.001, max: 0.02, default: 0.002, recommended: 0.002 },
   // ORB-specific (for reference, actual validation in backend)
   orb_displacement_min: { min: 1.0, max: 3.0, default: 1.5, recommended: 1.5 },
   orb_volume_min: { min: 1.0, max: 3.0, default: 1.2, recommended: 1.2 },
@@ -291,6 +292,8 @@ const STRATEGY_META = {
 function getTabs(activeStrategy) {
   const baseTabs = [
     { id: 'profile', label: 'Profile', icon: TAB_ICONS.profile },
+    { id: 'safety', label: 'Safety', icon: TAB_ICONS.risk },  // 2nd - Safety
+    { id: 'risk', label: 'Risk', icon: TAB_ICONS.risk },      // 3rd - Risk (RESTORED)
   ];
 
   // Add strategy-specific tab based on active strategy
@@ -300,9 +303,6 @@ function getTabs(activeStrategy) {
 
   // LLM settings always shown (used as fallback or primary)
   baseTabs.push({ id: 'llm', label: 'LLM Settings', icon: TAB_ICONS.llm });
-
-  // Safety tab always at the end
-  baseTabs.push({ id: 'safety', label: 'Safety', icon: TAB_ICONS.risk });
 
   return baseTabs;
 }
