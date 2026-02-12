@@ -1898,7 +1898,7 @@ export default function OptimizePage() {
                       )}
                     </div>
 
-                    {/* Debug: Filter Stats (show if no trades) */}
+                    {/* Zero Trades Diagnostic (show if no trades) */}
                     {whatIfResults.total_trades === 0 && whatIfResults.filter_stats && (
                       <div style={{
                         marginTop: spacing.md,
@@ -1907,37 +1907,94 @@ export default function OptimizePage() {
                         borderRadius: borderRadius.md,
                         border: `1px solid ${colors.warning}30`,
                       }}>
-                        <div style={{
-                          fontSize: fontSize.sm,
-                          color: colors.warning,
-                          marginBottom: spacing.sm,
-                          fontWeight: fontWeight.semibold,
-                        }}>
-                          Why no trades? Filter breakdown:
-                        </div>
-                        <div style={{
-                          fontSize: fontSize.xs,
-                          color: colors.textSecondary,
-                          fontFamily: fontFamily.mono,
-                        }}>
-                          {whatIfResults.filter_stats.not_buy_sell > 0 && (
-                            <div>Not BUY/SELL: {whatIfResults.filter_stats.not_buy_sell}</div>
-                          )}
-                          {whatIfResults.filter_stats.low_confidence > 0 && (
-                            <div>Low confidence: {whatIfResults.filter_stats.low_confidence}</div>
-                          )}
-                          {whatIfResults.filter_stats.mq_failed > 0 && (
-                            <div>MQ failed: {whatIfResults.filter_stats.mq_failed}</div>
-                          )}
-                          {whatIfResults.filter_stats.no_price > 0 && (
-                            <div>No price: {whatIfResults.filter_stats.no_price}</div>
-                          )}
-                          {whatIfResults.filter_stats.decision_values && (
-                            <div style={{ marginTop: spacing.xs }}>
-                              Decision types: {JSON.stringify(whatIfResults.filter_stats.decision_values)}
+                        {/* Blocking Filter Message - prominently displayed */}
+                        {whatIfResults.blocking_filter_message ? (
+                          <>
+                            <div style={{
+                              fontSize: fontSize.sm,
+                              color: colors.warning,
+                              marginBottom: spacing.sm,
+                              fontWeight: fontWeight.semibold,
+                            }}>
+                              Why no trades?
                             </div>
-                          )}
-                        </div>
+                            <div style={{
+                              fontSize: fontSize.base,
+                              color: colors.textPrimary,
+                              marginBottom: spacing.md,
+                              padding: spacing.sm,
+                              background: `${colors.warning}15`,
+                              borderRadius: borderRadius.sm,
+                              borderLeft: `3px solid ${colors.warning}`,
+                            }}>
+                              {whatIfResults.blocking_filter_message}
+                            </div>
+                            {/* Filter Funnel - show progression */}
+                            {whatIfResults.funnel && (
+                              <div style={{
+                                fontSize: fontSize.xs,
+                                color: colors.textMuted,
+                                fontFamily: fontFamily.mono,
+                              }}>
+                                <div style={{ marginBottom: spacing.xs, color: colors.textSecondary }}>Filter funnel:</div>
+                                <div>Total decisions: {whatIfResults.funnel.total_decisions}</div>
+                                <div style={{ color: whatIfResults.funnel.after_buy_sell_filter > 0 ? colors.textSecondary : colors.error }}>
+                                  → BUY/SELL only: {whatIfResults.funnel.after_buy_sell_filter}
+                                </div>
+                                <div style={{ color: whatIfResults.funnel.after_confidence_filter > 0 ? colors.textSecondary : colors.error }}>
+                                  → After confidence: {whatIfResults.funnel.after_confidence_filter}
+                                </div>
+                                <div style={{ color: whatIfResults.funnel.after_win_prob_filter > 0 ? colors.textSecondary : colors.error }}>
+                                  → After win prob: {whatIfResults.funnel.after_win_prob_filter}
+                                </div>
+                                <div style={{ color: whatIfResults.funnel.after_mq_filter > 0 ? colors.textSecondary : colors.error }}>
+                                  → After MQ filter: {whatIfResults.funnel.after_mq_filter}
+                                </div>
+                                <div style={{ color: whatIfResults.funnel.after_price_filter > 0 ? colors.textSecondary : colors.error }}>
+                                  → After price filter: {whatIfResults.funnel.after_price_filter}
+                                </div>
+                                <div style={{ color: whatIfResults.funnel.final_passed > 0 ? colors.success : colors.error }}>
+                                  → Final passed: {whatIfResults.funnel.final_passed}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          /* Fallback to old display if blocking_filter_message not available */
+                          <>
+                            <div style={{
+                              fontSize: fontSize.sm,
+                              color: colors.warning,
+                              marginBottom: spacing.sm,
+                              fontWeight: fontWeight.semibold,
+                            }}>
+                              Why no trades? Filter breakdown:
+                            </div>
+                            <div style={{
+                              fontSize: fontSize.xs,
+                              color: colors.textSecondary,
+                              fontFamily: fontFamily.mono,
+                            }}>
+                              {whatIfResults.filter_stats.not_buy_sell > 0 && (
+                                <div>Not BUY/SELL: {whatIfResults.filter_stats.not_buy_sell}</div>
+                              )}
+                              {whatIfResults.filter_stats.low_confidence > 0 && (
+                                <div>Low confidence: {whatIfResults.filter_stats.low_confidence}</div>
+                              )}
+                              {whatIfResults.filter_stats.mq_failed > 0 && (
+                                <div>MQ failed: {whatIfResults.filter_stats.mq_failed}</div>
+                              )}
+                              {whatIfResults.filter_stats.no_price > 0 && (
+                                <div>No price: {whatIfResults.filter_stats.no_price}</div>
+                              )}
+                              {whatIfResults.filter_stats.decision_values && (
+                                <div style={{ marginTop: spacing.xs }}>
+                                  Decision types: {JSON.stringify(whatIfResults.filter_stats.decision_values)}
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
