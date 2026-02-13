@@ -701,6 +701,7 @@ function PositionCard({ position, colors, index }) {
   const pnl = parseFloat(position.unrealized_pnl || 0);
   const isProfit = pnl >= 0;
   const borderColor = isProfit ? 'rgba(212, 165, 116, 0.4)' : 'rgba(248, 81, 73, 0.4)';
+  const tradeType = position.trade_type || 'LLM';
 
   return (
     <div style={{
@@ -726,17 +727,27 @@ function PositionCard({ position, colors, index }) {
         }}>
           {position.symbol}
         </span>
-        <span style={{
-          fontSize: fontSize.xs,
-          color: position.side === 'LONG' ? colors.success : colors.error,
-          fontFamily: fontFamily.sans,
-          fontWeight: fontWeight.medium,
-          padding: `2px ${spacing.xs}`,
-          background: position.side === 'LONG' ? colors.successDark : colors.errorDark,
-          borderRadius: borderRadius.sm,
-        }}>
-          {position.side}
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+          <span style={{
+            fontSize: fontSize.xs,
+            color: position.side === 'LONG' ? colors.success : colors.error,
+            fontFamily: fontFamily.sans,
+            fontWeight: fontWeight.medium,
+            padding: `2px ${spacing.xs}`,
+            background: position.side === 'LONG' ? colors.successDark : colors.errorDark,
+            borderRadius: borderRadius.sm,
+          }}>
+            {position.side}
+          </span>
+          <span style={{
+            fontSize: '10px',
+            color: colors.textMuted,
+            fontFamily: fontFamily.mono,
+            letterSpacing: '0.5px',
+          }}>
+            {tradeType}
+          </span>
+        </div>
       </div>
 
       <div style={{
