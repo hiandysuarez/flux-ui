@@ -326,8 +326,10 @@ export default function SettingsPage() {
   const [strategies, setStrategies] = useState([]);
   const [changingStrategy, setChangingStrategy] = useState(false);
 
-  // Get active strategy from settings, default to 'orb'
-  const activeStrategy = settings?.active_strategy || 'orb';
+  // Get active strategy from settings
+  // null or '' means LLM Only mode, 'orb' means ORB strategy
+  // Only default to 'orb' if settings haven't loaded yet (undefined)
+  const activeStrategy = settings?.active_strategy === undefined ? 'orb' : settings?.active_strategy;
 
   // Dynamic tabs based on active strategy
   const TABS = getTabs(activeStrategy);
@@ -485,28 +487,14 @@ export default function SettingsPage() {
     }
   }
 
-  // Handle strategy change
-  const handleStrategyChange = async (newStrategy) => {
-    if (changingStrategy) return;
+  // Handle strategy change - just updates local state, saved when user clicks Save
+  const handleStrategyChange = (newStrategy) => {
+    // Update local settings state (will be saved when user clicks Save button)
+    setSettings(s => ({ ...s, active_strategy: newStrategy }));
 
-    setChangingStrategy(true);
-    try {
-      const res = await setActiveStrategy(newStrategy);
-      if (res.ok || res.settings) {
-        setSettings(s => ({ ...s, active_strategy: newStrategy }));
-        addToast(`Switched to ${STRATEGY_META[newStrategy || 'llm']?.name || 'LLM Only'}`, 'success');
-
-        // If switching away from current tab's strategy, go to profile
-        if (activeTab === 'orb' && newStrategy !== 'orb') {
-          setActiveTab('profile');
-        }
-      } else {
-        addToast(res.error || 'Failed to change strategy', 'error');
-      }
-    } catch (e) {
-      addToast(String(e?.message || e), 'error');
-    } finally {
-      setChangingStrategy(false);
+    // If switching away from current tab's strategy, go to profile
+    if (activeTab === 'orb' && newStrategy !== 'orb') {
+      setActiveTab('profile');
     }
   };
 
