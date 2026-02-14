@@ -1484,32 +1484,6 @@ export default function SettingsPage() {
               icon={TAB_ICONS.orb}
             >
               <SettingRow
-                label="ORB Enabled"
-                description="Enable or disable the ORB strategy. When disabled, no ORB setups will be detected."
-                colors={colors}
-              >
-                {isAdmin ? (
-                  <button
-                    onClick={() => set('orb_enabled', !get('orb_enabled', true))}
-                    style={get('orb_enabled', true) ? toggleOnStyle : toggleOffStyle}
-                  >
-                    <span style={{
-                      position: 'absolute',
-                      left: get('orb_enabled', true) ? 'calc(100% - 24px)' : '4px',
-                      top: '4px',
-                      width: 18,
-                      height: 18,
-                      borderRadius: '50%',
-                      background: '#fff',
-                      transition: 'left 0.2s ease',
-                    }} />
-                  </button>
-                ) : (
-                  <ReadOnlyValue colors={colors} value={get('orb_enabled', true) ? 'Enabled' : 'Disabled'} />
-                )}
-              </SettingRow>
-
-              <SettingRow
                 label="Trading Mode"
                 description="Stocks mode uses tighter stops (retest candle) and different timing windows."
                 colors={colors}
