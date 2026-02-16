@@ -842,7 +842,7 @@ export default function SettingsPage() {
                     color={STRATEGY_META.llm.color}
                     isActive={activeStrategy === null || activeStrategy === '' || activeStrategy === 'llm'}
                     disabled={changingStrategy}
-                    onClick={() => handleStrategyChange(null)}
+                    onClick={() => handleStrategyChange('')}
                     colors={colors}
                   />
                 </div>
