@@ -196,7 +196,7 @@ export default function OptimizePage() {
     conf_threshold: 0.60,
     win_prob_min: 0,
     mq_required: true,
-    stop_loss_pct: 0.015,
+    stop_loss_pct: 0.01,  // Match defaults.py DEFAULT_STOP_LOSS_PCT
     take_profit_pct: 0.02,
     max_hold_min: 120,
     trailing_enabled: true,
