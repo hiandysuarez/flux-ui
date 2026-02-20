@@ -106,7 +106,6 @@ export default function Layout({ children, active = 'dashboard' }) {
 
   const navLinks = [
     { href: '/', label: 'Dashboard', key: 'dashboard' },
-    { href: '/orb', label: 'ORB Strategy', key: 'orb', badge: 'NEW' },
     { href: '/analytics', label: 'Analytics', key: 'analytics' },
     { href: '/history', label: 'History', key: 'history' },
     { href: '/symbols', label: 'Symbols', key: 'symbols' },

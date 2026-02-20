@@ -1682,11 +1682,14 @@ export default function SettingsPage() {
                 description="Skip high-volatility days (SKIP), raise threshold on choppy days (CHOP)."
                 colors={colors}
               >
-                <ToggleSwitch
-                  value={get('day_type_enabled', true)}
-                  onChange={(v) => set('day_type_enabled', v)}
-                  colors={colors}
-                />
+                {isAdmin ? (
+                  <Toggle
+                    value={get('day_type_enabled', true)}
+                    onChange={(v) => set('day_type_enabled', v)}
+                  />
+                ) : (
+                  <ReadOnlyToggle value={get('day_type_enabled', true)} />
+                )}
               </SettingRow>
 
               {get('day_type_enabled', true) && (
@@ -1725,11 +1728,14 @@ export default function SettingsPage() {
                 description="Reduce confidence when trading against the EMA slope direction."
                 colors={colors}
               >
-                <ToggleSwitch
-                  value={get('ema_slope_enabled', true)}
-                  onChange={(v) => set('ema_slope_enabled', v)}
-                  colors={colors}
-                />
+                {isAdmin ? (
+                  <Toggle
+                    value={get('ema_slope_enabled', true)}
+                    onChange={(v) => set('ema_slope_enabled', v)}
+                  />
+                ) : (
+                  <ReadOnlyToggle value={get('ema_slope_enabled', true)} />
+                )}
               </SettingRow>
 
               {get('ema_slope_enabled', true) && (
@@ -1768,11 +1774,14 @@ export default function SettingsPage() {
                 description="Boost confidence when symbol is stronger/weaker than QQQ in trade direction."
                 colors={colors}
               >
-                <ToggleSwitch
-                  value={get('relative_strength_enabled', true)}
-                  onChange={(v) => set('relative_strength_enabled', v)}
-                  colors={colors}
-                />
+                {isAdmin ? (
+                  <Toggle
+                    value={get('relative_strength_enabled', true)}
+                    onChange={(v) => set('relative_strength_enabled', v)}
+                  />
+                ) : (
+                  <ReadOnlyToggle value={get('relative_strength_enabled', true)} />
+                )}
               </SettingRow>
 
               {get('relative_strength_enabled', true) && (
@@ -1811,11 +1820,14 @@ export default function SettingsPage() {
                 description="Penalize weak entries that lack volume or displacement."
                 colors={colors}
               >
-                <ToggleSwitch
-                  value={get('entry_quality_enabled', true)}
-                  onChange={(v) => set('entry_quality_enabled', v)}
-                  colors={colors}
-                />
+                {isAdmin ? (
+                  <Toggle
+                    value={get('entry_quality_enabled', true)}
+                    onChange={(v) => set('entry_quality_enabled', v)}
+                  />
+                ) : (
+                  <ReadOnlyToggle value={get('entry_quality_enabled', true)} />
+                )}
               </SettingRow>
 
               {get('entry_quality_enabled', true) && (
@@ -1854,11 +1866,14 @@ export default function SettingsPage() {
                 description="Include opening range levels in decision context."
                 colors={colors}
               >
-                <ToggleSwitch
-                  value={get('opening_range_enabled', true)}
-                  onChange={(v) => set('opening_range_enabled', v)}
-                  colors={colors}
-                />
+                {isAdmin ? (
+                  <Toggle
+                    value={get('opening_range_enabled', true)}
+                    onChange={(v) => set('opening_range_enabled', v)}
+                  />
+                ) : (
+                  <ReadOnlyToggle value={get('opening_range_enabled', true)} />
+                )}
               </SettingRow>
             </SettingsSection>
 
