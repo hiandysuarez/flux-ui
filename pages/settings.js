@@ -301,6 +301,11 @@ function getTabs(activeStrategy) {
     baseTabs.push({ id: 'orb', label: 'ORB Strategy', icon: TAB_ICONS.orb });
   }
 
+  // Market Context tab - new unified LLM enhancements (always shown for LLM mode)
+  if (!activeStrategy || activeStrategy === '' || activeStrategy === 'momentum') {
+    baseTabs.push({ id: 'context', label: 'Market Context', icon: TAB_ICONS.llm });
+  }
+
   // LLM settings always shown (used as fallback or primary)
   baseTabs.push({ id: 'llm', label: 'LLM Settings', icon: TAB_ICONS.llm });
 
@@ -1658,6 +1663,207 @@ export default function SettingsPage() {
 
             <QuickTip
               text="ORB Strategy trades the 5-minute Opening Range using a Break & Retest pattern. It works best during the first 90 minutes of market open (9:30-11:00 AM EST) when volatility is highest."
+              colors={colors}
+            />
+          </div>
+        )}
+
+        {/* Market Context Tab - Unified LLM enhancements */}
+        {activeTab === 'context' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <SettingsSection
+              title="Day Type Classification"
+              subtitle="Classify trading days and adjust behavior accordingly."
+              colors={colors}
+              icon={TAB_ICONS.llm}
+            >
+              <SettingRow
+                label="Enable Day Type"
+                description="Skip high-volatility days (SKIP), raise threshold on choppy days (CHOP)."
+                colors={colors}
+              >
+                <ToggleSwitch
+                  value={get('day_type_enabled', true)}
+                  onChange={(v) => set('day_type_enabled', v)}
+                  colors={colors}
+                />
+              </SettingRow>
+
+              {get('day_type_enabled', true) && (
+                <SettingRow
+                  label="Chop Day Confidence Threshold"
+                  description="Higher confidence required on choppy days to reduce overtrading."
+                  guardrail={{ min: 0.60, max: 0.90, default: 0.75 }}
+                  value={get('chop_day_conf_threshold', 0.75)}
+                  colors={colors}
+                >
+                  {isAdmin ? (
+                    <ValidatedNumberInput
+                      value={get('chop_day_conf_threshold', 0.75)}
+                      onChange={(v) => set('chop_day_conf_threshold', v)}
+                      step={0.05}
+                      min={0.60}
+                      max={0.90}
+                      isPercent
+                      colors={colors}
+                    />
+                  ) : (
+                    <ReadOnlyPercent colors={colors} value={get('chop_day_conf_threshold', 0.75)} />
+                  )}
+                </SettingRow>
+              )}
+            </SettingsSection>
+
+            <SettingsSection
+              title="EMA Slope Filter"
+              subtitle="Penalize counter-trend trades based on EMA direction."
+              colors={colors}
+              icon={TAB_ICONS.llm}
+            >
+              <SettingRow
+                label="Enable EMA Slope Filter"
+                description="Reduce confidence when trading against the EMA slope direction."
+                colors={colors}
+              >
+                <ToggleSwitch
+                  value={get('ema_slope_enabled', true)}
+                  onChange={(v) => set('ema_slope_enabled', v)}
+                  colors={colors}
+                />
+              </SettingRow>
+
+              {get('ema_slope_enabled', true) && (
+                <SettingRow
+                  label="EMA Slope Penalty"
+                  description="Confidence reduction for counter-trend trades (e.g., 10% = multiply by 0.90)."
+                  guardrail={{ min: 0.05, max: 0.25, default: 0.10 }}
+                  value={get('ema_slope_penalty', 0.10)}
+                  colors={colors}
+                >
+                  {isAdmin ? (
+                    <ValidatedNumberInput
+                      value={get('ema_slope_penalty', 0.10)}
+                      onChange={(v) => set('ema_slope_penalty', v)}
+                      step={0.01}
+                      min={0.05}
+                      max={0.25}
+                      isPercent
+                      colors={colors}
+                    />
+                  ) : (
+                    <ReadOnlyPercent colors={colors} value={get('ema_slope_penalty', 0.10)} />
+                  )}
+                </SettingRow>
+              )}
+            </SettingsSection>
+
+            <SettingsSection
+              title="Relative Strength"
+              subtitle="Boost confidence for stocks outperforming the index."
+              colors={colors}
+              icon={TAB_ICONS.llm}
+            >
+              <SettingRow
+                label="Enable Relative Strength"
+                description="Boost confidence when symbol is stronger/weaker than QQQ in trade direction."
+                colors={colors}
+              >
+                <ToggleSwitch
+                  value={get('relative_strength_enabled', true)}
+                  onChange={(v) => set('relative_strength_enabled', v)}
+                  colors={colors}
+                />
+              </SettingRow>
+
+              {get('relative_strength_enabled', true) && (
+                <SettingRow
+                  label="Relative Strength Boost"
+                  description="Confidence boost for strong relative performers (e.g., 5% = multiply by 1.05)."
+                  guardrail={{ min: 0.02, max: 0.15, default: 0.05 }}
+                  value={get('relative_strength_boost', 0.05)}
+                  colors={colors}
+                >
+                  {isAdmin ? (
+                    <ValidatedNumberInput
+                      value={get('relative_strength_boost', 0.05)}
+                      onChange={(v) => set('relative_strength_boost', v)}
+                      step={0.01}
+                      min={0.02}
+                      max={0.15}
+                      isPercent
+                      colors={colors}
+                    />
+                  ) : (
+                    <ReadOnlyPercent colors={colors} value={get('relative_strength_boost', 0.05)} />
+                  )}
+                </SettingRow>
+              )}
+            </SettingsSection>
+
+            <SettingsSection
+              title="Entry Quality Filter"
+              subtitle="Check volume and price displacement before entering."
+              colors={colors}
+              icon={TAB_ICONS.llm}
+            >
+              <SettingRow
+                label="Enable Entry Quality"
+                description="Penalize weak entries that lack volume or displacement."
+                colors={colors}
+              >
+                <ToggleSwitch
+                  value={get('entry_quality_enabled', true)}
+                  onChange={(v) => set('entry_quality_enabled', v)}
+                  colors={colors}
+                />
+              </SettingRow>
+
+              {get('entry_quality_enabled', true) && (
+                <SettingRow
+                  label="Minimum Volume Ratio"
+                  description="Entry candle volume must exceed this multiple of average volume."
+                  guardrail={{ min: 1.0, max: 2.0, default: 1.2 }}
+                  value={get('min_volume_ratio', 1.2)}
+                  colors={colors}
+                >
+                  {isAdmin ? (
+                    <ValidatedNumberInput
+                      value={get('min_volume_ratio', 1.2)}
+                      onChange={(v) => set('min_volume_ratio', v)}
+                      step={0.1}
+                      min={1.0}
+                      max={2.0}
+                      suffix="x"
+                      colors={colors}
+                    />
+                  ) : (
+                    <ReadOnlyValue colors={colors} value={`${get('min_volume_ratio', 1.2)}x`} />
+                  )}
+                </SettingRow>
+              )}
+            </SettingsSection>
+
+            <SettingsSection
+              title="Opening Range"
+              subtitle="Use first 5-minute candle high/low for context."
+              colors={colors}
+              icon={TAB_ICONS.llm}
+            >
+              <SettingRow
+                label="Enable Opening Range"
+                description="Include opening range levels in decision context."
+                colors={colors}
+              >
+                <ToggleSwitch
+                  value={get('opening_range_enabled', true)}
+                  onChange={(v) => set('opening_range_enabled', v)}
+                  colors={colors}
+                />
+              </SettingRow>
+            </SettingsSection>
+
+            <QuickTip
+              text="Market Context features enhance LLM decisions with real-time market awareness. They help filter out low-quality setups and boost confidence on high-quality opportunities."
               colors={colors}
             />
           </div>
