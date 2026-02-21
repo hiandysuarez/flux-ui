@@ -204,6 +204,11 @@ export default function OptimizePage() {
     trailing_distance: 1.0,
     max_trades_per_day: 5,
     max_trades_per_symbol_per_day: 2,
+    // Market Context Filters
+    skip_day_enabled: true,
+    chop_day_conf_min: 0.75,
+    ema_slope_penalty: 0.10,
+    entry_quality_enabled: true,
   });
 
   // Load initial data
@@ -1621,7 +1626,7 @@ export default function OptimizePage() {
                     }}>
                       Filters
                     </label>
-                    <div style={{ display: 'flex', gap: spacing.md }}>
+                    <div style={{ display: 'flex', gap: spacing.md, flexWrap: 'wrap' }}>
                       <label style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -1652,6 +1657,96 @@ export default function OptimizePage() {
                         />
                         Trailing Stop
                       </label>
+                    </div>
+                  </div>
+
+                  {/* Market Context Filters Section */}
+                  <div style={{
+                    padding: spacing.md,
+                    background: colors.bgSecondary,
+                    borderRadius: borderRadius.md,
+                    border: `1px solid ${colors.border}`,
+                    gridColumn: 'span 2',
+                  }}>
+                    <label style={{
+                      fontSize: fontSize.sm,
+                      color: colors.textSecondary,
+                      display: 'block',
+                      marginBottom: spacing.sm,
+                    }}>
+                      Market Context Filters
+                    </label>
+                    <div style={{ display: 'flex', gap: spacing.md, flexWrap: 'wrap', marginBottom: spacing.sm }}>
+                      <label style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: spacing.xs,
+                        cursor: 'pointer',
+                        fontSize: fontSize.sm,
+                        color: colors.textPrimary,
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={whatIfConfig.skip_day_enabled}
+                          onChange={(e) => updateWhatIfConfig('skip_day_enabled', e.target.checked)}
+                        />
+                        Skip SKIP Days
+                      </label>
+                      <label style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: spacing.xs,
+                        cursor: 'pointer',
+                        fontSize: fontSize.sm,
+                        color: colors.textPrimary,
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={whatIfConfig.entry_quality_enabled}
+                          onChange={(e) => updateWhatIfConfig('entry_quality_enabled', e.target.checked)}
+                        />
+                        Require Entry Quality
+                      </label>
+                    </div>
+                    <div style={{ display: 'flex', gap: spacing.lg, flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 180 }}>
+                        <label style={{
+                          fontSize: fontSize.xs,
+                          color: colors.textMuted,
+                          display: 'block',
+                          marginBottom: spacing.xs,
+                        }}>
+                          CHOP Day Confidence: {(whatIfConfig.chop_day_conf_min * 100).toFixed(0)}%
+                        </label>
+                        <input
+                          type="range"
+                          min="0.60"
+                          max="0.90"
+                          step="0.05"
+                          value={whatIfConfig.chop_day_conf_min}
+                          onChange={(e) => updateWhatIfConfig('chop_day_conf_min', parseFloat(e.target.value))}
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 180 }}>
+                        <label style={{
+                          fontSize: fontSize.xs,
+                          color: colors.textMuted,
+                          display: 'block',
+                          marginBottom: spacing.xs,
+                        }}>
+                          EMA Slope Penalty: {(whatIfConfig.ema_slope_penalty * 100).toFixed(0)}%
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="0.25"
+                          step="0.05"
+                          value={whatIfConfig.ema_slope_penalty}
+                          onChange={(e) => updateWhatIfConfig('ema_slope_penalty', parseFloat(e.target.value))}
+                          style={{ width: '100%' }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
