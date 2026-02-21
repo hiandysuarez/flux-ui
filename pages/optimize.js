@@ -209,6 +209,8 @@ export default function OptimizePage() {
     chop_day_conf_min: 0.75,
     ema_slope_penalty: 0.10,
     entry_quality_enabled: true,
+    relative_strength_enabled: true,
+    relative_strength_min: 0.003,
   });
 
   // Load initial data
@@ -1707,6 +1709,21 @@ export default function OptimizePage() {
                         />
                         Require Entry Quality
                       </label>
+                      <label style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: spacing.xs,
+                        cursor: 'pointer',
+                        fontSize: fontSize.sm,
+                        color: colors.textPrimary,
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={whatIfConfig.relative_strength_enabled}
+                          onChange={(e) => updateWhatIfConfig('relative_strength_enabled', e.target.checked)}
+                        />
+                        Relative Strength Filter
+                      </label>
                     </div>
                     <div style={{ display: 'flex', gap: spacing.lg, flexWrap: 'wrap' }}>
                       <div style={{ flex: 1, minWidth: 180 }}>
@@ -1744,6 +1761,25 @@ export default function OptimizePage() {
                           step="0.05"
                           value={whatIfConfig.ema_slope_penalty}
                           onChange={(e) => updateWhatIfConfig('ema_slope_penalty', parseFloat(e.target.value))}
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 180 }}>
+                        <label style={{
+                          fontSize: fontSize.xs,
+                          color: colors.textMuted,
+                          display: 'block',
+                          marginBottom: spacing.xs,
+                        }}>
+                          Min Relative Strength: {(whatIfConfig.relative_strength_min * 100).toFixed(1)}%
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="0.01"
+                          step="0.001"
+                          value={whatIfConfig.relative_strength_min}
+                          onChange={(e) => updateWhatIfConfig('relative_strength_min', parseFloat(e.target.value))}
                           style={{ width: '100%' }}
                         />
                       </div>
