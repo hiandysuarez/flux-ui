@@ -22,67 +22,22 @@ import {
   fetchUserSettings,
   runCycleReplay,
   compareCycleReplay,
+  runParameterOptimization,
+  fetchQuickOptimization,
+  compareVsOptimal,
 } from '../lib/api';
 
 const colors = darkTheme;
 
-// Strategy definitions
-const STRATEGIES = {
-  orb: {
-    id: 'orb',
-    name: 'ORB Strategy',
-    description: 'Opening Range Breakout - Mechanical breakout trading',
-    icon: '📐',
+// Setting display names and descriptions
+const SETTING_META = {
+  conf_threshold: {
+    name: 'Confidence Threshold',
+    unit: '%',
+    description: 'Minimum LLM confidence required for trade entry.',
+    icon: '🎚️',
+    format: (v) => `${(Number(v) * 100).toFixed(0)}%`,
   },
-  llm: {
-    id: 'llm',
-    name: 'LLM Strategy',
-    description: 'AI-driven momentum and sentiment analysis',
-    icon: '🤖',
-  },
-};
-
-// Setting display names and descriptions - ORB Strategy Parameters
-const ORB_SETTING_META = {
-  orb_displacement_min: {
-    name: 'Min Displacement',
-    unit: 'x',
-    description: 'Minimum break candle body vs average body ratio. Higher = stronger breaks only.',
-    icon: '📊',
-    format: (v) => `${Number(v).toFixed(1)}x`,
-  },
-  orb_volume_min: {
-    name: 'Min Volume',
-    unit: 'x',
-    description: 'Minimum volume ratio on break candle. Higher = more volume confirmation.',
-    icon: '📈',
-    format: (v) => `${Number(v).toFixed(1)}x`,
-  },
-  confluence_min: {
-    name: 'Min Confluence',
-    unit: '/5',
-    description: 'Minimum confluence factors required (QQQ direction, EMA slope, etc.). Higher = more filters.',
-    icon: '🎯',
-    format: (v) => `${v}/5`,
-  },
-  orb_min_rr_ratio: {
-    name: 'Min R:R Ratio',
-    unit: ':1',
-    description: 'Minimum reward-to-risk ratio. Higher = better risk/reward required.',
-    icon: '⚖️',
-    format: (v) => `${Number(v).toFixed(1)}:1`,
-  },
-  orb_max_trades_per_day: {
-    name: 'Max Daily Trades',
-    unit: '',
-    description: 'Maximum ORB trades per day. Fewer = more selective.',
-    icon: '🔢',
-    format: (v) => `${v}`,
-  },
-};
-
-// Setting display names and descriptions - LLM Strategy Parameters
-const LLM_SETTING_META = {
   stop_loss_pct: {
     name: 'Stop Loss',
     unit: '%',
@@ -127,9 +82,9 @@ const LLM_SETTING_META = {
   },
 };
 
-// Get the appropriate setting meta based on strategy
-function getSettingMeta(strategy) {
-  return strategy === 'llm' ? LLM_SETTING_META : ORB_SETTING_META;
+// Get setting meta
+function getSettingMeta() {
+  return SETTING_META;
 }
 
 // Confidence level styling
@@ -182,11 +137,15 @@ export default function OptimizePage() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [days, setDays] = useState(30);
-  const [strategy, setStrategy] = useState('orb'); // 'orb' or 'llm'
   const [runningBacktest, setRunningBacktest] = useState(false);
   const [isCustomBacktest, setIsCustomBacktest] = useState(false);
   const [showCustomBanner, setShowCustomBanner] = useState(false);
   const [previousBacktest, setPreviousBacktest] = useState(null);
+
+  // Parameter Finder state
+  const [paramFinderExpanded, setParamFinderExpanded] = useState(false);
+  const [paramFinderRunning, setParamFinderRunning] = useState(false);
+  const [paramFinderResults, setParamFinderResults] = useState(null);
 
   // What-If Analysis state
   const [whatIfExpanded, setWhatIfExpanded] = useState(false);
@@ -204,28 +163,21 @@ export default function OptimizePage() {
     trailing_distance: 1.0,
     max_trades_per_day: 5,
     max_trades_per_symbol_per_day: 2,
-    // Market Context Filters
-    skip_day_enabled: true,
-    chop_day_conf_min: 0.75,
-    ema_slope_penalty: 0.10,
-    entry_quality_enabled: true,
-    relative_strength_enabled: true,
-    relative_strength_min: 0.003,
   });
 
   // Load initial data
   useEffect(() => {
     loadData();
-  }, [days, strategy]);
+  }, [days]);
 
   async function loadData() {
     setLoading(true);
     setError(null);
     try {
-      console.log('[Optimize] Loading data for', days, 'days, strategy:', strategy);
+      console.log('[Optimize] Loading data for', days, 'days');
       const [bt, sugg] = await Promise.all([
-        fetchQuickBacktest(days, strategy),
-        fetchSettingsSuggestions(days, strategy),
+        fetchQuickBacktest(days),
+        fetchSettingsSuggestions(days),
       ]);
       console.log('[Optimize] Backtest response:', bt);
       console.log('[Optimize] Suggestions response:', sugg);
@@ -239,15 +191,12 @@ export default function OptimizePage() {
       }
 
       // Map backend response to expected frontend structure
-      // ORB backtest uses: current_performance, proposed_performance (or current, proposed)
-      // Also includes: filtered_trades, filter_impact, trade_reduction_pct
       const mappedBacktest = {
         current: bt.current_performance || bt.current,
         optimized: bt.proposed_performance || bt.proposed || bt.optimized_performance || bt.optimized,
         improvement: bt.improvement,
         has_suggestions: bt.has_suggestions,
         trade_reduction_pct: bt.trade_reduction_pct || 0,
-        strategy_type: bt.strategy_type || 'orb',
       };
       console.log('[Optimize] Mapped backtest:', mappedBacktest);
 
@@ -299,22 +248,21 @@ export default function OptimizePage() {
         }
       });
 
-      console.log('[Optimize] Running backtest with settings:', settings, 'strategy:', strategy);
-      const result = await runBacktest(settings, days, true, strategy);
+      console.log('[Optimize] Running backtest with settings:', settings);
+      const result = await runBacktest(settings, days, true);
       console.log('[Optimize] Backtest result:', result);
 
       if (result?.ok === false) {
         throw new Error(result.error || 'Backtest failed');
       }
 
-      // Map the result to expected structure (handles both old and ORB formats)
+      // Map the result to expected structure
       const mappedResult = {
         current: result.current,
         optimized: result.proposed || result.optimized,
         improvement: result.improvement,
         has_suggestions: true,
         trade_reduction_pct: result.trade_reduction_pct || 0,
-        strategy_type: result.strategy_type || 'orb',
       };
 
       setBacktest(mappedResult);
@@ -451,6 +399,55 @@ export default function OptimizePage() {
   // Update What-If config
   function updateWhatIfConfig(key, value) {
     setWhatIfConfig(prev => ({ ...prev, [key]: value }));
+  }
+
+  // Run Parameter Finder (Grid Search Optimization)
+  async function handleParamFinderRun() {
+    setParamFinderRunning(true);
+    setError(null);
+    try {
+      console.log('[Optimize] Running Parameter Finder for', days, 'days');
+      const result = await runParameterOptimization({ days });
+      console.log('[Optimize] Parameter Finder result:', result);
+
+      if (result?.ok === false) {
+        throw new Error(result.error || 'Parameter optimization failed');
+      }
+
+      setParamFinderResults(result);
+      setSuccess('Parameter optimization complete! Best parameters found.');
+      setTimeout(() => setSuccess(null), 4000);
+    } catch (e) {
+      console.error('Parameter finder failed:', e);
+      setError(`Parameter optimization failed: ${e.message || 'Please try again.'}`);
+    } finally {
+      setParamFinderRunning(false);
+    }
+  }
+
+  // Apply optimal parameters from Parameter Finder
+  async function handleApplyOptimalParams() {
+    if (!paramFinderResults?.best_params) return;
+    setApplying(true);
+    setError(null);
+    try {
+      const payload = { ...paramFinderResults.best_params };
+      console.log('[Optimize] Applying optimal params:', payload);
+
+      const result = await saveUserSettings(payload);
+      if (result?.ok === false) {
+        throw new Error(result.error || 'Failed to save settings');
+      }
+
+      setSuccess('Successfully applied optimal parameters!');
+      setTimeout(() => setSuccess(null), 5000);
+      await loadData();
+    } catch (e) {
+      console.error('Failed to apply optimal params:', e);
+      setError(`Failed to apply settings: ${e.message || 'Unknown error'}`);
+    } finally {
+      setApplying(false);
+    }
   }
 
   return (
@@ -610,56 +607,17 @@ export default function OptimizePage() {
             alignItems: 'center',
             gap: spacing.sm,
           }}>
-            <span style={{ fontSize: '28px' }}>{STRATEGIES[strategy].icon}</span>
-            Optimize {STRATEGIES[strategy].name}
+            Optimize Trading
           </h1>
           <p style={{
             ...typography.bodySmall,
             marginTop: spacing.xs,
           }}>
-            {strategy === 'orb'
-              ? 'Data-driven suggestions to tune your ORB entry filters'
-              : 'Data-driven suggestions to tune your LLM trading parameters'
-            }
+            Data-driven suggestions to tune your trading parameters
           </p>
         </div>
 
         <div style={{ display: 'flex', gap: spacing.md, flexWrap: 'wrap' }}>
-          {/* Strategy selector */}
-          <div style={{
-            display: 'flex',
-            gap: spacing.sm,
-            background: colors.bgSecondary,
-            padding: 4,
-            borderRadius: borderRadius.lg,
-            border: `1px solid ${colors.border}`,
-          }}>
-            {Object.values(STRATEGIES).map(s => (
-              <button
-                key={s.id}
-                onClick={() => setStrategy(s.id)}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: borderRadius.md,
-                  border: 'none',
-                  background: strategy === s.id ? colors.accentDark : 'transparent',
-                  color: strategy === s.id ? colors.accent : colors.textSecondary,
-                  fontWeight: strategy === s.id ? fontWeight.bold : fontWeight.medium,
-                  fontSize: fontSize.sm,
-                  fontFamily: fontFamily.sans,
-                  cursor: 'pointer',
-                  transition: `all ${transitions.fast}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: spacing.xs,
-                }}
-              >
-                <span>{s.icon}</span>
-                {s.id.toUpperCase()}
-              </button>
-            ))}
-          </div>
-
           {/* Period selector */}
           <div style={{
             display: 'flex',
@@ -1153,7 +1111,7 @@ export default function OptimizePage() {
             ) : (
               <div style={{ display: 'grid', gap: spacing.sm }}>
                 {suggestions.map((suggestion, idx) => {
-                  const settingMeta = getSettingMeta(strategy);
+                  const settingMeta = getSettingMeta();
                   const meta = settingMeta[suggestion.setting_name] || {
                     name: suggestion.setting_name,
                     unit: '',
@@ -1661,130 +1619,6 @@ export default function OptimizePage() {
                       </label>
                     </div>
                   </div>
-
-                  {/* Market Context Filters Section */}
-                  <div style={{
-                    padding: spacing.md,
-                    background: colors.bgSecondary,
-                    borderRadius: borderRadius.md,
-                    border: `1px solid ${colors.border}`,
-                    gridColumn: 'span 2',
-                  }}>
-                    <label style={{
-                      fontSize: fontSize.sm,
-                      color: colors.textSecondary,
-                      display: 'block',
-                      marginBottom: spacing.sm,
-                    }}>
-                      Market Context Filters
-                    </label>
-                    <div style={{ display: 'flex', gap: spacing.md, flexWrap: 'wrap', marginBottom: spacing.sm }}>
-                      <label style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: spacing.xs,
-                        cursor: 'pointer',
-                        fontSize: fontSize.sm,
-                        color: colors.textPrimary,
-                      }}>
-                        <input
-                          type="checkbox"
-                          checked={whatIfConfig.skip_day_enabled}
-                          onChange={(e) => updateWhatIfConfig('skip_day_enabled', e.target.checked)}
-                        />
-                        Skip SKIP Days
-                      </label>
-                      <label style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: spacing.xs,
-                        cursor: 'pointer',
-                        fontSize: fontSize.sm,
-                        color: colors.textPrimary,
-                      }}>
-                        <input
-                          type="checkbox"
-                          checked={whatIfConfig.entry_quality_enabled}
-                          onChange={(e) => updateWhatIfConfig('entry_quality_enabled', e.target.checked)}
-                        />
-                        Require Entry Quality
-                      </label>
-                      <label style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: spacing.xs,
-                        cursor: 'pointer',
-                        fontSize: fontSize.sm,
-                        color: colors.textPrimary,
-                      }}>
-                        <input
-                          type="checkbox"
-                          checked={whatIfConfig.relative_strength_enabled}
-                          onChange={(e) => updateWhatIfConfig('relative_strength_enabled', e.target.checked)}
-                        />
-                        Relative Strength Filter
-                      </label>
-                    </div>
-                    <div style={{ display: 'flex', gap: spacing.lg, flexWrap: 'wrap' }}>
-                      <div style={{ flex: 1, minWidth: 180 }}>
-                        <label style={{
-                          fontSize: fontSize.xs,
-                          color: colors.textMuted,
-                          display: 'block',
-                          marginBottom: spacing.xs,
-                        }}>
-                          CHOP Day Confidence: {(whatIfConfig.chop_day_conf_min * 100).toFixed(0)}%
-                        </label>
-                        <input
-                          type="range"
-                          min="0.60"
-                          max="0.90"
-                          step="0.05"
-                          value={whatIfConfig.chop_day_conf_min}
-                          onChange={(e) => updateWhatIfConfig('chop_day_conf_min', parseFloat(e.target.value))}
-                          style={{ width: '100%' }}
-                        />
-                      </div>
-                      <div style={{ flex: 1, minWidth: 180 }}>
-                        <label style={{
-                          fontSize: fontSize.xs,
-                          color: colors.textMuted,
-                          display: 'block',
-                          marginBottom: spacing.xs,
-                        }}>
-                          EMA Slope Penalty: {(whatIfConfig.ema_slope_penalty * 100).toFixed(0)}%
-                        </label>
-                        <input
-                          type="range"
-                          min="0"
-                          max="0.25"
-                          step="0.05"
-                          value={whatIfConfig.ema_slope_penalty}
-                          onChange={(e) => updateWhatIfConfig('ema_slope_penalty', parseFloat(e.target.value))}
-                          style={{ width: '100%' }}
-                        />
-                      </div>
-                      <div style={{ flex: 1, minWidth: 180 }}>
-                        <label style={{
-                          fontSize: fontSize.xs,
-                          color: colors.textMuted,
-                          display: 'block',
-                          marginBottom: spacing.xs,
-                        }}>
-                          Min Relative Strength: {(whatIfConfig.relative_strength_min * 100).toFixed(1)}%
-                        </label>
-                        <input
-                          type="range"
-                          min="0"
-                          max="0.01"
-                          step="0.001"
-                          value={whatIfConfig.relative_strength_min}
-                          onChange={(e) => updateWhatIfConfig('relative_strength_min', parseFloat(e.target.value))}
-                          style={{ width: '100%' }}
-                        />
-                      </div>
-                    </div>
-                  </div>
                 </div>
 
                 {/* Run Button */}
@@ -2133,6 +1967,467 @@ export default function OptimizePage() {
               </>
             )}
           </div>
+
+          {/* Parameter Finder Section */}
+          <div className="optimize-card" style={{
+            ...cardStyle,
+            marginTop: spacing.xl,
+          }}>
+            <div
+              onClick={() => setParamFinderExpanded(!paramFinderExpanded)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                marginBottom: paramFinderExpanded ? spacing.lg : 0,
+              }}
+            >
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: spacing.sm,
+              }}>
+                <span style={{ fontSize: '20px' }}>🎯</span>
+                <h2 style={typography.h2}>Parameter Finder</h2>
+                <span style={{
+                  padding: '4px 10px',
+                  borderRadius: borderRadius.full,
+                  background: colors.successDark,
+                  color: colors.success,
+                  fontSize: fontSize.xs,
+                  fontWeight: fontWeight.semibold,
+                }}>
+                  Auto-Optimize
+                </span>
+              </div>
+              <span style={{
+                fontSize: fontSize.lg,
+                color: colors.textMuted,
+                transform: paramFinderExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: `transform ${transitions.fast}`,
+              }}>
+                ▼
+              </span>
+            </div>
+
+            {paramFinderExpanded && (
+              <>
+                <p style={{
+                  ...typography.bodySmall,
+                  marginBottom: spacing.lg,
+                }}>
+                  Automatically find the <strong>best parameters</strong> using grid search optimization.
+                  Unlike "What-If" analysis where you manually test specific values, this tool explores
+                  all combinations to find the optimal configuration.
+                </p>
+
+                {/* Run Button */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  marginBottom: spacing.lg,
+                }}>
+                  <button
+                    onClick={handleParamFinderRun}
+                    disabled={paramFinderRunning}
+                    style={{
+                      padding: '12px 32px',
+                      borderRadius: borderRadius.md,
+                      border: 'none',
+                      background: paramFinderRunning ? colors.bgTertiary : `linear-gradient(135deg, ${colors.success}, #2d8f40)`,
+                      color: paramFinderRunning ? colors.textMuted : colors.bgPrimary,
+                      fontSize: fontSize.base,
+                      fontWeight: fontWeight.bold,
+                      fontFamily: fontFamily.sans,
+                      cursor: paramFinderRunning ? 'wait' : 'pointer',
+                      transition: `all ${transitions.fast}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: spacing.sm,
+                      boxShadow: paramFinderRunning ? 'none' : shadows.md,
+                    }}
+                  >
+                    {paramFinderRunning ? (
+                      <>
+                        <span style={{ animation: 'spin 1s linear infinite' }}>⏳</span>
+                        Searching {days}D data...
+                      </>
+                    ) : (
+                      <>
+                        <span>🔍</span>
+                        Find Optimal Parameters ({days}D)
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Results */}
+                {paramFinderResults && (
+                  <div style={{
+                    background: colors.bgTertiary,
+                    borderRadius: borderRadius.md,
+                    padding: spacing.lg,
+                    border: `1px solid ${colors.borderAccent}`,
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: spacing.lg,
+                    }}>
+                      <h3 style={{
+                        ...typography.h3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: spacing.sm,
+                      }}>
+                        <span>✨</span>
+                        Optimal Parameters Found
+                      </h3>
+                      <span style={{
+                        fontSize: fontSize.xs,
+                        color: colors.textMuted,
+                        fontFamily: fontFamily.mono,
+                      }}>
+                        {paramFinderResults.total_combinations} combos tested in {paramFinderResults.computation_time_sec}s
+                      </span>
+                    </div>
+
+                    {/* Score */}
+                    <div style={{
+                      textAlign: 'center',
+                      padding: spacing.md,
+                      marginBottom: spacing.lg,
+                      background: colors.bgSecondary,
+                      borderRadius: borderRadius.md,
+                      border: `1px solid ${colors.border}`,
+                    }}>
+                      <div style={{
+                        fontSize: fontSize.xs,
+                        color: colors.textMuted,
+                        marginBottom: spacing.xs,
+                      }}>
+                        Composite Score
+                      </div>
+                      <div style={{
+                        fontSize: '32px',
+                        fontWeight: fontWeight.bold,
+                        color: paramFinderResults.best_score > 0 ? colors.success : colors.error,
+                        fontFamily: fontFamily.mono,
+                      }}>
+                        {paramFinderResults.best_score?.toFixed(4) || 'N/A'}
+                      </div>
+                      <div style={{
+                        fontSize: fontSize.xs,
+                        color: colors.textMuted,
+                        marginTop: spacing.xs,
+                      }}>
+                        (return × win_rate × profit_factor) / drawdown
+                      </div>
+                    </div>
+
+                    {/* Best Parameters */}
+                    {paramFinderResults.best_params && Object.keys(paramFinderResults.best_params).length > 0 && (
+                      <div style={{ marginBottom: spacing.lg }}>
+                        <h4 style={{
+                          fontSize: fontSize.sm,
+                          color: colors.textSecondary,
+                          fontWeight: fontWeight.semibold,
+                          marginBottom: spacing.sm,
+                        }}>
+                          Best Parameters:
+                        </h4>
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                          gap: spacing.sm,
+                        }}>
+                          {Object.entries(paramFinderResults.best_params).map(([key, value]) => {
+                            const meta = SETTING_META[key] || { name: key, format: null };
+                            return (
+                              <div key={key} style={{
+                                padding: spacing.sm,
+                                background: colors.bgSecondary,
+                                borderRadius: borderRadius.sm,
+                                border: `1px solid ${colors.border}`,
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                              }}>
+                                <span style={{ fontSize: fontSize.xs, color: colors.textMuted }}>
+                                  {meta.name || key}
+                                </span>
+                                <span style={{
+                                  fontFamily: fontFamily.mono,
+                                  fontSize: fontSize.sm,
+                                  fontWeight: fontWeight.bold,
+                                  color: colors.accent,
+                                }}>
+                                  {meta.format ? meta.format(value) : typeof value === 'number' ? value.toFixed(4) : value}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Metrics */}
+                    {paramFinderResults.best_metrics && (
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                        gap: spacing.md,
+                        marginBottom: spacing.lg,
+                      }}>
+                        <div className="metric-card" style={{
+                          padding: spacing.md,
+                          background: colors.bgSecondary,
+                          borderRadius: borderRadius.md,
+                          border: `1px solid ${colors.border}`,
+                          textAlign: 'center',
+                        }}>
+                          <div style={{ fontSize: fontSize.xs, color: colors.textMuted, marginBottom: spacing.xs }}>
+                            Total Trades
+                          </div>
+                          <div style={{
+                            fontSize: fontSize.xl,
+                            fontWeight: fontWeight.bold,
+                            color: colors.textPrimary,
+                            fontFamily: fontFamily.mono,
+                          }}>
+                            {paramFinderResults.best_metrics.total_trades || 0}
+                          </div>
+                        </div>
+
+                        <div className="metric-card" style={{
+                          padding: spacing.md,
+                          background: colors.bgSecondary,
+                          borderRadius: borderRadius.md,
+                          border: `1px solid ${colors.border}`,
+                          textAlign: 'center',
+                        }}>
+                          <div style={{ fontSize: fontSize.xs, color: colors.textMuted, marginBottom: spacing.xs }}>
+                            Win Rate
+                          </div>
+                          <div style={{
+                            fontSize: fontSize.xl,
+                            fontWeight: fontWeight.bold,
+                            color: (paramFinderResults.best_metrics.win_rate || 0) >= 0.5 ? colors.success : colors.warning,
+                            fontFamily: fontFamily.mono,
+                          }}>
+                            {((paramFinderResults.best_metrics.win_rate || 0) * 100).toFixed(1)}%
+                          </div>
+                        </div>
+
+                        <div className="metric-card" style={{
+                          padding: spacing.md,
+                          background: colors.bgSecondary,
+                          borderRadius: borderRadius.md,
+                          border: `1px solid ${colors.border}`,
+                          textAlign: 'center',
+                        }}>
+                          <div style={{ fontSize: fontSize.xs, color: colors.textMuted, marginBottom: spacing.xs }}>
+                            Total Return
+                          </div>
+                          <div style={{
+                            fontSize: fontSize.xl,
+                            fontWeight: fontWeight.bold,
+                            color: (paramFinderResults.best_metrics.total_return_pct || 0) >= 0 ? colors.success : colors.error,
+                            fontFamily: fontFamily.mono,
+                          }}>
+                            {(paramFinderResults.best_metrics.total_return_pct || 0).toFixed(2)}%
+                          </div>
+                        </div>
+
+                        <div className="metric-card" style={{
+                          padding: spacing.md,
+                          background: colors.bgSecondary,
+                          borderRadius: borderRadius.md,
+                          border: `1px solid ${colors.border}`,
+                          textAlign: 'center',
+                        }}>
+                          <div style={{ fontSize: fontSize.xs, color: colors.textMuted, marginBottom: spacing.xs }}>
+                            Profit Factor
+                          </div>
+                          <div style={{
+                            fontSize: fontSize.xl,
+                            fontWeight: fontWeight.bold,
+                            color: (paramFinderResults.best_metrics.profit_factor || 0) >= 1 ? colors.success : colors.warning,
+                            fontFamily: fontFamily.mono,
+                          }}>
+                            {(paramFinderResults.best_metrics.profit_factor || 0).toFixed(2)}
+                          </div>
+                        </div>
+
+                        <div className="metric-card" style={{
+                          padding: spacing.md,
+                          background: colors.bgSecondary,
+                          borderRadius: borderRadius.md,
+                          border: `1px solid ${colors.border}`,
+                          textAlign: 'center',
+                        }}>
+                          <div style={{ fontSize: fontSize.xs, color: colors.textMuted, marginBottom: spacing.xs }}>
+                            Max Drawdown
+                          </div>
+                          <div style={{
+                            fontSize: fontSize.xl,
+                            fontWeight: fontWeight.bold,
+                            color: colors.error,
+                            fontFamily: fontFamily.mono,
+                          }}>
+                            {(paramFinderResults.best_metrics.max_drawdown_pct || 0).toFixed(2)}%
+                          </div>
+                        </div>
+
+                        <div className="metric-card" style={{
+                          padding: spacing.md,
+                          background: colors.bgSecondary,
+                          borderRadius: borderRadius.md,
+                          border: `1px solid ${colors.border}`,
+                          textAlign: 'center',
+                        }}>
+                          <div style={{ fontSize: fontSize.xs, color: colors.textMuted, marginBottom: spacing.xs }}>
+                            Ending Equity
+                          </div>
+                          <div style={{
+                            fontSize: fontSize.xl,
+                            fontWeight: fontWeight.bold,
+                            color: colors.textPrimary,
+                            fontFamily: fontFamily.mono,
+                          }}>
+                            ${(paramFinderResults.best_metrics.ending_equity || 10000).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Apply Button */}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      gap: spacing.md,
+                    }}>
+                      <button
+                        onClick={handleApplyOptimalParams}
+                        disabled={applying || !paramFinderResults.best_params || Object.keys(paramFinderResults.best_params).length === 0}
+                        style={{
+                          padding: '12px 32px',
+                          borderRadius: borderRadius.md,
+                          border: 'none',
+                          background: `linear-gradient(135deg, ${colors.accent}, #C4956A)`,
+                          color: colors.bgPrimary,
+                          fontSize: fontSize.base,
+                          fontWeight: fontWeight.bold,
+                          fontFamily: fontFamily.sans,
+                          cursor: applying ? 'wait' : 'pointer',
+                          opacity: applying ? 0.7 : 1,
+                          transition: `all ${transitions.fast}`,
+                          boxShadow: shadows.md,
+                        }}
+                      >
+                        {applying ? 'Applying...' : 'Apply Optimal Parameters'}
+                      </button>
+                    </div>
+
+                    {/* Top Results Table */}
+                    {paramFinderResults.top_results && paramFinderResults.top_results.length > 1 && (
+                      <div style={{ marginTop: spacing.lg }}>
+                        <h4 style={{
+                          fontSize: fontSize.sm,
+                          color: colors.textSecondary,
+                          fontWeight: fontWeight.semibold,
+                          marginBottom: spacing.sm,
+                        }}>
+                          Top 5 Configurations:
+                        </h4>
+                        <div style={{
+                          overflowX: 'auto',
+                          fontSize: fontSize.xs,
+                          fontFamily: fontFamily.mono,
+                        }}>
+                          <table style={{
+                            width: '100%',
+                            borderCollapse: 'collapse',
+                          }}>
+                            <thead>
+                              <tr style={{
+                                background: colors.bgSecondary,
+                                color: colors.textMuted,
+                              }}>
+                                <th style={{ padding: spacing.sm, textAlign: 'left' }}>#</th>
+                                <th style={{ padding: spacing.sm, textAlign: 'right' }}>Score</th>
+                                <th style={{ padding: spacing.sm, textAlign: 'right' }}>Trades</th>
+                                <th style={{ padding: spacing.sm, textAlign: 'right' }}>Win%</th>
+                                <th style={{ padding: spacing.sm, textAlign: 'right' }}>Return%</th>
+                                <th style={{ padding: spacing.sm, textAlign: 'right' }}>PF</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {paramFinderResults.top_results.slice(0, 5).map((result, idx) => (
+                                <tr key={idx} style={{
+                                  borderBottom: `1px solid ${colors.border}`,
+                                  background: idx === 0 ? colors.accentDark : 'transparent',
+                                }}>
+                                  <td style={{ padding: spacing.sm, color: idx === 0 ? colors.accent : colors.textSecondary }}>
+                                    {idx === 0 ? '★' : idx + 1}
+                                  </td>
+                                  <td style={{ padding: spacing.sm, textAlign: 'right', color: colors.textPrimary }}>
+                                    {result.score?.toFixed(4) || '-'}
+                                  </td>
+                                  <td style={{ padding: spacing.sm, textAlign: 'right', color: colors.textSecondary }}>
+                                    {result.metrics?.total_trades || '-'}
+                                  </td>
+                                  <td style={{ padding: spacing.sm, textAlign: 'right', color: (result.metrics?.win_rate || 0) >= 0.5 ? colors.success : colors.warning }}>
+                                    {((result.metrics?.win_rate || 0) * 100).toFixed(1)}%
+                                  </td>
+                                  <td style={{ padding: spacing.sm, textAlign: 'right', color: (result.metrics?.total_return_pct || 0) >= 0 ? colors.success : colors.error }}>
+                                    {(result.metrics?.total_return_pct || 0).toFixed(2)}%
+                                  </td>
+                                  <td style={{ padding: spacing.sm, textAlign: 'right', color: colors.textSecondary }}>
+                                    {(result.metrics?.profit_factor || 0).toFixed(2)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Info about scoring */}
+                    <div style={{
+                      marginTop: spacing.md,
+                      fontSize: fontSize.xs,
+                      color: colors.textMuted,
+                      textAlign: 'center',
+                    }}>
+                      Scoring formula: (return × win_rate × min(profit_factor, 5)) / max(drawdown, 1%)
+                    </div>
+                  </div>
+                )}
+
+                {/* No results message */}
+                {!paramFinderResults && !paramFinderRunning && (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: spacing.lg,
+                    color: colors.textMuted,
+                    background: colors.bgSecondary,
+                    borderRadius: borderRadius.md,
+                  }}>
+                    <p style={{ margin: 0 }}>
+                      Click the button above to search for optimal parameters across {days} days of historical data.
+                    </p>
+                    <p style={{ margin: `${spacing.sm} 0 0`, fontSize: fontSize.xs }}>
+                      This tests hundreds of parameter combinations and returns the best performing configuration.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </>
       )}
 
@@ -2192,7 +2487,7 @@ export default function OptimizePage() {
               {suggestions
                 .filter(s => selectedSuggestions.has(s.setting_name))
                 .map(s => {
-                  const settingMeta = getSettingMeta(strategy);
+                  const settingMeta = getSettingMeta();
                   const meta = settingMeta[s.setting_name] || { name: s.setting_name, unit: '', format: null };
                   return (
                     <div
