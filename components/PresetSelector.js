@@ -26,12 +26,31 @@ const PresetIcon = ({ type }) => {
   );
 };
 
-export default function PresetSelector({ presets, selected, onSelect, disabled }) {
+export default function PresetSelector({
+  presets,
+  selected,
+  onSelect,
+  disabled,
+  fluxSource,        // 'backtest' | 'system' | undefined
+  fluxBacktestDays,  // number of days used in backtest
+  fluxBacktestDate,  // when the backtest was run
+}) {
   const [hoveredId, setHoveredId] = useState(null);
 
   // "Flux Settings" maps to the 'balanced' preset internally
   const isFluxSelected = selected === 'balanced';
   const isCustomSelected = selected === null;
+
+  // Format the flux source description
+  const getFluxSourceText = () => {
+    if (fluxSource === 'backtest' && fluxBacktestDays) {
+      const dateStr = fluxBacktestDate
+        ? new Date(fluxBacktestDate).toLocaleDateString()
+        : '';
+      return `Optimized from ${fluxBacktestDays}-day backtest${dateStr ? ` (${dateStr})` : ''}`;
+    }
+    return 'Using system defaults';
+  };
 
   return (
     <div style={{ marginBottom: '24px' }} role="group" aria-labelledby="preset-heading">
@@ -117,6 +136,22 @@ export default function PresetSelector({ presets, selected, onSelect, disabled }
           }}>
             Optimized default trading profile
           </p>
+          {isFluxSelected && fluxSource && (
+            <p style={{
+              fontSize: fontSize.xs,
+              color: fluxSource === 'backtest' ? '#10b981' : colors.textMuted,
+              margin: '8px 0 0 0',
+              lineHeight: 1.3,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}>
+              <span style={{ fontSize: '10px' }}>
+                {fluxSource === 'backtest' ? '✓' : '○'}
+              </span>
+              {getFluxSourceText()}
+            </p>
+          )}
         </button>
 
         {/* Custom option */}

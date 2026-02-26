@@ -25,6 +25,8 @@ import {
   runParameterOptimization,
   fetchQuickOptimization,
   compareVsOptimal,
+  saveToFluxSettings,
+  saveToCustomSettings,
 } from '../lib/api';
 
 const colors = darkTheme;
@@ -164,6 +166,10 @@ export default function OptimizePage() {
     max_trades_per_day: 5,
     max_trades_per_symbol_per_day: 2,
   });
+
+  // Saving state
+  const [savingToFlux, setSavingToFlux] = useState(false);
+  const [savingToCustom, setSavingToCustom] = useState(false);
 
   // Load initial data
   useEffect(() => {
@@ -447,6 +453,81 @@ export default function OptimizePage() {
       setError(`Failed to apply settings: ${e.message || 'Unknown error'}`);
     } finally {
       setApplying(false);
+    }
+  }
+
+  // Save Parameter Finder results to Flux Settings
+  async function handleSaveToFluxSettings() {
+    if (!paramFinderResults?.best_params) return;
+    setSavingToFlux(true);
+    setError(null);
+    try {
+      const settings = { ...paramFinderResults.best_params };
+      const metrics = paramFinderResults.best_metrics || {};
+
+      console.log('[Optimize] Saving to Flux Settings:', { settings, metrics, days });
+
+      const result = await saveToFluxSettings(settings, {
+        win_rate: metrics.win_rate,
+        total_pnl: metrics.total_return_pct,
+        max_drawdown: metrics.max_drawdown_pct,
+        profit_factor: metrics.profit_factor,
+        trade_count: metrics.total_trades,
+      }, days);
+
+      if (result?.ok === false) {
+        throw new Error(result.error || 'Failed to save Flux Settings');
+      }
+
+      setSuccess('Saved to Flux Settings! These optimized parameters are now your default.');
+      setTimeout(() => setSuccess(null), 5000);
+
+      // Reload data to reflect updated preset_id
+      await loadData();
+    } catch (e) {
+      console.error('Failed to save to Flux Settings:', e);
+      setError(`Failed to save: ${e.message || 'Unknown error'}`);
+    } finally {
+      setSavingToFlux(false);
+    }
+  }
+
+  // Save What-If results to Custom Settings
+  async function handleSaveToCustomSettings() {
+    if (!whatIfResults || whatIfResults.total_trades === 0) return;
+    setSavingToCustom(true);
+    setError(null);
+    try {
+      // Build settings from whatIfConfig
+      const settings = {
+        llm_conf_threshold: whatIfConfig.conf_threshold,
+        stop_loss_pct: whatIfConfig.stop_loss_pct,
+        take_profit_pct: whatIfConfig.take_profit_pct,
+        max_hold_min: whatIfConfig.max_hold_min,
+        trailing_stop_enabled: whatIfConfig.trailing_enabled,
+        trailing_stop_activation: whatIfConfig.trailing_activation,
+        trailing_stop_distance: whatIfConfig.trailing_distance,
+        trades_per_ticker_per_day: whatIfConfig.max_trades_per_symbol_per_day,
+      };
+
+      console.log('[Optimize] Saving to Custom Settings:', settings);
+
+      const result = await saveToCustomSettings(settings);
+
+      if (result?.ok === false) {
+        throw new Error(result.error || 'Failed to save Custom Settings');
+      }
+
+      setSuccess('Saved to Custom Settings! Trading now uses these parameters.');
+      setTimeout(() => setSuccess(null), 5000);
+
+      // Reload data to reflect updated preset_id
+      await loadData();
+    } catch (e) {
+      console.error('Failed to save to Custom Settings:', e);
+      setError(`Failed to save: ${e.message || 'Unknown error'}`);
+    } finally {
+      setSavingToCustom(false);
     }
   }
 
@@ -1863,6 +1944,60 @@ export default function OptimizePage() {
                       )}
                     </div>
 
+                    {/* Save to Custom Settings Button (only show if there are trades) */}
+                    {whatIfResults.total_trades > 0 && (
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        marginTop: spacing.lg,
+                        paddingTop: spacing.lg,
+                        borderTop: `1px solid ${colors.border}`,
+                      }}>
+                        <button
+                          onClick={handleSaveToCustomSettings}
+                          disabled={savingToCustom}
+                          style={{
+                            padding: '12px 32px',
+                            borderRadius: borderRadius.md,
+                            border: 'none',
+                            background: `linear-gradient(135deg, #8b5cf6, #7c3aed)`,
+                            color: '#fff',
+                            fontSize: fontSize.base,
+                            fontWeight: fontWeight.bold,
+                            fontFamily: fontFamily.sans,
+                            cursor: savingToCustom ? 'wait' : 'pointer',
+                            opacity: savingToCustom ? 0.7 : 1,
+                            transition: `all ${transitions.fast}`,
+                            boxShadow: shadows.md,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: spacing.sm,
+                          }}
+                        >
+                          {savingToCustom ? (
+                            <>
+                              <span style={{ animation: 'spin 1s linear infinite' }}>⏳</span>
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <span>⚙️</span>
+                              Save to Custom Settings
+                            </>
+                          )}
+                        </button>
+                        <p style={{
+                          fontSize: fontSize.xs,
+                          color: colors.textMuted,
+                          margin: `${spacing.sm} 0 0`,
+                          textAlign: 'center',
+                        }}>
+                          Use these what-if parameters for trading (custom mode)
+                        </p>
+                      </div>
+                    )}
+
                     {/* Zero Trades Diagnostic (show if no trades) */}
                     {whatIfResults.total_trades === 0 && whatIfResults.filter_stats && (
                       <div style={{
@@ -2303,31 +2438,76 @@ export default function OptimizePage() {
                       </div>
                     )}
 
-                    {/* Apply Button */}
+                    {/* Save Buttons */}
                     <div style={{
                       display: 'flex',
-                      justifyContent: 'center',
+                      flexDirection: 'column',
                       gap: spacing.md,
+                      alignItems: 'center',
                     }}>
+                      {/* Primary: Save to Flux Settings */}
+                      <button
+                        onClick={handleSaveToFluxSettings}
+                        disabled={savingToFlux || !paramFinderResults.best_params || Object.keys(paramFinderResults.best_params).length === 0}
+                        className="apply-btn"
+                        style={{
+                          padding: '14px 40px',
+                          borderRadius: borderRadius.md,
+                          border: 'none',
+                          background: `linear-gradient(135deg, #3b82f6, #2563eb)`,
+                          color: '#fff',
+                          fontSize: fontSize.base,
+                          fontWeight: fontWeight.bold,
+                          fontFamily: fontFamily.sans,
+                          cursor: savingToFlux ? 'wait' : 'pointer',
+                          opacity: savingToFlux ? 0.7 : 1,
+                          transition: `all ${transitions.fast}`,
+                          boxShadow: shadows.md,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: spacing.sm,
+                        }}
+                      >
+                        {savingToFlux ? (
+                          <>
+                            <span style={{ animation: 'spin 1s linear infinite' }}>⏳</span>
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <span>💎</span>
+                            Save to Flux Settings
+                          </>
+                        )}
+                      </button>
+                      <p style={{
+                        fontSize: fontSize.xs,
+                        color: colors.textMuted,
+                        margin: 0,
+                        textAlign: 'center',
+                      }}>
+                        Sets these as your default optimized trading parameters
+                      </p>
+
+                      {/* Secondary: Apply Now (to Custom) */}
                       <button
                         onClick={handleApplyOptimalParams}
                         disabled={applying || !paramFinderResults.best_params || Object.keys(paramFinderResults.best_params).length === 0}
                         style={{
-                          padding: '12px 32px',
+                          padding: '10px 24px',
                           borderRadius: borderRadius.md,
-                          border: 'none',
-                          background: `linear-gradient(135deg, ${colors.accent}, #C4956A)`,
-                          color: colors.bgPrimary,
-                          fontSize: fontSize.base,
-                          fontWeight: fontWeight.bold,
+                          border: `1px solid ${colors.border}`,
+                          background: 'transparent',
+                          color: colors.textSecondary,
+                          fontSize: fontSize.sm,
+                          fontWeight: fontWeight.medium,
                           fontFamily: fontFamily.sans,
                           cursor: applying ? 'wait' : 'pointer',
                           opacity: applying ? 0.7 : 1,
                           transition: `all ${transitions.fast}`,
-                          boxShadow: shadows.md,
                         }}
                       >
-                        {applying ? 'Applying...' : 'Apply Optimal Parameters'}
+                        {applying ? 'Applying...' : 'Apply to Custom Settings'}
                       </button>
                     </div>
 

@@ -7,7 +7,7 @@ import GuardrailHint from '../components/GuardrailHint';
 import {
   fetchUserSettings, saveUserSettings, fetchPresets, applyPreset, fetchGuardrails,
   fetchSettings, saveSettings, fetchAdminSettings, saveAdminSettings,
-  fetchStrategies, setActiveStrategy
+  fetchFluxSettings
 } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import {
@@ -29,20 +29,11 @@ import {
 // Check if current user is admin
 const ADMIN_USER_ID = process.env.NEXT_PUBLIC_ADMIN_USER_ID;
 
-// Guardrails for display - ORB Strategy focused
-// Note: Most trading parameters are now handled by ORB strategy (range-based stops, 2R/3R targets)
-// These guardrails are for safety fallbacks only
+// Guardrails for display
 const DEFAULT_GUARDRAILS = {
-  // Safety fallbacks - apply regardless of ORB strategy
   max_open_positions: { min: 1, max: 10, default: 5, recommended: 3 },
   max_hold_min: { min: 15, max: 390, default: 120, recommended: 120 },
   risk_per_trade_pct: { min: 0.001, max: 0.02, default: 0.002, recommended: 0.002 },
-  // ORB-specific (for reference, actual validation in backend)
-  orb_displacement_min: { min: 1.0, max: 3.0, default: 1.5, recommended: 1.5 },
-  orb_volume_min: { min: 1.0, max: 3.0, default: 1.2, recommended: 1.2 },
-  orb_min_rr_ratio: { min: 1.0, max: 5.0, default: 2.0, recommended: 2.0 },
-  orb_max_trades_per_day: { min: 1, max: 5, default: 2, recommended: 2 },
-  confluence_min: { min: 1, max: 5, default: 2, recommended: 2 },
 };
 
 // Detailed explanations for each setting
@@ -114,12 +105,12 @@ const SETTING_EXPLANATIONS = {
     tip: 'Professional traders typically risk 0.5-2% per trade maximum.',
   },
   max_hold_min: {
-    title: 'Max Hold Time (Safety)',
-    description: 'Absolute maximum duration before forcing an exit - acts as a safety net.',
-    details: 'The ORB strategy has its own exit rules (11:15 AM deadline, 30-min time exit if no 1R hit). This setting is a safety fallback that catches edge cases if those rules fail.',
-    lowImpact: 'Shorter (60 min): Tighter safety net, may exit before ORB exit rules trigger.',
-    highImpact: 'Longer (2-4 hours): More room for ORB exit rules to work, but ties up capital longer if they fail.',
-    tip: 'Keep at 120 minutes as a reasonable safety buffer beyond the ORB exit deadline.',
+    title: 'Max Hold Time',
+    description: 'Maximum duration before forcing an exit.',
+    details: 'Positions held longer than this will be automatically closed. Prevents trades from being held overnight or through extended drawdowns.',
+    lowImpact: 'Shorter (60 min): More aggressive, forces quicker exits.',
+    highImpact: 'Longer (2-4 hours): More room for trades to develop, but ties up capital longer.',
+    tip: 'For intraday trading, 120 minutes is a reasonable balance.',
   },
   trades_per_ticker_per_day: {
     title: 'Trades Per Symbol',
@@ -130,11 +121,11 @@ const SETTING_EXPLANATIONS = {
     tip: 'Start with 1-2 to prevent overtrading the same name.',
   },
   max_open_positions: {
-    title: 'Max Open Positions (Safety)',
+    title: 'Max Open Positions',
     description: 'Maximum concurrent positions at any time - prevents overexposure.',
-    details: 'The ORB strategy monitors 20 tickers for setups. If multiple setups trigger at once, this limit prevents taking on too many positions. Each ORB trade uses range-based position sizing.',
+    details: 'Limits how many positions can be open simultaneously. Prevents taking on too much risk if multiple signals trigger at once.',
     lowImpact: 'Fewer (1-2): Very conservative, may miss good setups if already in a position.',
-    highImpact: 'More (5-10): Can take multiple ORB setups simultaneously, but increases total exposure.',
+    highImpact: 'More (5-10): Can take multiple setups simultaneously, but increases total exposure.',
     tip: 'Start with 3 positions max to balance opportunity capture with risk management.',
   },
   mq_velocity_enabled: {
@@ -237,14 +228,6 @@ const TAB_ICONS = {
       <line x1="9" y1="3" x2="9" y2="21"/>
     </svg>
   ),
-  orb: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="7" width="20" height="10" rx="2"/>
-      <line x1="7" y1="7" x2="7" y2="17"/>
-      <line x1="17" y1="7" x2="17" y2="17"/>
-      <path d="M12 7v-4M12 21v-4"/>
-    </svg>
-  ),
   llm: (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/>
@@ -253,63 +236,17 @@ const TAB_ICONS = {
       <circle cx="12" cy="6" r="1"/>
     </svg>
   ),
-  strategy: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="3"/>
-      <path d="M12 2v4"/>
-      <path d="M12 18v4"/>
-      <path d="M4.93 4.93l2.83 2.83"/>
-      <path d="M16.24 16.24l2.83 2.83"/>
-      <path d="M2 12h4"/>
-      <path d="M18 12h4"/>
-      <path d="M4.93 19.07l2.83-2.83"/>
-      <path d="M16.24 7.76l2.83-2.83"/>
-    </svg>
-  ),
 };
 
-// Strategy metadata for UI display
-const STRATEGY_META = {
-  orb: {
-    name: 'ORB Strategy',
-    description: 'Opening Range Breakout - trades the 5-minute opening range',
-    color: '#D4A574',
-  },
-  momentum: {
-    name: 'Momentum',
-    description: 'Momentum-based trading strategy (coming soon)',
-    color: '#3B82F6',
-    disabled: true,
-  },
-  llm: {
-    name: 'LLM Only',
-    description: 'Pure AI-driven decisions with ML veto',
-    color: '#10B981',
-  },
-};
-
-// Function to get tabs based on active strategy
-function getTabs(activeStrategy) {
-  const baseTabs = [
+// Function to get tabs
+function getTabs() {
+  return [
     { id: 'profile', label: 'Profile', icon: TAB_ICONS.profile },
-    { id: 'safety', label: 'Safety', icon: TAB_ICONS.risk },  // 2nd - Safety
-    { id: 'risk', label: 'Risk', icon: TAB_ICONS.risk },      // 3rd - Risk (RESTORED)
+    { id: 'safety', label: 'Safety', icon: TAB_ICONS.risk },
+    { id: 'risk', label: 'Risk', icon: TAB_ICONS.risk },
+    { id: 'context', label: 'Market Context', icon: TAB_ICONS.llm },
+    { id: 'llm', label: 'LLM Settings', icon: TAB_ICONS.llm },
   ];
-
-  // Add strategy-specific tab based on active strategy
-  if (activeStrategy === 'orb') {
-    baseTabs.push({ id: 'orb', label: 'ORB Strategy', icon: TAB_ICONS.orb });
-  }
-
-  // Market Context tab - new unified LLM enhancements (always shown for LLM mode)
-  if (!activeStrategy || activeStrategy === '' || activeStrategy === 'momentum') {
-    baseTabs.push({ id: 'context', label: 'Market Context', icon: TAB_ICONS.llm });
-  }
-
-  // LLM settings always shown (used as fallback or primary)
-  baseTabs.push({ id: 'llm', label: 'LLM Settings', icon: TAB_ICONS.llm });
-
-  return baseTabs;
 }
 
 export default function SettingsPage() {
@@ -328,16 +265,12 @@ export default function SettingsPage() {
   const [errors, setErrors] = useState({});
   const [expandedExplanations, setExpandedExplanations] = useState({});
   const [loadError, setLoadError] = useState(null);
-  const [strategies, setStrategies] = useState([]);
-  const [changingStrategy, setChangingStrategy] = useState(false);
+  const [fluxSource, setFluxSource] = useState(null); // 'backtest' | 'system'
+  const [fluxBacktestDays, setFluxBacktestDays] = useState(null);
+  const [fluxBacktestDate, setFluxBacktestDate] = useState(null);
 
-  // Get active strategy from settings
-  // null or '' means LLM Only mode, 'orb' means ORB strategy
-  // Only default to 'orb' if settings haven't loaded yet (undefined)
-  const activeStrategy = settings?.active_strategy === undefined ? 'orb' : settings?.active_strategy;
-
-  // Dynamic tabs based on active strategy
-  const TABS = getTabs(activeStrategy);
+  // Static tabs
+  const TABS = getTabs();
 
   // All authenticated users can edit their own settings
   const isAdmin = true;
@@ -364,12 +297,21 @@ export default function SettingsPage() {
 
       try {
         // All users load their own settings via fetchUserSettings
-        const [settingsRes, presetsRes, guardrailsRes, strategiesRes] = await Promise.all([
+        const [settingsRes, presetsRes, guardrailsRes, fluxRes] = await Promise.all([
           fetchUserSettings(),
           fetchPresets(),
           fetchGuardrails().catch(() => ({ ok: true, guardrails: DEFAULT_GUARDRAILS })),
-          fetchStrategies().catch(() => ({ ok: true, strategies: [] })),
+          fetchFluxSettings().catch(() => ({ ok: false })),
         ]);
+
+        // Extract flux source info
+        if (fluxRes.ok) {
+          setFluxSource(fluxRes.source || 'system');
+          if (fluxRes.settings) {
+            setFluxBacktestDays(fluxRes.settings.backtest_days || null);
+            setFluxBacktestDate(fluxRes.settings.backtest_ran_at || null);
+          }
+        }
 
         if (settingsRes.ok && settingsRes.settings) {
           setSettings(settingsRes.settings);
@@ -391,10 +333,6 @@ export default function SettingsPage() {
 
         if (guardrailsRes.ok && guardrailsRes.guardrails) {
           setGuardrails(guardrailsRes.guardrails);
-        }
-
-        if (strategiesRes.ok && strategiesRes.strategies) {
-          setStrategies(strategiesRes.strategies);
         }
       } catch (e) {
         const errorMsg = String(e?.message || e);
@@ -491,17 +429,6 @@ export default function SettingsPage() {
       setSaving(false);
     }
   }
-
-  // Handle strategy change - just updates local state, saved when user clicks Save
-  const handleStrategyChange = (newStrategy) => {
-    // Update local settings state (will be saved when user clicks Save button)
-    setSettings(s => ({ ...s, active_strategy: newStrategy }));
-
-    // If switching away from current tab's strategy, go to profile
-    if (activeTab === 'orb' && newStrategy !== 'orb') {
-      setActiveTab('profile');
-    }
-  };
 
   // Find current preset name
   const currentPreset = presets.find(p => p.id === settings?.preset_id);
@@ -706,6 +633,9 @@ export default function SettingsPage() {
                     selected={settings?.preset_id ?? null}
                     onSelect={handlePresetSelect}
                     disabled={saving}
+                    fluxSource={fluxSource}
+                    fluxBacktestDays={fluxBacktestDays}
+                    fluxBacktestDate={fluxBacktestDate}
                   />
 
                   {isPresetMode && (
@@ -798,84 +728,6 @@ export default function SettingsPage() {
                   colors={colors}
                 />
               )}
-            </SettingsSection>
-
-            {/* Strategy Selection */}
-            <SettingsSection
-              title="Trading Strategy"
-              subtitle="Choose your primary trading strategy. LLM is always available as a fallback."
-              colors={colors}
-              icon={TAB_ICONS.strategy}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {/* Strategy Cards */}
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                  gap: 12,
-                }}>
-                  {/* ORB Strategy */}
-                  <StrategyCard
-                    id="orb"
-                    name={STRATEGY_META.orb.name}
-                    description={STRATEGY_META.orb.description}
-                    color={STRATEGY_META.orb.color}
-                    isActive={activeStrategy === 'orb'}
-                    disabled={changingStrategy}
-                    onClick={() => handleStrategyChange('orb')}
-                    colors={colors}
-                  />
-
-                  {/* Momentum Strategy (Coming Soon) */}
-                  <StrategyCard
-                    id="momentum"
-                    name={STRATEGY_META.momentum.name}
-                    description={STRATEGY_META.momentum.description}
-                    color={STRATEGY_META.momentum.color}
-                    isActive={activeStrategy === 'momentum'}
-                    disabled={true}
-                    comingSoon={true}
-                    onClick={() => {}}
-                    colors={colors}
-                  />
-
-                  {/* LLM Only */}
-                  <StrategyCard
-                    id="llm"
-                    name={STRATEGY_META.llm.name}
-                    description={STRATEGY_META.llm.description}
-                    color={STRATEGY_META.llm.color}
-                    isActive={activeStrategy === null || activeStrategy === '' || activeStrategy === 'llm'}
-                    disabled={changingStrategy}
-                    onClick={() => handleStrategyChange('')}
-                    colors={colors}
-                  />
-                </div>
-
-                {/* Strategy Info */}
-                <div style={{
-                  padding: '12px 16px',
-                  background: colors.bgTertiary,
-                  borderRadius: 8,
-                  fontSize: 12,
-                  color: colors.textSecondary,
-                  lineHeight: 1.6,
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 10,
-                  borderLeft: `3px solid ${STRATEGY_META[activeStrategy]?.color || colors.accent}`,
-                }}>
-                  <span style={{ fontSize: 14, flexShrink: 0 }}>
-                    {activeStrategy === 'orb' ? '📊' : activeStrategy === 'momentum' ? '📈' : '🤖'}
-                  </span>
-                  <span>
-                    {activeStrategy === 'orb' && 'ORB trades the 5-minute opening range breakout. It monitors 20 liquid stocks for mechanical setups with confluence validation.'}
-                    {activeStrategy === 'momentum' && 'Momentum strategy uses price momentum and ML signals for entries.'}
-                    {(!activeStrategy || activeStrategy === 'llm') && 'LLM-only mode uses AI analysis with ML veto for all trading decisions. No mechanical strategy patterns.'}
-                    <span style={{ color: colors.textMuted }}> LLM settings below are used when no strategy setup is found.</span>
-                  </span>
-                </div>
-              </div>
             </SettingsSection>
 
           </div>
@@ -1467,207 +1319,6 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* ORB Strategy Tab */}
-        {activeTab === 'orb' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <SettingsSection
-              title="ORB Strategy Settings"
-              subtitle="Opening Range Breakout strategy configuration. Monitors the 5-minute opening range for break and retest setups."
-              colors={colors}
-              icon={TAB_ICONS.orb}
-            >
-              <SettingRow
-                label="Trading Mode"
-                description="Stocks mode uses tighter stops (retest candle) and different timing windows."
-                colors={colors}
-              >
-                {isAdmin ? (
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {[{ id: true, label: 'Stocks' }, { id: false, label: 'Futures' }].map(mode => (
-                      <button
-                        key={String(mode.id)}
-                        onClick={() => set('orb_stocks_mode', mode.id)}
-                        style={{
-                          padding: '10px 20px',
-                          borderRadius: borderRadius.md,
-                          border: `2px solid ${get('orb_stocks_mode', true) === mode.id ? colors.accent : colors.border}`,
-                          background: get('orb_stocks_mode', true) === mode.id ? colors.accentDark : 'transparent',
-                          color: get('orb_stocks_mode', true) === mode.id ? colors.accent : colors.textMuted,
-                          fontWeight: 600,
-                          fontSize: 13,
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                        }}
-                      >
-                        {mode.label}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <ReadOnlyValue colors={colors} value={get('orb_stocks_mode', true) ? 'Stocks' : 'Futures'} />
-                )}
-              </SettingRow>
-
-              <SettingRow
-                label="LLM Filter"
-                description="Use AI to filter out low-quality setups based on market context."
-                colors={colors}
-              >
-                {isAdmin ? (
-                  <button
-                    onClick={() => set('orb_llm_filter', !get('orb_llm_filter', true))}
-                    style={get('orb_llm_filter', true) ? toggleOnStyle : toggleOffStyle}
-                  >
-                    <span style={{
-                      position: 'absolute',
-                      left: get('orb_llm_filter', true) ? 'calc(100% - 24px)' : '4px',
-                      top: '4px',
-                      width: 18,
-                      height: 18,
-                      borderRadius: '50%',
-                      background: '#fff',
-                      transition: 'left 0.2s ease',
-                    }} />
-                  </button>
-                ) : (
-                  <ReadOnlyValue colors={colors} value={get('orb_llm_filter', true) ? 'Active' : 'Inactive'} />
-                )}
-              </SettingRow>
-            </SettingsSection>
-
-            <SettingsSection
-              title="Entry Filters"
-              subtitle="Minimum thresholds for entering ORB trades."
-              colors={colors}
-              icon={TAB_ICONS.entry}
-            >
-              <SettingRow
-                label="Min Displacement Ratio"
-                description="Minimum displacement from the opening range before considering a break. Higher values = stronger breaks only."
-                colors={colors}
-              >
-                {isAdmin ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="1.0"
-                      max="3.0"
-                      value={get('orb_displacement_min', 1.5)}
-                      onChange={(e) => set('orb_displacement_min', parseFloat(e.target.value))}
-                      style={{ ...inputStyle, width: 80, textAlign: 'center' }}
-                    />
-                    <span style={{ fontSize: 13, color: colors.textMuted }}>x ATR</span>
-                  </div>
-                ) : (
-                  <ReadOnlyValue colors={colors} value={`${get('orb_displacement_min', 1.5)}x ATR`} />
-                )}
-              </SettingRow>
-
-              <SettingRow
-                label="Min Volume Ratio"
-                description="Minimum volume compared to average during breakout candle."
-                colors={colors}
-              >
-                {isAdmin ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="1.0"
-                      max="3.0"
-                      value={get('orb_volume_min', 1.2)}
-                      onChange={(e) => set('orb_volume_min', parseFloat(e.target.value))}
-                      style={{ ...inputStyle, width: 80, textAlign: 'center' }}
-                    />
-                    <span style={{ fontSize: 13, color: colors.textMuted }}>x avg</span>
-                  </div>
-                ) : (
-                  <ReadOnlyValue colors={colors} value={`${get('orb_volume_min', 1.2)}x avg`} />
-                )}
-              </SettingRow>
-
-              <SettingRow
-                label="Min Confluence Score"
-                description="Number of confluence factors that must align (index direction, EMA slope, relative strength, etc.)."
-                colors={colors}
-              >
-                {isAdmin ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <input
-                      type="number"
-                      step="1"
-                      min="1"
-                      max="5"
-                      value={get('confluence_min', 2)}
-                      onChange={(e) => set('confluence_min', parseInt(e.target.value))}
-                      style={{ ...inputStyle, width: 80, textAlign: 'center' }}
-                    />
-                    <span style={{ fontSize: 13, color: colors.textMuted }}>/ 5 factors</span>
-                  </div>
-                ) : (
-                  <ReadOnlyValue colors={colors} value={`${get('confluence_min', 2)} / 5 factors`} />
-                )}
-              </SettingRow>
-
-              <SettingRow
-                label="Min Risk/Reward Ratio"
-                description="Minimum reward-to-risk ratio required to take an ORB trade."
-                colors={colors}
-              >
-                {isAdmin ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="1.0"
-                      max="5.0"
-                      value={get('orb_min_rr_ratio', 2.0)}
-                      onChange={(e) => set('orb_min_rr_ratio', parseFloat(e.target.value))}
-                      style={{ ...inputStyle, width: 80, textAlign: 'center' }}
-                    />
-                    <span style={{ fontSize: 13, color: colors.textMuted }}>: 1</span>
-                  </div>
-                ) : (
-                  <ReadOnlyValue colors={colors} value={`${get('orb_min_rr_ratio', 2.0)} : 1`} />
-                )}
-              </SettingRow>
-            </SettingsSection>
-
-            <SettingsSection
-              title="Daily Limits"
-              subtitle="Control how many ORB trades can be taken per day."
-              colors={colors}
-              icon={TAB_ICONS.limits}
-            >
-              <SettingRow
-                label="Max Trades Per Day"
-                description="Maximum number of ORB trades allowed per day across all symbols."
-                colors={colors}
-              >
-                {isAdmin ? (
-                  <input
-                    type="number"
-                    step="1"
-                    min="1"
-                    max="10"
-                    value={get('orb_max_trades_per_day', 2)}
-                    onChange={(e) => set('orb_max_trades_per_day', parseInt(e.target.value))}
-                    style={{ ...inputStyle, width: 80, textAlign: 'center' }}
-                  />
-                ) : (
-                  <ReadOnlyValue colors={colors} value={get('orb_max_trades_per_day', 2)} />
-                )}
-              </SettingRow>
-            </SettingsSection>
-
-            <QuickTip
-              text="ORB Strategy trades the 5-minute Opening Range using a Break & Retest pattern. It works best during the first 90 minutes of market open (9:30-11:00 AM EST) when volatility is highest."
-              colors={colors}
-            />
-          </div>
-        )}
-
         {/* Market Context Tab - Unified LLM enhancements */}
         {activeTab === 'context' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -1889,9 +1540,7 @@ export default function SettingsPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <SettingsSection
               title="LLM Decision Settings"
-              subtitle={activeStrategy === 'orb' || activeStrategy === 'momentum'
-                ? "These settings are used when no strategy setup is found (fallback mode)."
-                : "Primary AI decision parameters for LLM-only trading mode."}
+              subtitle="Primary AI decision parameters for trading."
               colors={colors}
               icon={TAB_ICONS.llm}
             >
@@ -2042,19 +1691,10 @@ export default function SettingsPage() {
               })()}
             </SettingsSection>
 
-            {(activeStrategy === 'orb' || activeStrategy === 'momentum') && (
-              <QuickTip
-                text={`These LLM settings are used as a fallback when ${activeStrategy === 'orb' ? 'ORB' : 'Momentum'} doesn't find a valid setup. The AI will analyze market conditions and make trading decisions based on these parameters.`}
-                colors={colors}
-              />
-            )}
-
-            {(!activeStrategy || activeStrategy === 'llm') && (
-              <QuickTip
-                text="In LLM-only mode, the AI analyzes price action, EMAs, VWAP, and momentum to generate trading signals. The ML model can veto trades it strongly disagrees with (HOLD probability >= 70%)."
-                colors={colors}
-              />
-            )}
+            <QuickTip
+              text="The AI analyzes price action, EMAs, VWAP, and momentum to generate trading signals. The ML model can veto trades it strongly disagrees with (HOLD probability >= 70%)."
+              colors={colors}
+            />
           </div>
         )}
 
@@ -2119,13 +1759,13 @@ export default function SettingsPage() {
 
             <SettingsSection
               title="Safety Limits"
-              subtitle="Fallback protections that apply regardless of strategy. These catch edge cases the ORB strategy may not handle."
+              subtitle="Protections to limit risk and prevent overexposure."
               colors={colors}
               icon={TAB_ICONS.risk}
             >
               <SettingRow
                 label="Max Hold Time"
-                description="Absolute maximum time a position can be held. ORB positions typically exit by 11:15 AM EST, but this provides a safety net."
+                description="Maximum time a position can be held before automatic exit."
                 guardrail={guardrails.max_hold_min}
                 value={get('max_hold_min', 120)}
                 colors={colors}
@@ -2153,7 +1793,7 @@ export default function SettingsPage() {
 
               <SettingRow
                 label="Max Open Positions"
-                description="Maximum concurrent positions at any time. Prevents overexposure if multiple ORB setups trigger simultaneously."
+                description="Maximum concurrent positions at any time. Prevents overexposure if multiple signals trigger simultaneously."
                 guardrail={guardrails.max_open_positions}
                 value={get('max_open_positions', 5)}
                 colors={colors}
@@ -2180,7 +1820,7 @@ export default function SettingsPage() {
             </SettingsSection>
 
             <QuickTip
-              text="These safety settings act as fallbacks. The ORB strategy has its own exit rules (11:15 AM deadline, 30-min time exit, 2 consecutive loss halt), but these settings catch any edge cases."
+              text="These safety settings provide hard limits on position duration and exposure. They act as final safeguards to protect your account."
               colors={colors}
             />
           </div>
@@ -2762,86 +2402,6 @@ function WarningBanner({ text, colors = darkTheme }) {
       </svg>
       <span>{text}</span>
     </div>
-  );
-}
-
-// Strategy selection card component
-function StrategyCard({ id, name, description, color, isActive, disabled, comingSoon, onClick, colors = darkTheme }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        padding: '16px 20px',
-        background: isActive ? `${color}15` : colors.bgSecondary,
-        border: `2px solid ${isActive ? color : colors.border}`,
-        borderRadius: 12,
-        cursor: disabled ? (comingSoon ? 'default' : 'not-allowed') : 'pointer',
-        opacity: disabled && !comingSoon ? 0.5 : 1,
-        textAlign: 'left',
-        transition: 'all 0.2s ease',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
-      {/* Active indicator */}
-      {isActive && (
-        <div style={{
-          position: 'absolute',
-          top: 12,
-          right: 12,
-          width: 10,
-          height: 10,
-          borderRadius: '50%',
-          background: color,
-          boxShadow: `0 0 8px ${color}`,
-        }} />
-      )}
-
-      {/* Coming soon badge */}
-      {comingSoon && (
-        <div style={{
-          position: 'absolute',
-          top: 8,
-          right: 8,
-          padding: '2px 8px',
-          background: colors.bgTertiary,
-          borderRadius: 12,
-          fontSize: 10,
-          fontWeight: 600,
-          color: colors.textMuted,
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px',
-        }}>
-          Soon
-        </div>
-      )}
-
-      {/* Strategy name */}
-      <div style={{
-        fontSize: 15,
-        fontWeight: 700,
-        color: isActive ? color : colors.textPrimary,
-        marginBottom: 4,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-      }}>
-        {id === 'orb' && '📊'}
-        {id === 'momentum' && '📈'}
-        {id === 'llm' && '🤖'}
-        {name}
-      </div>
-
-      {/* Description */}
-      <div style={{
-        fontSize: 12,
-        color: colors.textMuted,
-        lineHeight: 1.4,
-      }}>
-        {description}
-      </div>
-    </button>
   );
 }
 
