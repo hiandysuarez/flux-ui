@@ -56,6 +56,14 @@ const SETTING_EXPLANATIONS = {
     details: 'Trades will only be placed during this time window. This is in your local timezone (PST). Market hours are 6:30 AM - 1:00 PM PST.',
     tip: 'The first and last 30 minutes of market open tend to be most volatile.',
   },
+  entry_blacklist_minutes: {
+    title: 'Entry Blacklist',
+    description: 'Minutes to wait after the trading window opens before placing trades.',
+    details: 'Creates a brief "cooldown" period at the start of the trading window. The market open is often chaotic with wide spreads and erratic price action. Waiting a few minutes lets things settle.',
+    lowImpact: '0 minutes: Trade immediately when window opens. More exposure to open volatility.',
+    highImpact: '10-15 minutes: Wait for market to stabilize. May miss early momentum.',
+    tip: '5 minutes is a good default to avoid the initial market open chaos.',
+  },
   conf_threshold: {
     title: 'Confidence Threshold',
     description: 'Minimum AI confidence score required to enter a trade.',
@@ -755,7 +763,7 @@ export default function SettingsPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <input
                       type="time"
-                      value={get('trading_window_start', '06:30')}
+                      value={get('trading_window_start', '06:35')}
                       onChange={(e) => set('trading_window_start', e.target.value)}
                       style={{
                         ...inputStyle,
@@ -776,10 +784,41 @@ export default function SettingsPage() {
                     />
                   </div>
                 ) : (
-                  <ReadOnlyValue colors={colors} value={`${get('trading_window_start', '06:30')} - ${get('trading_window_end', '10:30')}`} />
+                  <ReadOnlyValue colors={colors} value={`${get('trading_window_start', '06:35')} - ${get('trading_window_end', '10:30')}`} />
                 )}
               </SettingRow>
-              <QuickTip text="The first 30 minutes after market open (6:30-7:00 AM PST) often have the highest volatility and volume." colors={colors} />
+
+              <SettingRow
+                label="Entry Blacklist"
+                description="Minutes to wait after trading window opens before placing trades."
+                colors={colors}
+                explanation={SETTING_EXPLANATIONS.entry_blacklist_minutes}
+                expandedExplanations={expandedExplanations}
+                setExpandedExplanations={setExpandedExplanations}
+                settingKey="entry_blacklist_minutes"
+              >
+                {isAdmin ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      type="number"
+                      min="0"
+                      max="30"
+                      value={get('entry_blacklist_minutes', 5)}
+                      onChange={(e) => set('entry_blacklist_minutes', parseInt(e.target.value, 10) || 0)}
+                      style={{
+                        ...inputStyle,
+                        width: 70,
+                        textAlign: 'center',
+                      }}
+                    />
+                    <span style={{ color: colors.textMuted, fontSize: 13 }}>minutes</span>
+                  </div>
+                ) : (
+                  <ReadOnlyValue colors={colors} value={`${get('entry_blacklist_minutes', 5)} minutes`} />
+                )}
+              </SettingRow>
+
+              <QuickTip text="The first 5-10 minutes after market open often have the highest volatility and widest spreads." colors={colors} />
             </SettingsSection>
 
             <SettingsSection
