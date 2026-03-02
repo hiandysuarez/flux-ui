@@ -2583,7 +2583,7 @@ export default function OptimizePage() {
                       color: colors.textMuted,
                       textAlign: 'center',
                     }}>
-                      Scoring formula: (return × win_rate × min(profit_factor, 5)) / max(drawdown, 1%)
+                      Scoring formula: (return × win_rate × profit_factor) / drawdown × trade_penalty
                     </div>
                   </div>
                 )}
