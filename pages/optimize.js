@@ -14,12 +14,31 @@ import {
 } from '../lib/theme';
 import {
   fetchQuickBacktest,
+  fetchFluxSettings,
   runCycleReplay,
   runParameterOptimization,
   saveToFluxSettings,
 } from '../lib/api';
 
 const colors = darkTheme;
+
+// Helper to format relative time (e.g., "2 days ago")
+function formatTimeAgo(dateString) {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 1) return 'just now';
+  if (diffMins < 60) return `${diffMins} min${diffMins === 1 ? '' : 's'} ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+  if (diffDays === 1) return 'yesterday';
+  if (diffDays < 30) return `${diffDays} days ago`;
+  return date.toLocaleDateString();
+}
 
 // Setting display names for parameter display
 const SETTING_META = {
@@ -81,6 +100,10 @@ export default function OptimizePage() {
   const [backtestRunning, setBacktestRunning] = useState(false);
   const [backtestResults, setBacktestResults] = useState(null);
   const [savingToFlux, setSavingToFlux] = useState(false);
+  const [savedFluxSettings, setSavedFluxSettings] = useState(null);
+
+  // Debug: raw API response
+  const [fluxApiResponse, setFluxApiResponse] = useState(null);
 
   // Load initial backtest data
   useEffect(() => {
@@ -91,7 +114,11 @@ export default function OptimizePage() {
     setLoading(true);
     setError(null);
     try {
-      const bt = await fetchQuickBacktest(days);
+      const [bt, fluxRes] = await Promise.all([
+        fetchQuickBacktest(days),
+        fetchFluxSettings(),
+      ]);
+
       if (bt?.ok === false) {
         throw new Error(bt.error || 'Backtest API returned error');
       }
@@ -101,6 +128,38 @@ export default function OptimizePage() {
         improvement: bt.improvement,
       };
       setBacktest(mappedBacktest);
+
+      // Store raw API response for debugging
+      setFluxApiResponse(fluxRes);
+
+      // Load saved flux settings if available
+      if (fluxRes?.ok && fluxRes.source === 'backtest' && fluxRes.backtest_info) {
+        const info = fluxRes.backtest_info;
+        const savedResults = {
+          best_params: fluxRes.settings,
+          best_metrics: {
+            total_trades: info.trade_count,
+            win_rate: info.win_rate,
+            total_return_pct: info.pnl,
+            profit_factor: info.profit_factor,
+            max_drawdown_pct: info.drawdown,
+          },
+          backtest_days: info.days,
+          ran_at: info.ran_at,
+          source: 'saved',
+        };
+        setSavedFluxSettings(savedResults);
+
+        // Pre-populate backtestResults with saved data
+        // This will be overwritten when user runs a new backtest
+        setBacktestResults(prev => {
+          // If there's already a fresh (non-saved) result, keep it
+          if (prev && prev.source !== 'saved') {
+            return prev;
+          }
+          return savedResults;
+        });
+      }
     } catch (e) {
       setError(`Failed to load: ${e.message || 'Unknown error'}`);
     } finally {
@@ -359,6 +418,29 @@ export default function OptimizePage() {
         </div>
       )}
 
+      {/* DEBUG: Show raw Flux Settings API response */}
+      <div style={{
+        padding: spacing.md,
+        marginBottom: spacing.lg,
+        borderRadius: borderRadius.md,
+        background: colors.bgTertiary,
+        border: `1px solid ${colors.border}`,
+        fontSize: fontSize.xs,
+        fontFamily: fontFamily.mono,
+      }}>
+        <div style={{ color: colors.textMuted, marginBottom: spacing.sm }}>
+          DEBUG: Flux Settings API Response
+        </div>
+        <pre style={{
+          margin: 0,
+          color: colors.textPrimary,
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-all',
+        }}>
+          {fluxApiResponse ? JSON.stringify(fluxApiResponse, null, 2) : 'Loading...'}
+        </pre>
+      </div>
+
       {/* Loading state */}
       {loading ? (
         <div style={{
@@ -524,14 +606,44 @@ export default function OptimizePage() {
                     gap: spacing.sm,
                   }}>
                     Optimal Parameters Found
+                    {backtestResults.source === 'saved' && (
+                      <span style={{
+                        padding: '2px 8px',
+                        borderRadius: borderRadius.full,
+                        background: colors.bgTertiary,
+                        border: `1px solid ${colors.border}`,
+                        color: colors.textMuted,
+                        fontSize: fontSize.xs,
+                        fontWeight: fontWeight.medium,
+                      }}>
+                        Saved
+                      </span>
+                    )}
                   </h3>
-                  <span style={{
-                    fontSize: fontSize.xs,
-                    color: colors.textMuted,
-                    fontFamily: fontFamily.mono,
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-end',
+                    gap: spacing.xs,
                   }}>
-                    {backtestResults.total_combinations} combos tested
-                  </span>
+                    {backtestResults.total_combinations && (
+                      <span style={{
+                        fontSize: fontSize.xs,
+                        color: colors.textMuted,
+                        fontFamily: fontFamily.mono,
+                      }}>
+                        {backtestResults.total_combinations} combos tested
+                      </span>
+                    )}
+                    {backtestResults.ran_at && (
+                      <span style={{
+                        fontSize: fontSize.xs,
+                        color: colors.textMuted,
+                      }}>
+                        Last run: {formatTimeAgo(backtestResults.ran_at)}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Best Parameters */}
@@ -601,29 +713,47 @@ export default function OptimizePage() {
                   display: 'flex',
                   justifyContent: 'center',
                 }}>
-                  <button
-                    onClick={handleSaveToFluxSettings}
-                    disabled={savingToFlux || !backtestResults.best_params}
-                    style={{
+                  {backtestResults.source === 'saved' ? (
+                    <div style={{
                       padding: '14px 40px',
                       borderRadius: borderRadius.md,
-                      border: 'none',
-                      background: `linear-gradient(135deg, #3b82f6, #2563eb)`,
-                      color: '#fff',
+                      border: `1px solid ${colors.border}`,
+                      background: colors.bgSecondary,
+                      color: colors.textMuted,
                       fontSize: fontSize.base,
-                      fontWeight: fontWeight.bold,
+                      fontWeight: fontWeight.medium,
                       fontFamily: fontFamily.sans,
-                      cursor: savingToFlux ? 'wait' : 'pointer',
-                      opacity: savingToFlux ? 0.7 : 1,
-                      transition: `all ${transitions.fast}`,
-                      boxShadow: shadows.md,
                       display: 'flex',
                       alignItems: 'center',
                       gap: spacing.sm,
-                    }}
-                  >
-                    {savingToFlux ? 'Saving...' : 'Save to Flux Settings'}
-                  </button>
+                    }}>
+                      Already Saved
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleSaveToFluxSettings}
+                      disabled={savingToFlux || !backtestResults.best_params}
+                      style={{
+                        padding: '14px 40px',
+                        borderRadius: borderRadius.md,
+                        border: 'none',
+                        background: `linear-gradient(135deg, #3b82f6, #2563eb)`,
+                        color: '#fff',
+                        fontSize: fontSize.base,
+                        fontWeight: fontWeight.bold,
+                        fontFamily: fontFamily.sans,
+                        cursor: savingToFlux ? 'wait' : 'pointer',
+                        opacity: savingToFlux ? 0.7 : 1,
+                        transition: `all ${transitions.fast}`,
+                        boxShadow: shadows.md,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: spacing.sm,
+                      }}
+                    >
+                      {savingToFlux ? 'Saving...' : 'Save to Flux Settings'}
+                    </button>
+                  )}
                 </div>
               </div>
             )}
