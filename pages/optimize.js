@@ -850,8 +850,8 @@ export default function OptimizePage() {
               </div>
             )}
 
-            {/* Backtest Results (after running) */}
-            {backtestResults && (
+            {/* Backtest Results (only show for fresh backtests, not saved) */}
+            {backtestResults && backtestResults.source !== 'saved' && (
               <div style={{
                 background: colors.bgTertiary,
                 borderRadius: borderRadius.md,
