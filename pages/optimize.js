@@ -927,32 +927,34 @@ export default function OptimizePage() {
                       gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
                       gap: spacing.sm,
                     }}>
-                      {Object.entries(backtestResults.best_params).map(([key, value]) => {
-                        const meta = SETTING_META[key] || { name: key, format: null };
-                        return (
-                          <div key={key} style={{
-                            padding: spacing.sm,
-                            background: colors.bgSecondary,
-                            borderRadius: borderRadius.sm,
-                            border: `1px solid ${colors.border}`,
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                          }}>
-                            <span style={{ fontSize: fontSize.xs, color: colors.textMuted }}>
-                              {meta.name || key}
-                            </span>
-                            <span style={{
-                              fontFamily: fontFamily.mono,
-                              fontSize: fontSize.sm,
-                              fontWeight: fontWeight.bold,
-                              color: colors.accent,
+                      {Object.entries(backtestResults.best_params)
+                        .filter(([key]) => SETTING_META[key])
+                        .map(([key, value]) => {
+                          const meta = SETTING_META[key];
+                          return (
+                            <div key={key} style={{
+                              padding: spacing.sm,
+                              background: colors.bgSecondary,
+                              borderRadius: borderRadius.sm,
+                              border: `1px solid ${colors.border}`,
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
                             }}>
-                              {meta.format ? meta.format(value) : typeof value === 'number' ? value.toFixed(4) : value}
-                            </span>
-                          </div>
-                        );
-                      })}
+                              <span style={{ fontSize: fontSize.xs, color: colors.textMuted }}>
+                                {meta.name}
+                              </span>
+                              <span style={{
+                                fontFamily: fontFamily.mono,
+                                fontSize: fontSize.sm,
+                                fontWeight: fontWeight.bold,
+                                color: colors.accent,
+                              }}>
+                                {meta.format(value)}
+                              </span>
+                            </div>
+                          );
+                        })}
                     </div>
                   </div>
                 )}
