@@ -418,133 +418,276 @@ export default function OptimizePage() {
         </div>
       )}
 
-      {/* Saved Flux Settings Card */}
-      {fluxApiResponse?.ok && fluxApiResponse.source === 'backtest' && fluxApiResponse.backtest_info && (
-        <div style={{
-          ...cardStyle,
-          marginBottom: spacing.lg,
-          border: `1px solid ${colors.borderAccent}`,
-        }}>
+      {/* Saved Flux Settings Card - Dashboard Style */}
+      {fluxApiResponse?.ok && fluxApiResponse.source === 'backtest' && fluxApiResponse.backtest_info && (() => {
+        const info = fluxApiResponse.backtest_info;
+        const pnl = info.pnl || 0;
+        const winRate = (info.win_rate || 0) * 100;
+        const profitFactor = info.profit_factor || 0;
+        const drawdown = (info.drawdown || 0) * 100;
+        const tradeCount = info.trade_count || 0;
+        const backtestDays = info.days || 30;
+        const ranAt = info.ran_at ? new Date(info.ran_at) : null;
+
+        const formatDate = (d) => d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+
+        return (
           <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: spacing.md,
+            background: colors.bgSecondary,
+            borderRadius: borderRadius.lg,
+            padding: spacing.xl,
+            marginBottom: spacing.xl,
+            border: `1px solid ${colors.borderAccent}`,
+            position: 'relative',
+            overflow: 'hidden',
           }}>
+            {/* Subtle radial glow */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              width: 300,
+              height: 200,
+              background: `radial-gradient(ellipse at top right, ${pnl >= 0 ? 'rgba(212,165,116,0.1)' : 'rgba(248,81,73,0.1)'} 0%, transparent 70%)`,
+              pointerEvents: 'none',
+            }} />
+
+            {/* Header */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: spacing.sm,
+              justifyContent: 'space-between',
+              marginBottom: spacing.lg,
             }}>
-              <h3 style={typography.h3}>Saved Flux Settings</h3>
-              <span style={{
-                padding: '2px 8px',
-                borderRadius: borderRadius.full,
-                background: colors.successDark,
-                color: colors.success,
-                fontSize: fontSize.xs,
-                fontWeight: fontWeight.medium,
-              }}>
-                Active
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+                <h2 style={{
+                  fontFamily: fontFamily.sans,
+                  fontSize: fontSize.lg,
+                  fontWeight: fontWeight.semibold,
+                  color: colors.textPrimary,
+                  margin: 0,
+                }}>
+                  Your Flux Settings
+                </h2>
+                <span style={{
+                  padding: '4px 10px',
+                  borderRadius: borderRadius.full,
+                  background: colors.successDark,
+                  color: colors.success,
+                  fontSize: fontSize.xs,
+                  fontWeight: fontWeight.semibold,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}>
+                  Active
+                </span>
+              </div>
+              {ranAt && (
+                <span style={{
+                  fontSize: fontSize.xs,
+                  color: colors.textMuted,
+                  fontFamily: fontFamily.sans,
+                }}>
+                  Optimized {formatDate(ranAt)}
+                </span>
+              )}
             </div>
-            {fluxApiResponse.backtest_info.ran_at && (
-              <span style={{
-                fontSize: fontSize.xs,
-                color: colors.textMuted,
-              }}>
-                Saved {formatTimeAgo(fluxApiResponse.backtest_info.ran_at)}
-              </span>
-            )}
-          </div>
 
-          {/* Metrics Row */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
-            gap: spacing.md,
-            marginBottom: spacing.lg,
-          }}>
-            <MetricCard
-              label="Win Rate"
-              value={`${((fluxApiResponse.backtest_info.win_rate || 0) * 100).toFixed(1)}%`}
-              color={(fluxApiResponse.backtest_info.win_rate || 0) >= 0.5 ? colors.success : colors.warning}
-            />
-            <MetricCard
-              label="Total P&L"
-              value={`$${(fluxApiResponse.backtest_info.pnl || 0).toFixed(2)}`}
-              color={(fluxApiResponse.backtest_info.pnl || 0) >= 0 ? colors.success : colors.error}
-            />
-            <MetricCard
-              label="Profit Factor"
-              value={(fluxApiResponse.backtest_info.profit_factor || 0).toFixed(2)}
-              color={(fluxApiResponse.backtest_info.profit_factor || 0) >= 1 ? colors.success : colors.warning}
-            />
-            <MetricCard
-              label="Drawdown"
-              value={`${((fluxApiResponse.backtest_info.drawdown || 0) * 100).toFixed(1)}%`}
-              color={colors.error}
-            />
-            <MetricCard
-              label="Trades"
-              value={fluxApiResponse.backtest_info.trade_count || 0}
-              color={colors.textPrimary}
-            />
-            <MetricCard
-              label="Days"
-              value={fluxApiResponse.backtest_info.days || 30}
-              color={colors.textMuted}
-            />
-          </div>
-
-          {/* Parameters */}
-          <div>
-            <h4 style={{
-              fontSize: fontSize.sm,
-              color: colors.textSecondary,
-              fontWeight: fontWeight.semibold,
-              marginBottom: spacing.sm,
-            }}>
-              Optimized Parameters
-            </h4>
+            {/* Hero Metrics */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-              gap: spacing.sm,
+              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+              gap: spacing.lg,
+              marginBottom: spacing.lg,
             }}>
-              {Object.entries(fluxApiResponse.settings || {})
-                .filter(([key]) => SETTING_META[key] || key.includes('pct') || key.includes('threshold'))
-                .slice(0, 8)
-                .map(([key, value]) => {
-                  const meta = SETTING_META[key] || { name: key.replace(/_/g, ' '), format: null };
-                  return (
-                    <div key={key} style={{
-                      padding: spacing.sm,
-                      background: colors.bgSecondary,
-                      borderRadius: borderRadius.sm,
-                      border: `1px solid ${colors.border}`,
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}>
-                      <span style={{ fontSize: fontSize.xs, color: colors.textMuted, textTransform: 'capitalize' }}>
-                        {meta.name || key.replace(/_/g, ' ')}
-                      </span>
-                      <span style={{
-                        fontFamily: fontFamily.mono,
-                        fontSize: fontSize.sm,
-                        fontWeight: fontWeight.bold,
-                        color: colors.accent,
+              {/* Total P&L - Hero */}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  fontSize: fontSize.xs,
+                  color: colors.textMuted,
+                  fontFamily: fontFamily.sans,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  marginBottom: spacing.xs,
+                }}>
+                  Total P&L
+                </div>
+                <div style={{
+                  fontFamily: fontFamily.mono,
+                  fontSize: fontSize['2xl'],
+                  fontWeight: fontWeight.bold,
+                  color: pnl >= 0 ? colors.accent : colors.error,
+                }}>
+                  {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)}%
+                </div>
+              </div>
+
+              {/* Win Rate */}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  fontSize: fontSize.xs,
+                  color: colors.textMuted,
+                  fontFamily: fontFamily.sans,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  marginBottom: spacing.xs,
+                }}>
+                  Win Rate
+                </div>
+                <div style={{
+                  fontFamily: fontFamily.mono,
+                  fontSize: fontSize['2xl'],
+                  fontWeight: fontWeight.bold,
+                  color: winRate >= 50 ? colors.success : colors.warning,
+                }}>
+                  {winRate.toFixed(1)}%
+                </div>
+              </div>
+
+              {/* Profit Factor */}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  fontSize: fontSize.xs,
+                  color: colors.textMuted,
+                  fontFamily: fontFamily.sans,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  marginBottom: spacing.xs,
+                }}>
+                  Profit Factor
+                </div>
+                <div style={{
+                  fontFamily: fontFamily.mono,
+                  fontSize: fontSize['2xl'],
+                  fontWeight: fontWeight.bold,
+                  color: profitFactor >= 1.5 ? colors.success : profitFactor >= 1 ? colors.accent : colors.warning,
+                }}>
+                  {profitFactor.toFixed(2)}
+                </div>
+              </div>
+
+              {/* Max Drawdown */}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  fontSize: fontSize.xs,
+                  color: colors.textMuted,
+                  fontFamily: fontFamily.sans,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  marginBottom: spacing.xs,
+                }}>
+                  Max Drawdown
+                </div>
+                <div style={{
+                  fontFamily: fontFamily.mono,
+                  fontSize: fontSize['2xl'],
+                  fontWeight: fontWeight.bold,
+                  color: colors.error,
+                }}>
+                  {drawdown.toFixed(1)}%
+                </div>
+              </div>
+
+              {/* Trades */}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  fontSize: fontSize.xs,
+                  color: colors.textMuted,
+                  fontFamily: fontFamily.sans,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  marginBottom: spacing.xs,
+                }}>
+                  Trades
+                </div>
+                <div style={{
+                  fontFamily: fontFamily.mono,
+                  fontSize: fontSize['2xl'],
+                  fontWeight: fontWeight.bold,
+                  color: colors.textPrimary,
+                }}>
+                  {tradeCount}
+                </div>
+              </div>
+
+              {/* Backtest Period */}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  fontSize: fontSize.xs,
+                  color: colors.textMuted,
+                  fontFamily: fontFamily.sans,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  marginBottom: spacing.xs,
+                }}>
+                  Period
+                </div>
+                <div style={{
+                  fontFamily: fontFamily.mono,
+                  fontSize: fontSize['2xl'],
+                  fontWeight: fontWeight.bold,
+                  color: colors.textSecondary,
+                }}>
+                  {backtestDays}d
+                </div>
+              </div>
+            </div>
+
+            {/* Parameters Grid */}
+            <div style={{
+              background: colors.bgTertiary,
+              borderRadius: borderRadius.md,
+              padding: spacing.md,
+            }}>
+              <div style={{
+                fontSize: fontSize.xs,
+                color: colors.textMuted,
+                fontFamily: fontFamily.sans,
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                marginBottom: spacing.sm,
+              }}>
+                Optimized Parameters
+              </div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                gap: spacing.sm,
+              }}>
+                {Object.entries(fluxApiResponse.settings || {})
+                  .filter(([key]) => SETTING_META[key])
+                  .map(([key, value]) => {
+                    const meta = SETTING_META[key];
+                    return (
+                      <div key={key} style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: `${spacing.xs} 0`,
+                        borderBottom: `1px solid ${colors.border}`,
                       }}>
-                        {meta.format ? meta.format(value) : (typeof value === 'number' ? value.toFixed(3) : value)}
-                      </span>
-                    </div>
-                  );
-                })}
+                        <span style={{
+                          fontSize: fontSize.sm,
+                          color: colors.textSecondary,
+                        }}>
+                          {meta.name}
+                        </span>
+                        <span style={{
+                          fontFamily: fontFamily.mono,
+                          fontSize: fontSize.sm,
+                          fontWeight: fontWeight.semibold,
+                          color: colors.accent,
+                        }}>
+                          {meta.format(value)}
+                        </span>
+                      </div>
+                    );
+                  })}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Loading state */}
       {loading ? (
