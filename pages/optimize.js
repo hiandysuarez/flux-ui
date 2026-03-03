@@ -42,10 +42,24 @@ function formatTimeAgo(dateString) {
 
 // Setting display names for parameter display
 const SETTING_META = {
+  // LLM settings (with and without prefix)
   conf_threshold: {
-    name: 'Confidence Threshold',
+    name: 'Confidence',
     format: (v) => `${(Number(v) * 100).toFixed(0)}%`,
   },
+  llm_conf_threshold: {
+    name: 'Confidence',
+    format: (v) => `${(Number(v) * 100).toFixed(0)}%`,
+  },
+  mom_entry_pct: {
+    name: 'Momentum',
+    format: (v) => `${(Number(v) * 100).toFixed(2)}%`,
+  },
+  llm_mom_entry_pct: {
+    name: 'Momentum',
+    format: (v) => `${(Number(v) * 100).toFixed(2)}%`,
+  },
+  // Risk settings
   stop_loss_pct: {
     name: 'Stop Loss',
     format: (v) => `${(Number(v) * 100).toFixed(1)}%`,
@@ -54,20 +68,18 @@ const SETTING_META = {
     name: 'Take Profit',
     format: (v) => `${(Number(v) * 100).toFixed(1)}%`,
   },
-  mom_entry_pct: {
-    name: 'Momentum Threshold',
-    format: (v) => `${(Number(v) * 100).toFixed(2)}%`,
-  },
+  // Trailing stop
   trailing_stop_activation: {
-    name: 'Trailing Activation',
+    name: 'Trail Activation',
     format: (v) => `${(Number(v) * 100).toFixed(0)}%`,
   },
   trailing_stop_distance: {
-    name: 'Trailing Distance',
+    name: 'Trail Distance',
     format: (v) => `${Number(v).toFixed(2)}x`,
   },
+  // Time
   max_hold_min: {
-    name: 'Max Hold Time',
+    name: 'Max Hold',
     format: (v) => `${v} min`,
   },
 };
@@ -429,7 +441,7 @@ export default function OptimizePage() {
         const backtestDays = info.days || 30;
         const ranAt = info.ran_at ? new Date(info.ran_at) : null;
 
-        const formatDate = (d) => d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+        const formatDate = (d) => d ? d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : '';
 
         return (
           <div style={{
@@ -655,7 +667,12 @@ export default function OptimizePage() {
                 gap: spacing.sm,
               }}>
                 {Object.entries(fluxApiResponse.settings || {})
-                  .filter(([key]) => SETTING_META[key])
+                  .filter(([key]) => {
+                    // Only show keys defined in SETTING_META (trading parameters)
+                    // Exclude system fields
+                    const excludedKeys = ['user_id', 'updated_at', 'created_at', 'id', 'backtest_days', 'backtest_win_rate', 'backtest_pnl', 'backtest_drawdown', 'backtest_profit_factor', 'backtest_trade_count'];
+                    return SETTING_META[key] && !excludedKeys.includes(key);
+                  })
                   .map(([key, value]) => {
                     const meta = SETTING_META[key];
                     return (
