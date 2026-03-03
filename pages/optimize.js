@@ -138,7 +138,7 @@ export default function OptimizePage() {
   const [selectedSuggestions, setSelectedSuggestions] = useState(new Set());
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [days, setDays] = useState(30);
+  const [days, setDays] = useState(7); // Reduced for Render's 30s timeout
   const [runningBacktest, setRunningBacktest] = useState(false);
   const [isCustomBacktest, setIsCustomBacktest] = useState(false);
   const [showCustomBanner, setShowCustomBanner] = useState(false);
