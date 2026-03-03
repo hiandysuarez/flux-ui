@@ -418,28 +418,133 @@ export default function OptimizePage() {
         </div>
       )}
 
-      {/* DEBUG: Show raw Flux Settings API response */}
-      <div style={{
-        padding: spacing.md,
-        marginBottom: spacing.lg,
-        borderRadius: borderRadius.md,
-        background: colors.bgTertiary,
-        border: `1px solid ${colors.border}`,
-        fontSize: fontSize.xs,
-        fontFamily: fontFamily.mono,
-      }}>
-        <div style={{ color: colors.textMuted, marginBottom: spacing.sm }}>
-          DEBUG: Flux Settings API Response
-        </div>
-        <pre style={{
-          margin: 0,
-          color: colors.textPrimary,
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-all',
+      {/* Saved Flux Settings Card */}
+      {fluxApiResponse?.ok && fluxApiResponse.source === 'backtest' && fluxApiResponse.backtest_info && (
+        <div style={{
+          ...cardStyle,
+          marginBottom: spacing.lg,
+          border: `1px solid ${colors.borderAccent}`,
         }}>
-          {fluxApiResponse ? JSON.stringify(fluxApiResponse, null, 2) : 'Loading...'}
-        </pre>
-      </div>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: spacing.md,
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: spacing.sm,
+            }}>
+              <h3 style={typography.h3}>Saved Flux Settings</h3>
+              <span style={{
+                padding: '2px 8px',
+                borderRadius: borderRadius.full,
+                background: colors.successDark,
+                color: colors.success,
+                fontSize: fontSize.xs,
+                fontWeight: fontWeight.medium,
+              }}>
+                Active
+              </span>
+            </div>
+            {fluxApiResponse.backtest_info.ran_at && (
+              <span style={{
+                fontSize: fontSize.xs,
+                color: colors.textMuted,
+              }}>
+                Saved {formatTimeAgo(fluxApiResponse.backtest_info.ran_at)}
+              </span>
+            )}
+          </div>
+
+          {/* Metrics Row */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
+            gap: spacing.md,
+            marginBottom: spacing.lg,
+          }}>
+            <MetricCard
+              label="Win Rate"
+              value={`${((fluxApiResponse.backtest_info.win_rate || 0) * 100).toFixed(1)}%`}
+              color={(fluxApiResponse.backtest_info.win_rate || 0) >= 0.5 ? colors.success : colors.warning}
+            />
+            <MetricCard
+              label="Total P&L"
+              value={`$${(fluxApiResponse.backtest_info.pnl || 0).toFixed(2)}`}
+              color={(fluxApiResponse.backtest_info.pnl || 0) >= 0 ? colors.success : colors.error}
+            />
+            <MetricCard
+              label="Profit Factor"
+              value={(fluxApiResponse.backtest_info.profit_factor || 0).toFixed(2)}
+              color={(fluxApiResponse.backtest_info.profit_factor || 0) >= 1 ? colors.success : colors.warning}
+            />
+            <MetricCard
+              label="Drawdown"
+              value={`${((fluxApiResponse.backtest_info.drawdown || 0) * 100).toFixed(1)}%`}
+              color={colors.error}
+            />
+            <MetricCard
+              label="Trades"
+              value={fluxApiResponse.backtest_info.trade_count || 0}
+              color={colors.textPrimary}
+            />
+            <MetricCard
+              label="Days"
+              value={fluxApiResponse.backtest_info.days || 30}
+              color={colors.textMuted}
+            />
+          </div>
+
+          {/* Parameters */}
+          <div>
+            <h4 style={{
+              fontSize: fontSize.sm,
+              color: colors.textSecondary,
+              fontWeight: fontWeight.semibold,
+              marginBottom: spacing.sm,
+            }}>
+              Optimized Parameters
+            </h4>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+              gap: spacing.sm,
+            }}>
+              {Object.entries(fluxApiResponse.settings || {})
+                .filter(([key]) => SETTING_META[key] || key.includes('pct') || key.includes('threshold'))
+                .slice(0, 8)
+                .map(([key, value]) => {
+                  const meta = SETTING_META[key] || { name: key.replace(/_/g, ' '), format: null };
+                  return (
+                    <div key={key} style={{
+                      padding: spacing.sm,
+                      background: colors.bgSecondary,
+                      borderRadius: borderRadius.sm,
+                      border: `1px solid ${colors.border}`,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}>
+                      <span style={{ fontSize: fontSize.xs, color: colors.textMuted, textTransform: 'capitalize' }}>
+                        {meta.name || key.replace(/_/g, ' ')}
+                      </span>
+                      <span style={{
+                        fontFamily: fontFamily.mono,
+                        fontSize: fontSize.sm,
+                        fontWeight: fontWeight.bold,
+                        color: colors.accent,
+                      }}>
+                        {meta.format ? meta.format(value) : (typeof value === 'number' ? value.toFixed(3) : value)}
+                      </span>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Loading state */}
       {loading ? (
