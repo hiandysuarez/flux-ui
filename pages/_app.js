@@ -1,10 +1,12 @@
 import { fontFamily, darkTheme } from '../lib/theme';
 import { AuthProvider } from '../lib/auth';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 export default function App({ Component, pageProps }) {
   const colors = darkTheme;
 
   return (
+    <ErrorBoundary>
     <AuthProvider>
       <style jsx global>{`
         * {
@@ -338,5 +340,6 @@ export default function App({ Component, pageProps }) {
       `}</style>
       <Component {...pageProps} />
     </AuthProvider>
+    </ErrorBoundary>
   );
 }
