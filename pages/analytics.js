@@ -469,7 +469,7 @@ export default function AnalyticsPage() {
                 </div>
                 {bySymbolData.length === 0 ? (
                   <div style={{ color: colors.textMuted, textAlign: 'center', padding: 40 }}>
-                    No symbol data available
+                    No symbol data available yet. Data will appear here after trades are executed during market hours.
                   </div>
                 ) : (
                   <div style={{ maxHeight: 300, overflowY: 'auto' }}>

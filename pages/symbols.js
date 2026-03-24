@@ -85,7 +85,7 @@ export default function SymbolsPage() {
         <div style={{ color: colors.textMuted, padding: 40 }}>Loading...</div>
       ) : symbols.length === 0 ? (
         <div style={{ ...cardStyle, textAlign: 'center', color: colors.textMuted, padding: 40 }}>
-          No symbol data available
+          No symbol data available yet. Symbol performance will appear here after trades are executed.
         </div>
       ) : (
         <>

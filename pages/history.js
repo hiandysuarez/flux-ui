@@ -218,7 +218,7 @@ export default function HistoryPage() {
             ) : trades.length === 0 ? (
               <tr>
                 <td colSpan={10} style={{ padding: 40, textAlign: 'center', color: colors.textMuted }}>
-                  No trades found
+                  No trades found. The system executes trades during market hours (6:35–10:30 AM PT).
                 </td>
               </tr>
             ) : (

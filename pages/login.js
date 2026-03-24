@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { colors, fontSize, fontWeight, shadows, transitions } from '../lib/theme';
+import { darkTheme as colors, fontSize, fontWeight, shadows, transitions } from '../lib/theme';
 import { useAuth } from '../lib/auth';
 
 export default function LoginPage() {
@@ -76,14 +76,7 @@ export default function LoginPage() {
           textAlign: 'center',
           marginBottom: '32px',
         }}>
-          <h1 style={{
-            fontSize: fontSize['2xl'],
-            fontWeight: fontWeight.bold,
-            color: colors.accent,
-            marginBottom: '8px',
-          }}>
-            Flux
-          </h1>
+          <img src="/images/flux_new_logo.png" alt="Flux" style={{ height: 48, width: 'auto', margin: '0 auto', display: 'block', marginBottom: 8 }} />
           <p style={{
             fontSize: fontSize.sm,
             color: colors.textSecondary,

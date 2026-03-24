@@ -321,18 +321,6 @@ export default function Layout({ children, active = 'dashboard' }) {
           </span>
         </div>
 
-        {/* Version badge - hidden on mobile */}
-        <div className="header-badge-hide" style={{
-          padding: '6px 12px',
-          borderRadius: borderRadius.full,
-          background: colors.bgTertiary,
-          border: `1px solid ${colors.border}`,
-          fontSize: fontSize.xs,
-          color: colors.textMuted,
-          fontWeight: fontWeight.semibold,
-        }}>
-          v1.0
-        </div>
       </header>
 
       {/* Slide-out menu */}

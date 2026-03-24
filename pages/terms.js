@@ -1,5 +1,5 @@
 // pages/terms.js - Terms of Service
-import { colors, fontSize, fontWeight, shadows } from '../lib/theme';
+import { darkTheme as colors, fontSize, fontWeight, shadows } from '../lib/theme';
 import Link from 'next/link';
 
 export default function TermsPage() {

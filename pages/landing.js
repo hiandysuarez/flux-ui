@@ -13,6 +13,50 @@ import {
   glassStyle,
 } from '../lib/theme';
 
+// ---------------------------------------------------------------------------
+// SVG Icon components -- lightweight inline icons, no emoji
+// ---------------------------------------------------------------------------
+
+function IconBrain({ color, size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2a5 5 0 0 1 4.55 7.08A5 5 0 0 1 18 14a5 5 0 0 1-3 4.58V22h-6v-3.42A5 5 0 0 1 6 14a5 5 0 0 1 1.45-4.92A5 5 0 0 1 12 2z" />
+      <path d="M12 2v8" />
+      <path d="M8 8l4 4 4-4" />
+    </svg>
+  );
+}
+
+function IconShield({ color, size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2l7 4v5c0 5.25-3.5 9.74-7 11-3.5-1.26-7-5.75-7-11V6l7-4z" />
+      <path d="M9 12l2 2 4-4" />
+    </svg>
+  );
+}
+
+function IconChart({ color, size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    </svg>
+  );
+}
+
+function IconTerminal({ color, size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="4 17 10 11 4 5" />
+      <line x1="12" y1="19" x2="20" y2="19" />
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Landing Page
+// ---------------------------------------------------------------------------
+
 export default function LandingPage() {
   const router = useRouter();
   const colors = darkTheme;
@@ -25,56 +69,31 @@ export default function LandingPage() {
   const features = [
     {
       title: 'ML-Powered Decisions',
-      description: 'Machine learning models analyze market patterns and execute trades with precision timing.',
-      icon: '⚡',
+      description: 'Models trained on market microstructure analyze patterns and execute with precision timing.',
+      Icon: IconBrain,
     },
     {
       title: 'Risk Management',
-      description: 'Built-in guardrails protect your capital with configurable stop-loss and position limits.',
-      icon: '🛡️',
+      description: 'Configurable stop-loss, position sizing, and daily drawdown limits protect your capital.',
+      Icon: IconShield,
     },
     {
       title: 'Real-time Analytics',
-      description: 'Track performance metrics, win rates, and P&L with comprehensive dashboards.',
-      icon: '📊',
+      description: 'Live P&L, trade logs, and performance breakdowns in a single dashboard.',
+      Icon: IconChart,
     },
     {
-      title: 'Paper Trading Mode',
-      description: 'Test strategies risk-free before deploying real capital to the markets.',
-      icon: '📝',
+      title: 'Paper Trading',
+      description: 'Validate strategies against live market data without risking real capital.',
+      Icon: IconTerminal,
     },
-  ];
-
-  const steps = [
-    {
-      number: '01',
-      title: 'Connect Your Broker',
-      description: 'Link your trading account securely through our encrypted API integration.',
-    },
-    {
-      number: '02',
-      title: 'Configure Strategy',
-      description: 'Set your risk parameters, choose symbols, and customize trading behavior.',
-    },
-    {
-      number: '03',
-      title: 'Let ML Trade',
-      description: 'Sit back as intelligent algorithms execute trades based on your preferences.',
-    },
-  ];
-
-  const stats = [
-    { value: '50K+', label: 'Trades Executed' },
-    { value: '89%', label: 'Avg Win Rate' },
-    { value: '24/7', label: 'Market Monitoring' },
-    { value: '<50ms', label: 'Execution Speed' },
   ];
 
   return (
     <>
       <Head>
-        <title>Flux | ML-Powered Trading Platform</title>
-        <meta name="description" content="Trade smarter with ML. Flux uses machine learning to analyze markets and execute trades with precision." />
+        <title>Flux | ML-Powered Intraday Trading</title>
+        <meta name="description" content="Flux is an ML-powered intraday stock trading platform. Analyze markets, manage risk, and execute trades with machine learning." />
       </Head>
 
       <div style={{
@@ -84,151 +103,56 @@ export default function LandingPage() {
         fontFamily: fontFamily.sans,
         overflow: 'hidden',
       }}>
-        {/* Styles */}
+        {/* --- Styles --- */}
         <style>{`
           @keyframes fadeInUp {
-            from {
-              opacity: 0;
-              transform: translateY(30px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(24px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes subtlePulse {
+            0%, 100% { opacity: 1; }
+            50%      { opacity: 0.5; }
+          }
+          @keyframes drawLine {
+            from { stroke-dashoffset: 600; }
+            to   { stroke-dashoffset: 0; }
           }
 
-          @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
+          .cta-button { transition: background ${transitions.normal}, box-shadow ${transitions.normal}, transform ${transitions.fast}; }
+          .cta-button:hover { background: ${colors.accentHover}; box-shadow: 0 6px 20px rgba(212,165,116,0.25); transform: translateY(-1px); }
+          .cta-button:active { transform: translateY(0); }
 
-          @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-          }
+          .ghost-button { transition: background ${transitions.normal}, border-color ${transitions.normal}; }
+          .ghost-button:hover { background: ${colors.bgTertiary}; border-color: ${colors.borderLight}; }
 
-          @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 0 20px rgba(212, 165, 116, 0.3); }
-            50% { box-shadow: 0 0 40px rgba(212, 165, 116, 0.5); }
-          }
-
-          @keyframes chart-line {
-            0% { stroke-dashoffset: 1000; }
-            100% { stroke-dashoffset: 0; }
-          }
-
-          @keyframes bar-grow {
-            from { transform: scaleY(0); }
-            to { transform: scaleY(1); }
-          }
-
-          .nav-link {
-            position: relative;
-            transition: color 0.2s ease;
-          }
-
-          .nav-link:hover {
-            color: ${colors.accent} !important;
-          }
-
-          .feature-card {
-            transition: all 0.3s ease;
-          }
-
-          .feature-card:hover {
-            transform: translateY(-4px);
-            border-color: ${colors.borderAccent} !important;
-          }
-
-          .step-card {
-            transition: all 0.3s ease;
-          }
-
-          .step-card:hover {
-            background: ${colors.bgTertiary} !important;
-          }
-
-          .cta-button {
-            transition: all 0.2s ease;
-          }
-
-          .cta-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(212, 165, 116, 0.3) !important;
-          }
-
-          .ghost-button {
-            transition: all 0.2s ease;
-          }
-
-          .ghost-button:hover {
-            background: ${colors.bgTertiary} !important;
-            border-color: ${colors.borderLight} !important;
-          }
+          .feature-card { transition: border-color ${transitions.normal}, transform ${transitions.normal}; }
+          .feature-card:hover { border-color: ${colors.borderAccent}; transform: translateY(-3px); }
 
           @media (max-width: 968px) {
-            .hero-grid {
-              grid-template-columns: 1fr !important;
-              text-align: center;
-            }
-            .hero-visual {
-              display: none !important;
-            }
-            .features-grid {
-              grid-template-columns: repeat(2, 1fr) !important;
-            }
-            .steps-grid {
-              grid-template-columns: 1fr !important;
-            }
-            .stats-grid {
-              grid-template-columns: repeat(2, 1fr) !important;
-            }
-            .hero-buttons {
-              justify-content: center !important;
-            }
-            .landing-section {
-              padding: 60px 16px !important;
-            }
-            .landing-hero-title {
-              font-size: 36px !important;
-            }
+            .hero-grid { grid-template-columns: 1fr; text-align: center; }
+            .hero-visual { display: none; }
+            .features-grid { grid-template-columns: repeat(2, 1fr); }
+            .hero-buttons { justify-content: center; }
           }
-
           @media (max-width: 640px) {
-            .features-grid {
-              grid-template-columns: 1fr !important;
-            }
-            .stats-grid {
-              grid-template-columns: 1fr !important;
-            }
-            .landing-hero-title {
-              font-size: 28px !important;
-            }
-            .landing-section {
-              padding: 40px 12px !important;
-            }
-            .hero-buttons {
-              flex-direction: column !important;
-              width: 100% !important;
-            }
-            .hero-buttons button, .hero-buttons a {
-              width: 100% !important;
-            }
+            .features-grid { grid-template-columns: 1fr; }
+            .hero-buttons { flex-direction: column; width: 100%; }
+            .hero-buttons button { width: 100%; }
           }
         `}</style>
 
-        {/* Navigation */}
+        {/* --- Nav --- */}
         <nav style={{
           position: 'fixed',
           top: 0,
           left: 0,
           right: 0,
           zIndex: 100,
-          padding: '16px 24px',
+          padding: `${spacing.lg}px ${spacing.xl}px`,
           ...glassStyle,
           borderBottom: `1px solid ${colors.border}`,
           opacity: isLoaded ? 1 : 0,
-          transition: 'opacity 0.5s ease',
+          transition: `opacity 0.5s ease`,
         }}>
           <div style={{
             maxWidth: 1200,
@@ -237,17 +161,11 @@ export default function LandingPage() {
             alignItems: 'center',
             justifyContent: 'space-between',
           }}>
-            {/* Logo */}
             <a href="/" style={{ display: 'flex', alignItems: 'center' }}>
-              <img
-                src="/images/flux_new_logo.png"
-                alt="Flux"
-                style={{ height: 44, width: 'auto' }}
-              />
+              <img src="/images/flux_new_logo.png" alt="Flux" style={{ height: 44, width: 'auto' }} />
             </a>
 
-            {/* Nav Buttons */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md }}>
               <button
                 onClick={() => router.push('/login')}
                 className="ghost-button"
@@ -278,7 +196,6 @@ export default function LandingPage() {
                   fontWeight: fontWeight.bold,
                   fontFamily: fontFamily.sans,
                   cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(212, 165, 116, 0.2)',
                 }}
               >
                 Get Started
@@ -287,7 +204,7 @@ export default function LandingPage() {
           </div>
         </nav>
 
-        {/* Hero Section */}
+        {/* --- Hero --- */}
         <section style={{
           minHeight: '100vh',
           display: 'flex',
@@ -295,97 +212,94 @@ export default function LandingPage() {
           padding: '120px 24px 80px',
           position: 'relative',
         }}>
-          {/* Background gradient */}
+          {/* Subtle top-left ambient light -- toned down */}
           <div style={{
             position: 'absolute',
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            background: `radial-gradient(ellipse at 30% 20%, rgba(212, 165, 116, 0.08) 0%, transparent 50%),
-                         radial-gradient(ellipse at 70% 80%, rgba(212, 165, 116, 0.05) 0%, transparent 40%)`,
+            background: 'radial-gradient(ellipse at 25% 15%, rgba(212,165,116,0.04) 0%, transparent 50%)',
             pointerEvents: 'none',
           }} />
 
-          <div style={{
-            maxWidth: 1200,
-            margin: '0 auto',
-            width: '100%',
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 80,
-            alignItems: 'center',
-          }} className="hero-grid">
-            {/* Hero Content */}
+          <div
+            className="hero-grid"
+            style={{
+              maxWidth: 1200,
+              margin: '0 auto',
+              width: '100%',
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 80,
+              alignItems: 'center',
+            }}
+          >
+            {/* Left -- copy */}
             <div style={{
               opacity: isLoaded ? 1 : 0,
-              transform: isLoaded ? 'translateY(0)' : 'translateY(30px)',
-              transition: 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
+              transform: isLoaded ? 'translateY(0)' : 'translateY(24px)',
+              transition: 'all 0.7s cubic-bezier(0.16,1,0.3,1)',
             }}>
-              {/* Badge */}
+              {/* Status badge */}
               <div style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 8,
-                padding: '8px 16px',
+                padding: '6px 14px',
                 borderRadius: borderRadius.full,
                 background: colors.accentDark,
                 border: `1px solid ${colors.borderAccent}`,
-                marginBottom: 24,
+                marginBottom: spacing.xl,
               }}>
                 <span style={{
-                  width: 8,
-                  height: 8,
+                  width: 7,
+                  height: 7,
                   borderRadius: '50%',
                   background: colors.accent,
-                  animation: 'pulse-glow 2s infinite',
+                  display: 'inline-block',
+                  animation: 'subtlePulse 2.4s ease-in-out infinite',
                 }} />
                 <span style={{
                   fontSize: fontSize.xs,
                   fontWeight: fontWeight.semibold,
                   color: colors.accent,
-                  letterSpacing: '0.05em',
+                  letterSpacing: '0.06em',
                   textTransform: 'uppercase',
                 }}>
                   ML-Powered Trading
                 </span>
               </div>
 
-              {/* Headline */}
-              <h1 className="landing-hero-title" style={{
-                fontSize: 56,
+              <h1 style={{
+                fontSize: fontSize.hero,
                 fontWeight: fontWeight.extrabold,
-                lineHeight: 1.1,
-                marginBottom: 24,
+                fontFamily: fontFamily.display,
+                lineHeight: 1.08,
                 letterSpacing: '-0.03em',
+                marginBottom: spacing.xl,
               }}>
-                Trade Smarter<br />
-                <span style={{ color: colors.accent }}>with ML</span>
+                Intraday trading,<br />
+                <span style={{ color: colors.accent }}>driven by ML</span>
               </h1>
 
-              {/* Subheadline */}
               <p style={{
                 fontSize: fontSize.lg,
                 color: colors.textSecondary,
                 lineHeight: 1.6,
                 marginBottom: 40,
-                maxWidth: 480,
+                maxWidth: 500,
               }}>
-                Flux uses machine learning to analyze market patterns and execute trades with precision.
-                Set your strategy once, let ML handle the rest.
+                Flux connects to your broker, analyzes live market data with machine learning models, and executes intraday trades within the risk parameters you define.
               </p>
 
-              {/* CTA Buttons */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 16,
-              }} className="hero-buttons">
+              {/* CTA */}
+              <div className="hero-buttons" style={{ display: 'flex', alignItems: 'center', gap: spacing.lg }}>
                 <button
                   onClick={() => router.push('/login?signup=true')}
                   className="cta-button"
                   style={{
-                    padding: '16px 32px',
+                    padding: '14px 32px',
                     borderRadius: borderRadius.md,
                     background: colors.accent,
                     border: 'none',
@@ -394,18 +308,15 @@ export default function LandingPage() {
                     fontWeight: fontWeight.bold,
                     fontFamily: fontFamily.sans,
                     cursor: 'pointer',
-                    boxShadow: '0 4px 16px rgba(212, 165, 116, 0.25)',
                   }}
                 >
-                  Start Trading Free
+                  Start Paper Trading
                 </button>
                 <button
-                  onClick={() => {
-                    document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
-                  }}
+                  onClick={() => router.push('/login')}
                   className="ghost-button"
                   style={{
-                    padding: '16px 32px',
+                    padding: '14px 32px',
                     borderRadius: borderRadius.md,
                     background: 'transparent',
                     border: `1px solid ${colors.border}`,
@@ -416,312 +327,101 @@ export default function LandingPage() {
                     cursor: 'pointer',
                   }}
                 >
-                  Learn More
+                  Log In
                 </button>
               </div>
             </div>
 
-            {/* Hero Visual - Animated Chart */}
-            <div className="hero-visual" style={{
-              opacity: isLoaded ? 1 : 0,
-              transform: isLoaded ? 'translateY(0)' : 'translateY(30px)',
-              transition: 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s',
-              position: 'relative',
-            }}>
+            {/* Right -- abstract terminal / product visualization */}
+            <div
+              className="hero-visual"
+              style={{
+                opacity: isLoaded ? 1 : 0,
+                transform: isLoaded ? 'translateY(0)' : 'translateY(24px)',
+                transition: 'all 0.7s cubic-bezier(0.16,1,0.3,1) 0.15s',
+              }}
+            >
               <div style={{
                 background: colors.bgCard,
                 borderRadius: borderRadius.xl,
                 border: `1px solid ${colors.border}`,
-                padding: 24,
+                overflow: 'hidden',
                 boxShadow: shadows.xl,
-                animation: 'float 6s ease-in-out infinite',
               }}>
-                {/* Chart Header */}
+                {/* Terminal title bar */}
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: 20,
+                  gap: 6,
+                  padding: '12px 16px',
+                  borderBottom: `1px solid ${colors.border}`,
                 }}>
-                  <div>
-                    <div style={{
-                      fontSize: fontSize.xs,
-                      color: colors.textMuted,
-                      marginBottom: 4,
-                    }}>
-                      Portfolio Value
-                    </div>
-                    <div style={{
-                      fontSize: fontSize['2xl'],
-                      fontWeight: fontWeight.bold,
-                      fontFamily: fontFamily.mono,
-                    }}>
-                      $124,832.50
-                    </div>
-                  </div>
-                  <div style={{
-                    padding: '6px 12px',
-                    borderRadius: borderRadius.full,
-                    background: colors.successDark,
-                    color: colors.success,
-                    fontSize: fontSize.sm,
-                    fontWeight: fontWeight.semibold,
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: colors.borderLight }} />
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: colors.borderLight }} />
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: colors.borderLight }} />
+                  <span style={{
+                    marginLeft: 12,
+                    fontSize: fontSize.xs,
+                    color: colors.textMuted,
+                    fontFamily: fontFamily.mono,
                   }}>
-                    +12.4%
-                  </div>
+                    flux — dashboard
+                  </span>
                 </div>
 
-                {/* SVG Chart */}
-                <svg viewBox="0 0 400 150" style={{ width: '100%', height: 150 }}>
-                  {/* Grid lines */}
-                  {[0, 1, 2, 3].map((i) => (
-                    <line
-                      key={i}
-                      x1="0"
-                      y1={i * 50}
-                      x2="400"
-                      y2={i * 50}
-                      stroke={colors.border}
-                      strokeWidth="1"
-                      strokeDasharray="4 4"
+                {/* Visualization area */}
+                <div style={{ padding: 24 }}>
+                  {/* Signal line chart */}
+                  <svg viewBox="0 0 400 120" style={{ width: '100%', height: 120, display: 'block' }}>
+                    <defs>
+                      <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={colors.accent} stopOpacity="0.15" />
+                        <stop offset="100%" stopColor={colors.accent} stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    {/* Horizontal grid */}
+                    {[30, 60, 90].map(y => (
+                      <line key={y} x1="0" y1={y} x2="400" y2={y} stroke={colors.border} strokeWidth="0.5" />
+                    ))}
+                    {/* Area */}
+                    <path
+                      d="M0,95 C30,90 50,85 80,70 C110,55 130,65 160,50 C190,35 210,45 240,30 C270,15 300,25 330,18 C360,12 380,16 400,10 L400,120 L0,120 Z"
+                      fill="url(#areaFill)"
                     />
-                  ))}
-
-                  {/* Area fill */}
-                  <defs>
-                    <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={colors.accent} stopOpacity="0.3" />
-                      <stop offset="100%" stopColor={colors.accent} stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                  <path
-                    d="M0,120 C50,100 80,110 120,80 C160,50 200,70 240,40 C280,10 320,30 360,20 L360,150 L0,150 Z"
-                    fill="url(#chartGradient)"
-                  />
-
-                  {/* Main line */}
-                  <path
-                    d="M0,120 C50,100 80,110 120,80 C160,50 200,70 240,40 C280,10 320,30 360,20"
-                    fill="none"
-                    stroke={colors.accent}
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    style={{
-                      strokeDasharray: 1000,
-                      animation: 'chart-line 2s ease forwards',
-                    }}
-                  />
-
-                  {/* Data points */}
-                  {[[0, 120], [120, 80], [240, 40], [360, 20]].map(([x, y], i) => (
-                    <circle
-                      key={i}
-                      cx={x}
-                      cy={y}
-                      r="5"
-                      fill={colors.bgPrimary}
+                    {/* Line */}
+                    <path
+                      d="M0,95 C30,90 50,85 80,70 C110,55 130,65 160,50 C190,35 210,45 240,30 C270,15 300,25 330,18 C360,12 380,16 400,10"
+                      fill="none"
                       stroke={colors.accent}
                       strokeWidth="2"
-                      style={{
-                        opacity: isLoaded ? 1 : 0,
-                        transition: `opacity 0.3s ease ${0.5 + i * 0.1}s`,
-                      }}
+                      strokeLinecap="round"
+                      style={{ strokeDasharray: 600, animation: 'drawLine 1.8s ease forwards' }}
                     />
-                  ))}
-                </svg>
+                  </svg>
 
-                {/* Stats row */}
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: 16,
-                  marginTop: 20,
-                  paddingTop: 20,
-                  borderTop: `1px solid ${colors.border}`,
-                }}>
-                  {[
-                    { label: 'Win Rate', value: '89%', color: colors.success },
-                    { label: 'Trades', value: '147', color: colors.textPrimary },
-                    { label: 'P&L', value: '+$12.4K', color: colors.success },
-                  ].map((stat, i) => (
-                    <div key={i} style={{ textAlign: 'center' }}>
-                      <div style={{
-                        fontSize: fontSize.xs,
-                        color: colors.textMuted,
-                        marginBottom: 4,
-                      }}>
-                        {stat.label}
-                      </div>
-                      <div style={{
-                        fontSize: fontSize.md,
-                        fontWeight: fontWeight.bold,
-                        color: stat.color,
-                        fontFamily: fontFamily.mono,
-                      }}>
-                        {stat.value}
-                      </div>
-                    </div>
-                  ))}
+                  {/* Simulated log lines */}
+                  <div style={{
+                    marginTop: 20,
+                    paddingTop: 16,
+                    borderTop: `1px solid ${colors.border}`,
+                    fontFamily: fontFamily.mono,
+                    fontSize: fontSize.xs,
+                    lineHeight: 2,
+                    color: colors.textMuted,
+                  }}>
+                    <div><span style={{ color: colors.textMuted }}>09:31:02</span> <span style={{ color: colors.accent }}>SIGNAL</span> <span style={{ color: colors.textSecondary }}>AAPL</span> long entry @ 227.34</div>
+                    <div><span style={{ color: colors.textMuted }}>09:31:02</span> <span style={{ color: colors.success }}>FILLED</span> <span style={{ color: colors.textSecondary }}>AAPL</span> 50 shares @ 227.35</div>
+                    <div><span style={{ color: colors.textMuted }}>09:44:18</span> <span style={{ color: colors.accent }}>SIGNAL</span> <span style={{ color: colors.textSecondary }}>AAPL</span> exit target hit</div>
+                    <div><span style={{ color: colors.textMuted }}>09:44:18</span> <span style={{ color: colors.success }}>CLOSED</span> <span style={{ color: colors.textSecondary }}>AAPL</span> +$42.50</div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Features Section */}
+        {/* --- Features --- */}
         <section id="features" style={{
-          padding: '100px 24px',
-          background: colors.bgSecondary,
-        }}>
-          <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-            {/* Section Header */}
-            <div style={{ textAlign: 'center', marginBottom: 64 }}>
-              <h2 style={{
-                fontSize: fontSize['2xl'],
-                fontWeight: fontWeight.bold,
-                marginBottom: 16,
-              }}>
-                Everything You Need to Trade
-              </h2>
-              <p style={{
-                fontSize: fontSize.lg,
-                color: colors.textSecondary,
-                maxWidth: 600,
-                margin: '0 auto',
-              }}>
-                Powerful features designed to give you an edge in the markets.
-              </p>
-            </div>
-
-            {/* Features Grid */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
-              gap: 24,
-            }} className="features-grid">
-              {features.map((feature, i) => (
-                <div
-                  key={i}
-                  className="feature-card"
-                  style={{
-                    background: colors.bgCard,
-                    borderRadius: borderRadius.lg,
-                    border: `1px solid ${colors.border}`,
-                    padding: 28,
-                    opacity: isLoaded ? 1 : 0,
-                    transform: isLoaded ? 'translateY(0)' : 'translateY(20px)',
-                    transition: `all 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${0.1 * i}s`,
-                  }}
-                >
-                  <div style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: borderRadius.md,
-                    background: colors.accentDark,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 24,
-                    marginBottom: 20,
-                  }}>
-                    {feature.icon}
-                  </div>
-                  <h3 style={{
-                    fontSize: fontSize.md,
-                    fontWeight: fontWeight.semibold,
-                    marginBottom: 12,
-                  }}>
-                    {feature.title}
-                  </h3>
-                  <p style={{
-                    fontSize: fontSize.sm,
-                    color: colors.textSecondary,
-                    lineHeight: 1.6,
-                  }}>
-                    {feature.description}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* How It Works Section */}
-        <section style={{
-          padding: '100px 24px',
-        }}>
-          <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-            {/* Section Header */}
-            <div style={{ textAlign: 'center', marginBottom: 64 }}>
-              <h2 style={{
-                fontSize: fontSize['2xl'],
-                fontWeight: fontWeight.bold,
-                marginBottom: 16,
-              }}>
-                How It Works
-              </h2>
-              <p style={{
-                fontSize: fontSize.lg,
-                color: colors.textSecondary,
-                maxWidth: 600,
-                margin: '0 auto',
-              }}>
-                Get started in minutes with three simple steps.
-              </p>
-            </div>
-
-            {/* Steps */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: 32,
-            }} className="steps-grid">
-              {steps.map((step, i) => (
-                <div
-                  key={i}
-                  className="step-card"
-                  style={{
-                    padding: 32,
-                    borderRadius: borderRadius.lg,
-                    background: colors.bgSecondary,
-                    border: `1px solid ${colors.border}`,
-                    position: 'relative',
-                    opacity: isLoaded ? 1 : 0,
-                    transform: isLoaded ? 'translateY(0)' : 'translateY(20px)',
-                    transition: `all 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${0.15 * i}s`,
-                  }}
-                >
-                  <div style={{
-                    fontSize: 48,
-                    fontWeight: fontWeight.extrabold,
-                    color: colors.accentDark,
-                    marginBottom: 16,
-                    fontFamily: fontFamily.mono,
-                  }}>
-                    {step.number}
-                  </div>
-                  <h3 style={{
-                    fontSize: fontSize.lg,
-                    fontWeight: fontWeight.semibold,
-                    marginBottom: 12,
-                  }}>
-                    {step.title}
-                  </h3>
-                  <p style={{
-                    fontSize: fontSize.sm,
-                    color: colors.textSecondary,
-                    lineHeight: 1.6,
-                  }}>
-                    {step.description}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Stats Section */}
-        <section style={{
           padding: '80px 24px',
           background: colors.bgSecondary,
         }}>
@@ -729,104 +429,60 @@ export default function LandingPage() {
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(4, 1fr)',
-              gap: 32,
-            }} className="stats-grid">
-              {stats.map((stat, i) => (
-                <div
-                  key={i}
-                  style={{
-                    textAlign: 'center',
-                    opacity: isLoaded ? 1 : 0,
-                    transform: isLoaded ? 'translateY(0)' : 'translateY(20px)',
-                    transition: `all 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${0.1 * i}s`,
-                  }}
-                >
-                  <div style={{
-                    fontSize: 40,
-                    fontWeight: fontWeight.extrabold,
-                    color: colors.accent,
-                    marginBottom: 8,
-                    fontFamily: fontFamily.mono,
-                  }}>
-                    {stat.value}
+              gap: spacing.xl,
+            }} className="features-grid">
+              {features.map((feature, i) => {
+                const FeatureIcon = feature.Icon;
+                return (
+                  <div
+                    key={i}
+                    className="feature-card"
+                    style={{
+                      background: colors.bgCard,
+                      borderRadius: borderRadius.lg,
+                      border: `1px solid ${colors.border}`,
+                      padding: spacing.xl,
+                      opacity: isLoaded ? 1 : 0,
+                      transform: isLoaded ? 'translateY(0)' : 'translateY(16px)',
+                      transition: `all 0.5s cubic-bezier(0.16,1,0.3,1) ${0.08 * i}s`,
+                    }}
+                  >
+                    <div style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: borderRadius.md,
+                      background: colors.accentDark,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: spacing.lg,
+                    }}>
+                      <FeatureIcon color={colors.accent} size={20} />
+                    </div>
+                    <h3 style={{
+                      fontSize: fontSize.sm,
+                      fontWeight: fontWeight.semibold,
+                      marginBottom: spacing.sm,
+                    }}>
+                      {feature.title}
+                    </h3>
+                    <p style={{
+                      fontSize: fontSize.xs,
+                      color: colors.textSecondary,
+                      lineHeight: 1.6,
+                    }}>
+                      {feature.description}
+                    </p>
                   </div>
-                  <div style={{
-                    fontSize: fontSize.sm,
-                    color: colors.textSecondary,
-                    fontWeight: fontWeight.medium,
-                  }}>
-                    {stat.label}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>
 
-        {/* CTA Section */}
-        <section style={{
-          padding: '120px 24px',
-          position: 'relative',
-        }}>
-          {/* Background accent */}
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: 600,
-            height: 600,
-            background: `radial-gradient(circle, rgba(212, 165, 116, 0.1) 0%, transparent 70%)`,
-            pointerEvents: 'none',
-          }} />
-
-          <div style={{
-            maxWidth: 700,
-            margin: '0 auto',
-            textAlign: 'center',
-            position: 'relative',
-          }}>
-            <h2 style={{
-              fontSize: fontSize['3xl'],
-              fontWeight: fontWeight.extrabold,
-              marginBottom: 20,
-              lineHeight: 1.2,
-            }}>
-              Ready to Trade Smarter?
-            </h2>
-            <p style={{
-              fontSize: fontSize.lg,
-              color: colors.textSecondary,
-              marginBottom: 40,
-              lineHeight: 1.6,
-            }}>
-              Join thousands of traders using ML to gain an edge in the markets.
-              Start with paper trading, no credit card required.
-            </p>
-            <button
-              onClick={() => router.push('/login?signup=true')}
-              className="cta-button"
-              style={{
-                padding: '18px 48px',
-                borderRadius: borderRadius.md,
-                background: colors.accent,
-                border: 'none',
-                color: colors.bgPrimary,
-                fontSize: fontSize.lg,
-                fontWeight: fontWeight.bold,
-                fontFamily: fontFamily.sans,
-                cursor: 'pointer',
-                boxShadow: '0 4px 20px rgba(212, 165, 116, 0.3)',
-              }}
-            >
-              Get Started for Free
-            </button>
-          </div>
-        </section>
-
-        {/* Footer */}
+        {/* --- Footer --- */}
         <footer style={{
-          padding: '40px 24px',
+          padding: '32px 24px',
           borderTop: `1px solid ${colors.border}`,
         }}>
           <div style={{
@@ -836,42 +492,27 @@ export default function LandingPage() {
             alignItems: 'center',
             justifyContent: 'space-between',
             flexWrap: 'wrap',
-            gap: 20,
+            gap: 16,
           }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 24,
-            }}>
-              <img
-                src="/images/flux_new_logo.png"
-                alt="Flux"
-                style={{ height: 32, width: 'auto', opacity: 0.8 }}
-              />
-              <span style={{
-                fontSize: fontSize.sm,
-                color: colors.textMuted,
-              }}>
-                {new Date().getFullYear()} Flux Trading. All rights reserved.
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing.xl }}>
+              <img src="/images/flux_new_logo.png" alt="Flux" style={{ height: 28, width: 'auto', opacity: 0.7 }} />
+              <span style={{ fontSize: fontSize.xs, color: colors.textMuted }}>
+                {new Date().getFullYear()} Flux Trading
               </span>
             </div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 24,
-            }}>
-              {['Privacy', 'Terms', 'Contact'].map((link) => (
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing.xl }}>
+              {['Privacy', 'Terms'].map((link) => (
                 <a
                   key={link}
                   href={`/${link.toLowerCase()}`}
                   style={{
-                    fontSize: fontSize.sm,
-                    color: colors.textSecondary,
+                    fontSize: fontSize.xs,
+                    color: colors.textMuted,
                     textDecoration: 'none',
-                    transition: 'color 0.2s ease',
+                    transition: `color ${transitions.fast}`,
                   }}
-                  onMouseEnter={(e) => e.target.style.color = colors.accent}
-                  onMouseLeave={(e) => e.target.style.color = colors.textSecondary}
+                  onMouseEnter={(e) => e.target.style.color = colors.textSecondary}
+                  onMouseLeave={(e) => e.target.style.color = colors.textMuted}
                 >
                   {link}
                 </a>

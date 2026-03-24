@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { colors, fontSize, fontWeight, shadows, transitions } from '../lib/theme';
+import { darkTheme as colors, fontSize, fontWeight, shadows, transitions } from '../lib/theme';
 import { useAuth } from '../lib/auth';
 import { fetchPresets, completeOnboarding, fetchUserSettings } from '../lib/api';
 import PresetSelector from '../components/PresetSelector';

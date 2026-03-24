@@ -223,10 +223,12 @@ function Dashboard() {
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
+  const tradingMode = userSettings?.trading_mode || 'paper';
+
   return (
     <Layout>
       <div style={{
-        padding: spacing.xl,
+        padding: `${spacing.lg}px ${spacing.xl}px`,
         maxWidth: 1200,
         margin: '0 auto',
         minHeight: 'calc(100vh - 80px)',
@@ -272,7 +274,7 @@ function Dashboard() {
               style={{
                 background: t.type === 'error' ? colors.error : colors.success,
                 color: '#fff',
-                padding: `${spacing.sm} ${spacing.md}`,
+                padding: `${spacing.sm}px ${spacing.md}px`,
                 borderRadius: borderRadius.md,
                 marginBottom: spacing.sm,
                 fontFamily: fontFamily.sans,
@@ -290,43 +292,42 @@ function Dashboard() {
           ))}
         </div>
 
-        {/* ===== HERO: Today's P&L ===== */}
+        {/* ===== HERO: Daily P&L - The dominant element ===== */}
         <section className="fadeUp" style={{
           textAlign: 'center',
-          padding: `${spacing.xxl} 0`,
-          marginBottom: spacing.xl,
+          padding: `${spacing['3xl']}px 0 ${spacing.lg}px`,
           position: 'relative',
         }}>
           {/* Subtle radial glow behind the number */}
           <div style={{
             position: 'absolute',
-            top: '50%',
+            top: '40%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            width: 400,
-            height: 200,
-            background: `radial-gradient(ellipse, ${todayPnl >= 0 ? 'rgba(212,165,116,0.08)' : 'rgba(248,81,73,0.08)'} 0%, transparent 70%)`,
+            width: 500,
+            height: 250,
+            background: `radial-gradient(ellipse, ${todayPnl >= 0 ? 'rgba(212,165,116,0.06)' : 'rgba(248,81,73,0.06)'} 0%, transparent 70%)`,
             pointerEvents: 'none',
           }} />
 
           <div style={{
-            fontSize: fontSize.sm,
-            color: colors.textSecondary,
+            fontSize: fontSize.xs,
+            color: colors.textMuted,
             fontFamily: fontFamily.sans,
             fontWeight: fontWeight.medium,
             textTransform: 'uppercase',
-            letterSpacing: '0.1em',
+            letterSpacing: '0.15em',
             marginBottom: spacing.sm,
           }}>
             {statsDate ? `Last Session (${formatStatsDate(statsDate)})` : "Today's P&L"}
           </div>
 
           <div className="hero-text" style={{
-            fontFamily: fontFamily.display,
-            fontSize: fontSize.hero,
-            fontWeight: fontWeight.bold,
+            fontFamily: fontFamily.mono,
+            fontSize: '72px',
+            fontWeight: fontWeight.extrabold,
             color: pnlColor(todayPnl),
-            letterSpacing: '-0.02em',
+            letterSpacing: '-0.03em',
             lineHeight: 1,
             marginBottom: spacing.md,
           }}>
@@ -337,86 +338,146 @@ function Dashboard() {
             display: 'flex',
             justifyContent: 'center',
             flexWrap: 'wrap',
-            gap: spacing.sm,
+            gap: spacing.lg,
             fontSize: fontSize.sm,
             color: colors.textSecondary,
             fontFamily: fontFamily.sans,
           }}>
-            <span style={{ color: pnlColor(todayPnlPct) }}>
+            <span style={{ color: pnlColor(todayPnlPct), fontWeight: fontWeight.semibold }}>
               {todayPnlPct >= 0 ? '▲' : '▼'} {Math.abs(todayPnlPct).toFixed(2)}%
             </span>
-            <span className="hide-mobile">•</span>
             <span>{todayTrades} trade{todayTrades !== 1 ? 's' : ''}</span>
-            <span className="hide-mobile">•</span>
             <span>{todayWinRate}% win rate</span>
           </div>
 
           {/* 14-day P&L Sparkline */}
           {dailyPnl.length >= 2 && (
             <div style={{ marginTop: spacing.lg }}>
-              <div style={{
-                fontSize: fontSize.xs,
-                color: colors.textMuted,
-                fontFamily: fontFamily.sans,
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                marginBottom: spacing.xs,
-              }}>
-                14-Day Trend
-              </div>
-              <PnlSparkline data={dailyPnl} colors={colors} width={200} height={40} />
+              <PnlSparkline data={dailyPnl} colors={colors} width={240} height={36} />
             </div>
           )}
         </section>
 
-        {/* ===== Quick Stats Row ===== */}
-        <section className="fadeUp delay-1 responsive-grid-3" style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: spacing.md,
+        {/* ===== Status Bar: system status, account stats, mode ===== */}
+        <section className="fadeUp delay-1" style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexWrap: 'wrap',
+          gap: spacing.lg,
+          padding: `${spacing.md}px 0`,
           marginBottom: spacing.xl,
+          borderTop: `1px solid ${colors.border}`,
+          borderBottom: `1px solid ${colors.border}`,
         }}>
-          {/* Account Equity */}
-          <StatCard
-            colors={colors}
-            label="Account Equity"
-            value={!alpacaConfigured ? '—' : fmtNoSign(equity)}
-            sublabel={alpacaError ? 'Broker not connected' : 'Total Value'}
-            valueColor={alpacaError ? colors.textMuted : undefined}
-          />
+          {/* Market status dot */}
+          <span style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: fontSize.xs,
+            fontFamily: fontFamily.sans,
+            color: colors.textSecondary,
+          }}>
+            <span style={{
+              width: 7,
+              height: 7,
+              borderRadius: '50%',
+              background: marketOpen ? colors.success : colors.error,
+              boxShadow: marketOpen ? `0 0 6px ${colors.success}` : 'none',
+              animation: marketOpen ? 'pulse 2s infinite' : 'none',
+              display: 'inline-block',
+            }} />
+            Market {marketOpen ? 'Open' : 'Closed'}
+            {marketCloseTime && marketOpen ? ` (closes ${fmtTime(marketCloseTime)})` : ''}
+          </span>
 
-          {/* Unrealized P&L */}
-          <StatCard
+          <span style={{ color: colors.border }}>|</span>
+
+          {/* System status */}
+          <span style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: fontSize.xs,
+            fontFamily: fontFamily.sans,
+            color: colors.textSecondary,
+          }}>
+            <span style={{
+              width: 7,
+              height: 7,
+              borderRadius: '50%',
+              background: status?.running ? colors.success : colors.textMuted,
+              display: 'inline-block',
+            }} />
+            {status?.running ? 'System Active' : 'System Idle'}
+          </span>
+
+          <span style={{ color: colors.border }}>|</span>
+
+          {/* Trading mode pill */}
+          <span style={{
+            fontSize: fontSize.xs,
+            fontFamily: fontFamily.mono,
+            fontWeight: fontWeight.semibold,
+            color: tradingMode === 'live' ? colors.warning : colors.textMuted,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+          }}>
+            {tradingMode}
+          </span>
+
+          <span style={{ color: colors.border }}>|</span>
+
+          {/* Last refresh */}
+          {lastRefresh && (
+            <span style={{
+              fontSize: fontSize.xs,
+              fontFamily: fontFamily.sans,
+              color: colors.textMuted,
+            }}>
+              Updated {lastRefresh.toLocaleTimeString()}
+            </span>
+          )}
+        </section>
+
+        {/* ===== Account Stats Pills ===== */}
+        <section className="fadeUp delay-1" style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: spacing.sm,
+          marginBottom: spacing.xl,
+          justifyContent: 'center',
+        }}>
+          <StatPill
+            label="Equity"
+            value={!alpacaConfigured ? '—' : fmtNoSign(equity)}
             colors={colors}
+            valueColor={alpacaError ? colors.textMuted : colors.textPrimary}
+          />
+          <StatPill
             label="Unrealized"
             value={fmt(unrealizedPnl)}
-            valueColor={pnlColor(unrealizedPnl)}
-            sublabel={`${positionCount} position${positionCount !== 1 ? 's' : ''}`}
-          />
-
-          {/* Market Status */}
-          <StatCard
             colors={colors}
-            label="Market"
-            value={
-              <span style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
-                <span style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: '50%',
-                  background: marketOpen ? colors.success : colors.error,
-                  boxShadow: marketOpen ? `0 0 8px ${colors.success}` : 'none',
-                  animation: marketOpen ? 'pulse 2s infinite' : 'none',
-                }} />
-                {marketOpen ? 'Open' : 'Closed'}
-              </span>
-            }
-            sublabel={marketCloseTime ? `Closes ${fmtTime(marketCloseTime)}` : ''}
+            valueColor={pnlColor(unrealizedPnl)}
           />
+          <StatPill
+            label="Positions"
+            value={String(positionCount)}
+            colors={colors}
+          />
+          {alpacaError && (
+            <StatPill
+              label="Broker"
+              value="Not Connected"
+              colors={colors}
+              valueColor={colors.error}
+            />
+          )}
         </section>
 
         {/* ===== Active Positions ===== */}
-        <section className="fadeUp delay-2" style={{ marginBottom: spacing.xl }}>
+        <section className="fadeUp delay-2" style={{ marginBottom: spacing['3xl'] }}>
           <div className="flex-mobile-col" style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -426,10 +487,12 @@ function Dashboard() {
           }}>
             <h2 className="section-title" style={{
               fontFamily: fontFamily.sans,
-              fontSize: fontSize.lg,
+              fontSize: fontSize.base,
               fontWeight: fontWeight.semibold,
-              color: colors.textPrimary,
+              color: colors.textSecondary,
               margin: 0,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
             }}>
               Active Positions
             </h2>
@@ -441,30 +504,25 @@ function Dashboard() {
                 aria-busy={acting}
                 className="btn-press"
                 style={{
-                  padding: `${spacing.md} ${spacing.xl}`,
+                  padding: `${spacing.sm}px ${spacing.lg}px`,
                   background: colors.accent,
                   color: colors.bgPrimary,
                   border: 'none',
-                  borderRadius: borderRadius.md,
+                  borderRadius: borderRadius.sm,
                   fontFamily: fontFamily.sans,
-                  fontSize: fontSize.md,
+                  fontSize: fontSize.sm,
                   fontWeight: fontWeight.bold,
                   cursor: acting ? 'wait' : 'pointer',
                   opacity: acting ? 0.7 : 1,
                   transition: 'all 0.2s ease',
-                  boxShadow: `0 2px 8px rgba(212, 165, 116, 0.3)`,
                 }}
                 onMouseEnter={(e) => {
                   if (!acting) {
                     e.currentTarget.style.background = colors.accentHover;
-                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(212, 165, 116, 0.4)';
-                    e.currentTarget.style.transform = 'scale(1.02)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = colors.accent;
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(212, 165, 116, 0.3)';
-                  e.currentTarget.style.transform = 'scale(1)';
                 }}
               >
                 {acting ? 'Running...' : 'Run Cycle'}
@@ -474,17 +532,18 @@ function Dashboard() {
                   onClick={handleForceExit}
                   disabled={acting}
                   style={{
-                    padding: `${spacing.sm} ${spacing.md}`,
+                    padding: `${spacing.xs}px ${spacing.md}px`,
                     background: 'transparent',
                     color: colors.error,
-                    border: `1px solid ${colors.error}`,
-                    borderRadius: borderRadius.md,
+                    border: 'none',
+                    borderRadius: borderRadius.sm,
                     fontFamily: fontFamily.sans,
-                    fontSize: fontSize.sm,
+                    fontSize: fontSize.xs,
                     fontWeight: fontWeight.medium,
                     cursor: acting ? 'wait' : 'pointer',
                     opacity: acting ? 0.7 : 1,
                     transition: transitions.fast,
+                    textDecoration: 'underline',
                   }}
                 >
                   Exit All
@@ -495,46 +554,81 @@ function Dashboard() {
 
           {positions.length === 0 ? (
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-              gap: spacing.md,
+              padding: `${spacing.xl}px 0`,
+              textAlign: 'center',
+              color: colors.textMuted,
+              fontSize: fontSize.sm,
+              fontFamily: fontFamily.sans,
+              borderTop: `1px solid ${colors.border}`,
             }}>
-              {[1, 2, 3].map(i => (
-                <div key={i} style={{
-                  padding: spacing.lg,
-                  background: colors.bgSecondary,
-                  borderRadius: borderRadius.lg,
-                  border: `1px dashed ${colors.border}`,
-                  height: 120,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                  <span style={{
-                    color: colors.textMuted,
-                    fontSize: fontSize.sm,
-                    fontFamily: fontFamily.sans,
-                  }}>
-                    No position
-                  </span>
-                </div>
-              ))}
+              No active positions — trades open automatically during market hours
             </div>
           ) : (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-              gap: spacing.md,
-            }}>
-              {positions.map((pos, i) => (
-                <PositionCard key={pos.symbol} position={pos} colors={colors} index={i} />
-              ))}
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <ThCell colors={colors}>Symbol</ThCell>
+                    <ThCell colors={colors}>Side</ThCell>
+                    <ThCell colors={colors}>Qty</ThCell>
+                    <ThCell colors={colors}>Entry</ThCell>
+                    <ThCell colors={colors}>P&L</ThCell>
+                    <ThCell colors={colors}>Type</ThCell>
+                  </tr>
+                </thead>
+                <tbody>
+                  {positions.map((pos) => {
+                    const posPnl = parseFloat(pos.unrealized_pnl || 0);
+                    const isProfit = posPnl >= 0;
+                    return (
+                      <tr key={pos.symbol} style={{ borderBottom: `1px solid ${colors.border}` }}>
+                        <TdCell style={{
+                          fontFamily: fontFamily.mono,
+                          fontWeight: fontWeight.bold,
+                          color: colors.textPrimary,
+                        }}>
+                          {pos.symbol}
+                        </TdCell>
+                        <TdCell>
+                          <span style={{
+                            color: pos.side === 'LONG' ? colors.success : colors.error,
+                            fontWeight: fontWeight.semibold,
+                            fontSize: fontSize.xs,
+                          }}>
+                            {pos.side}
+                          </span>
+                        </TdCell>
+                        <TdCell style={{ fontFamily: fontFamily.mono, color: colors.textSecondary }}>
+                          {pos.qty}
+                        </TdCell>
+                        <TdCell style={{ fontFamily: fontFamily.mono, color: colors.textSecondary }}>
+                          ${parseFloat(pos.entry_price).toFixed(2)}
+                        </TdCell>
+                        <TdCell style={{
+                          fontFamily: fontFamily.mono,
+                          fontWeight: fontWeight.bold,
+                          color: isProfit ? colors.accent : colors.error,
+                        }}>
+                          {posPnl >= 0 ? '+' : ''}{posPnl.toFixed(2)}
+                        </TdCell>
+                        <TdCell style={{
+                          fontSize: fontSize.xs,
+                          color: colors.textMuted,
+                          fontFamily: fontFamily.mono,
+                        }}>
+                          {pos.trade_type || 'LLM'}
+                        </TdCell>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </section>
 
-        {/* ===== Recent Activity ===== */}
-        <section className="fadeUp delay-3" style={{ marginBottom: spacing.xl }}>
+        {/* ===== Recent Trades ===== */}
+        <section className="fadeUp delay-3" style={{ marginBottom: spacing['3xl'] }}>
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -543,103 +637,86 @@ function Dashboard() {
           }}>
             <h2 style={{
               fontFamily: fontFamily.sans,
-              fontSize: fontSize.lg,
+              fontSize: fontSize.base,
               fontWeight: fontWeight.semibold,
-              color: colors.textPrimary,
+              color: colors.textSecondary,
               margin: 0,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
             }}>
-              Recent Activity
+              Recent Trades
             </h2>
             <Link
               href="/history"
               aria-label="View full trade history"
               style={{
-                color: colors.accent,
-                fontSize: fontSize.sm,
+                color: colors.textMuted,
+                fontSize: fontSize.xs,
                 fontFamily: fontFamily.sans,
                 textDecoration: 'none',
                 transition: 'all 0.15s ease',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.color = colors.accentHover;
-                e.currentTarget.style.textDecoration = 'underline';
+                e.currentTarget.style.color = colors.accent;
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.color = colors.accent;
-                e.currentTarget.style.textDecoration = 'none';
+                e.currentTarget.style.color = colors.textMuted;
               }}
             >
-              View Full History →
+              View All →
             </Link>
           </div>
 
-          <div style={{
-            background: colors.bgSecondary,
-            borderRadius: borderRadius.lg,
-            border: `1px solid ${colors.border}`,
-            overflow: 'hidden',
-          }}>
-            {trades.length === 0 ? (
-              <div style={{
-                padding: spacing.xl,
-                textAlign: 'center',
-                color: colors.textMuted,
-                fontFamily: fontFamily.sans,
-                fontSize: fontSize.sm,
-              }}>
-                No recent trades
-              </div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
-                  <thead>
-                    <tr style={{ background: colors.bgTertiary }}>
-                      <ThCell colors={colors}>Date</ThCell>
-                      <ThCell colors={colors}>Symbol</ThCell>
-                      <ThCell colors={colors}>Direction</ThCell>
-                      <ThCell colors={colors}>Qty</ThCell>
-                      <ThCell colors={colors}>Price</ThCell>
-                      <ThCell colors={colors}>P&L</ThCell>
-                      <ThCell colors={colors}>P&L %</ThCell>
-                      <ThCell colors={colors}>Hold</ThCell>
-                      <ThCell colors={colors}>Result</ThCell>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {trades.slice(0, 10).map((trade, i) => (
-                      <TradeRow key={trade.id || i} trade={trade} colors={colors} />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          {trades.length === 0 ? (
+            <div style={{
+              padding: `${spacing.xl}px 0`,
+              textAlign: 'center',
+              color: colors.textMuted,
+              fontFamily: fontFamily.sans,
+              fontSize: fontSize.sm,
+              borderTop: `1px solid ${colors.border}`,
+            }}>
+              No recent trades
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
+                <thead>
+                  <tr>
+                    <ThCell colors={colors}>Date</ThCell>
+                    <ThCell colors={colors}>Symbol</ThCell>
+                    <ThCell colors={colors}>Direction</ThCell>
+                    <ThCell colors={colors}>Qty</ThCell>
+                    <ThCell colors={colors}>Price</ThCell>
+                    <ThCell colors={colors}>P&L</ThCell>
+                    <ThCell colors={colors}>P&L %</ThCell>
+                    <ThCell colors={colors}>Hold</ThCell>
+                    <ThCell colors={colors}>Result</ThCell>
+                  </tr>
+                </thead>
+                <tbody>
+                  {trades.slice(0, 10).map((trade, i) => (
+                    <TradeRow key={trade.id || i} trade={trade} colors={colors} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
 
-        {/* ===== Quick Links ===== */}
+        {/* ===== Quick Links - compact footer row ===== */}
         <section className="fadeUp delay-4" style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-          gap: spacing.md,
+          display: 'flex',
+          justifyContent: 'center',
+          gap: spacing.xl,
+          paddingTop: spacing.lg,
+          borderTop: `1px solid ${colors.border}`,
         }}>
           <QuickLink href="/analytics" label="Analytics" colors={colors} />
           <QuickLink href="/symbols" label="Symbols" colors={colors} />
           <QuickLink href="/timing" label="Timing" colors={colors} />
           <QuickLink href="/settings" label="Settings" colors={colors} />
         </section>
-
-        {/* Last updated indicator */}
-        {lastRefresh && (
-          <div style={{
-            marginTop: spacing.xl,
-            textAlign: 'center',
-            color: colors.textMuted,
-            fontSize: fontSize.xs,
-            fontFamily: fontFamily.sans,
-          }}>
-            Last updated: {lastRefresh.toLocaleTimeString()}
-          </div>
-        )}
       </div>
     </Layout>
   );
@@ -647,127 +724,30 @@ function Dashboard() {
 
 // ===== Sub-Components =====
 
-function StatCard({ colors, label, value, sublabel, valueColor }) {
-  const [hovered, setHovered] = useState(false);
-
+function StatPill({ label, value, colors, valueColor }) {
   return (
-    <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        padding: spacing.lg,
-        background: colors.bgSecondary,
-        borderRadius: borderRadius.lg,
-        border: `1px solid ${hovered ? colors.borderLight : colors.border}`,
-        transition: 'all 0.2s ease',
-        transform: hovered ? 'translateY(-1px)' : 'translateY(0)',
-        boxShadow: hovered ? '0 4px 12px rgba(0, 0, 0, 0.15)' : 'none',
-      }}
-    >
-      <div style={{
-        fontSize: fontSize.xs,
-        color: colors.textMuted,
-        fontFamily: fontFamily.sans,
-        fontWeight: fontWeight.medium,
-        textTransform: 'uppercase',
-        letterSpacing: '0.05em',
-        marginBottom: spacing.xs,
-      }}>
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 6,
+      padding: `${spacing.xs}px ${spacing.md}px`,
+      borderRadius: borderRadius.full,
+      background: colors.bgSecondary,
+      border: `1px solid ${colors.border}`,
+      fontSize: fontSize.xs,
+      fontFamily: fontFamily.sans,
+    }}>
+      <span style={{ color: colors.textMuted, fontWeight: fontWeight.medium }}>
         {label}
-      </div>
-      <div style={{
-        fontFamily: fontFamily.display,
-        fontSize: fontSize['2xl'],
-        fontWeight: fontWeight.bold,
+      </span>
+      <span style={{
         color: valueColor || colors.textPrimary,
-        marginBottom: spacing.xs,
+        fontWeight: fontWeight.bold,
+        fontFamily: fontFamily.mono,
       }}>
         {value}
-      </div>
-      {sublabel && (
-        <div style={{
-          fontSize: fontSize.sm,
-          color: colors.textSecondary,
-          fontFamily: fontFamily.sans,
-        }}>
-          {sublabel}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PositionCard({ position, colors, index }) {
-  const pnl = parseFloat(position.unrealized_pnl || 0);
-  const isProfit = pnl >= 0;
-  const borderColor = isProfit ? 'rgba(212, 165, 116, 0.4)' : 'rgba(248, 81, 73, 0.4)';
-  const tradeType = position.trade_type || 'LLM';
-
-  return (
-    <div style={{
-      padding: spacing.lg,
-      background: colors.bgSecondary,
-      borderRadius: borderRadius.lg,
-      border: `1px solid ${borderColor}`,
-      animation: 'slideIn 0.3s ease-out forwards',
-      animationDelay: `${index * 0.1}s`,
-      opacity: 0,
-    }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: spacing.sm,
-      }}>
-        <span style={{
-          fontFamily: fontFamily.mono,
-          fontSize: fontSize.lg,
-          fontWeight: fontWeight.bold,
-          color: colors.textPrimary,
-        }}>
-          {position.symbol}
-        </span>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-          <span style={{
-            fontSize: fontSize.xs,
-            color: position.side === 'LONG' ? colors.success : colors.error,
-            fontFamily: fontFamily.sans,
-            fontWeight: fontWeight.medium,
-            padding: `2px ${spacing.xs}`,
-            background: position.side === 'LONG' ? colors.successDark : colors.errorDark,
-            borderRadius: borderRadius.sm,
-          }}>
-            {position.side}
-          </span>
-          <span style={{
-            fontSize: '10px',
-            color: colors.textMuted,
-            fontFamily: fontFamily.mono,
-            letterSpacing: '0.5px',
-          }}>
-            {tradeType}
-          </span>
-        </div>
-      </div>
-
-      <div style={{
-        fontFamily: fontFamily.mono,
-        fontSize: fontSize.xl,
-        fontWeight: fontWeight.bold,
-        color: isProfit ? colors.accent : colors.error,
-        marginBottom: spacing.xs,
-      }}>
-        {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)}
-      </div>
-
-      <div style={{
-        fontSize: fontSize.sm,
-        color: colors.textSecondary,
-        fontFamily: fontFamily.sans,
-      }}>
-        {position.qty} shares @ ${parseFloat(position.entry_price).toFixed(2)}
-      </div>
-    </div>
+      </span>
+    </span>
   );
 }
 
@@ -775,13 +755,14 @@ function ThCell({ children, colors }) {
   return (
     <th style={{
       textAlign: 'left',
-      padding: '12px 14px',
-      fontSize: fontSize.xs,
-      fontWeight: fontWeight.bold,
+      padding: '8px 12px',
+      fontSize: '11px',
+      fontWeight: fontWeight.semibold,
       color: colors.textMuted,
       textTransform: 'uppercase',
-      letterSpacing: '0.5px',
+      letterSpacing: '0.06em',
       fontFamily: fontFamily.sans,
+      borderBottom: `1px solid ${colors.border}`,
     }}>
       {children}
     </th>
@@ -791,7 +772,7 @@ function ThCell({ children, colors }) {
 function TdCell({ children, style = {} }) {
   return (
     <td style={{
-      padding: '12px 14px',
+      padding: '7px 12px',
       fontSize: fontSize.sm,
       fontFamily: fontFamily.sans,
       ...style,
@@ -807,18 +788,14 @@ function TradeRow({ trade, colors }) {
   const pnlPct = parseFloat(trade.pnl_pct || 0) * 100;
   const isExit = trade.is_exit;
 
-  const bgTint = pnl > 0 ? 'rgba(212, 165, 116, 0.03)'
-               : pnl < 0 ? 'rgba(248, 81, 73, 0.03)'
-               : 'transparent';
-
   return (
     <tr
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        borderTop: `1px solid ${colors.border}`,
-        background: hovered ? colors.bgTertiary : bgTint,
-        transition: 'background 0.15s ease',
+        borderBottom: `1px solid ${colors.border}`,
+        background: hovered ? colors.bgSecondary : 'transparent',
+        transition: 'background 0.1s ease',
       }}
     >
       {/* Date */}
@@ -880,31 +857,21 @@ function TradeRow({ trade, colors }) {
 }
 
 function QuickLink({ href, label, colors }) {
-  const [hovered, setHovered] = useState(false);
-
   return (
     <Link
       href={href}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
       aria-label={`Go to ${label}`}
       style={{
-        display: 'block',
-        padding: spacing.md,
-        background: hovered ? colors.bgTertiary : colors.bgSecondary,
-        borderRadius: borderRadius.md,
-        border: `1px solid ${hovered ? colors.borderAccent : colors.border}`,
-        textAlign: 'center',
         textDecoration: 'none',
         fontFamily: fontFamily.sans,
         fontSize: fontSize.sm,
         fontWeight: fontWeight.medium,
-        color: hovered ? colors.accent : colors.textSecondary,
-        transition: 'all 0.2s ease',
-        transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
-        boxShadow: hovered ? '0 4px 12px rgba(0, 0, 0, 0.2)' : 'none',
-        cursor: 'pointer',
+        color: colors.textMuted,
+        transition: 'color 0.15s ease',
+        padding: `${spacing.sm}px 0`,
       }}
+      onMouseEnter={(e) => { e.currentTarget.style.color = colors.accent; }}
+      onMouseLeave={(e) => { e.currentTarget.style.color = colors.textMuted; }}
     >
       {label}
     </Link>

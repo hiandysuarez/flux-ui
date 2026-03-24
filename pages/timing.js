@@ -66,7 +66,7 @@ export default function TimingPage() {
         <div style={{ color: colors.textMuted, padding: 40 }}>Loading timing data...</div>
       ) : !data ? (
         <div style={{ ...cardStyle, textAlign: 'center', color: colors.textMuted, padding: 40 }}>
-          No timing data available
+          No timing data available yet. Timing insights will appear after trades are recorded during market hours.
         </div>
       ) : (
         <>
@@ -214,7 +214,7 @@ function BestHoursCard({ hours, title, color }) {
 
 function HourHeatmap({ data }) {
   if (!data || data.length === 0) {
-    return <div style={{ color: colors.textMuted }}>No hourly data available</div>;
+    return <div style={{ color: colors.textMuted }}>No hourly data available yet. Hourly breakdowns appear after several trades.</div>;
   }
 
   const maxPnl = Math.max(...data.map(d => d.pnl), 0);
@@ -264,7 +264,7 @@ function HourHeatmap({ data }) {
 
 function DayOfWeekChart({ data }) {
   if (!data || data.length === 0) {
-    return <div style={{ color: colors.textMuted }}>No daily data available</div>;
+    return <div style={{ color: colors.textMuted }}>No daily data available yet. Day-of-week analysis appears after several trading sessions.</div>;
   }
 
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
