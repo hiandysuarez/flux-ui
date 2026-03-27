@@ -82,6 +82,11 @@ const SETTING_META = {
     name: 'Max Hold',
     format: (v) => `${v} min`,
   },
+  // Side filter
+  side_filter: {
+    name: 'Side',
+    format: (v) => v ? v : 'Both',
+  },
 };
 
 export default function OptimizePage() {
@@ -972,6 +977,216 @@ export default function OptimizePage() {
                     <MetricCard label="Total Return" value={`${(backtestResults.best_metrics.total_return_pct || 0).toFixed(2)}%`} color={(backtestResults.best_metrics.total_return_pct || 0) >= 0 ? colors.success : colors.error} />
                     <MetricCard label="Profit Factor" value={(backtestResults.best_metrics.profit_factor || 0).toFixed(2)} color={(backtestResults.best_metrics.profit_factor || 0) >= 1 ? colors.success : colors.warning} />
                     <MetricCard label="Max Drawdown" value={`${(backtestResults.best_metrics.max_drawdown_pct || 0).toFixed(2)}%`} color={colors.error} />
+                  </div>
+                )}
+
+                {/* Side Breakdown */}
+                {backtestResults.best_metrics?.side_breakdown && (
+                  <div style={{ marginBottom: spacing.lg }}>
+                    <h4 style={{ fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.semibold, marginBottom: spacing.sm }}>
+                      Side Breakdown:
+                    </h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing.sm }}>
+                      {['buy', 'sell'].map(side => {
+                        const s = backtestResults.best_metrics.side_breakdown[side];
+                        if (!s || s.trades === 0) return null;
+                        const wr = s.trades > 0 ? (s.wins / s.trades * 100) : 0;
+                        const positive = s.pnl >= 0;
+                        return (
+                          <div key={side} style={{
+                            padding: spacing.md,
+                            background: colors.bgSecondary,
+                            borderRadius: borderRadius.md,
+                            border: `1px solid ${positive ? 'rgba(63,185,80,0.3)' : 'rgba(248,81,73,0.3)'}`,
+                          }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs }}>
+                              <span style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: side === 'buy' ? colors.success : colors.error }}>
+                                {side.toUpperCase()}
+                              </span>
+                              <span style={{ fontSize: fontSize.xs, color: colors.textMuted, fontFamily: fontFamily.mono }}>
+                                {s.trades} trades
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                              <span style={{ fontFamily: fontFamily.mono, fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: positive ? colors.success : colors.error }}>
+                                ${s.pnl >= 0 ? '+' : ''}{s.pnl.toFixed(0)}
+                              </span>
+                              <span style={{ fontFamily: fontFamily.mono, fontSize: fontSize.sm, color: wr >= 50 ? colors.success : colors.warning }}>
+                                {wr.toFixed(1)}% WR
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Exit Reason Breakdown */}
+                {backtestResults.best_metrics?.exit_breakdown && backtestResults.best_metrics.exit_breakdown.length > 0 && (
+                  <div style={{ marginBottom: spacing.lg }}>
+                    <h4 style={{ fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.semibold, marginBottom: spacing.sm }}>
+                      Exit Reasons:
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.xs }}>
+                      {backtestResults.best_metrics.exit_breakdown.map(e => {
+                        const barWidth = Math.max(4, e.pct);
+                        const positive = e.pnl >= 0;
+                        return (
+                          <div key={e.reason} style={{
+                            display: 'grid',
+                            gridTemplateColumns: '120px 1fr 70px 70px 80px',
+                            alignItems: 'center',
+                            gap: spacing.sm,
+                            padding: `${spacing.xs} ${spacing.sm}`,
+                            background: colors.bgSecondary,
+                            borderRadius: borderRadius.sm,
+                            border: `1px solid ${colors.border}`,
+                          }}>
+                            <span style={{ fontSize: fontSize.xs, color: colors.textSecondary, fontWeight: fontWeight.medium }}>
+                              {e.reason}
+                            </span>
+                            <div style={{ position: 'relative', height: 6, background: colors.bgTertiary, borderRadius: 3 }}>
+                              <div style={{
+                                position: 'absolute', left: 0, top: 0, height: '100%',
+                                width: `${barWidth}%`,
+                                background: positive ? colors.success : colors.error,
+                                borderRadius: 3,
+                                opacity: 0.7,
+                              }} />
+                            </div>
+                            <span style={{ fontSize: fontSize.xs, fontFamily: fontFamily.mono, color: colors.textMuted, textAlign: 'right' }}>
+                              {e.count} ({e.pct}%)
+                            </span>
+                            <span style={{ fontSize: fontSize.xs, fontFamily: fontFamily.mono, color: (e.win_rate || 0) >= 0.5 ? colors.success : colors.warning, textAlign: 'right' }}>
+                              {(e.win_rate * 100).toFixed(0)}% WR
+                            </span>
+                            <span style={{ fontSize: fontSize.xs, fontFamily: fontFamily.mono, color: positive ? colors.success : colors.error, textAlign: 'right' }}>
+                              ${e.pnl >= 0 ? '+' : ''}{e.pnl.toFixed(0)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Equity Curve */}
+                {backtestResults.best_metrics?.equity_curve && backtestResults.best_metrics.equity_curve.length > 1 && (
+                  <div style={{ marginBottom: spacing.lg }}>
+                    <h4 style={{ fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.semibold, marginBottom: spacing.sm }}>
+                      Equity Curve:
+                    </h4>
+                    <div style={{
+                      background: colors.bgSecondary,
+                      borderRadius: borderRadius.md,
+                      border: `1px solid ${colors.border}`,
+                      padding: spacing.md,
+                      height: 160,
+                      position: 'relative',
+                      overflow: 'hidden',
+                    }}>
+                      {(() => {
+                        const curve = backtestResults.best_metrics.equity_curve;
+                        const values = curve.map(p => p.equity);
+                        const minVal = Math.min(...values);
+                        const maxVal = Math.max(...values);
+                        const range = maxVal - minVal || 1;
+                        const w = 100;
+                        const h = 100;
+                        const points = curve.map((p, i) => {
+                          const x = (i / (curve.length - 1)) * w;
+                          const y = h - ((p.equity - minVal) / range) * h;
+                          return `${x},${y}`;
+                        }).join(' ');
+                        const fillPoints = `0,${h} ${points} ${w},${h}`;
+                        const finalEquity = values[values.length - 1];
+                        const startEquity = values[0];
+                        const positive = finalEquity >= startEquity;
+                        const lineColor = positive ? colors.success : colors.error;
+                        return (
+                          <>
+                            <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: '100%', height: '100%' }}>
+                              <defs>
+                                <linearGradient id="eqFill" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor={lineColor} stopOpacity="0.2" />
+                                  <stop offset="100%" stopColor={lineColor} stopOpacity="0" />
+                                </linearGradient>
+                              </defs>
+                              <polygon points={fillPoints} fill="url(#eqFill)" />
+                              <polyline points={points} fill="none" stroke={lineColor} strokeWidth="0.8" vectorEffect="non-scaling-stroke" />
+                              {/* Starting equity line */}
+                              <line x1="0" y1={h - ((startEquity - minVal) / range) * h} x2={w} y2={h - ((startEquity - minVal) / range) * h}
+                                stroke={colors.textMuted} strokeWidth="0.3" strokeDasharray="2,2" vectorEffect="non-scaling-stroke" />
+                            </svg>
+                            <div style={{ position: 'absolute', top: spacing.xs, left: spacing.sm, fontSize: fontSize.xs, color: colors.textMuted }}>
+                              ${maxVal.toLocaleString()}
+                            </div>
+                            <div style={{ position: 'absolute', bottom: spacing.xs, left: spacing.sm, fontSize: fontSize.xs, color: colors.textMuted }}>
+                              ${minVal.toLocaleString()}
+                            </div>
+                            <div style={{ position: 'absolute', top: spacing.xs, right: spacing.sm, fontSize: fontSize.sm, fontFamily: fontFamily.mono, fontWeight: fontWeight.bold, color: lineColor }}>
+                              ${positive ? '+' : ''}{(finalEquity - startEquity).toFixed(0)}
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
+
+                {/* Per-Ticker Breakdown */}
+                {backtestResults.best_metrics?.ticker_breakdown && backtestResults.best_metrics.ticker_breakdown.length > 0 && (
+                  <div style={{ marginBottom: spacing.lg }}>
+                    <h4 style={{ fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.semibold, marginBottom: spacing.sm }}>
+                      Per-Ticker Performance:
+                    </h4>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                      gap: spacing.xs,
+                    }}>
+                      {backtestResults.best_metrics.ticker_breakdown.map(t => {
+                        const positive = t.pnl >= 0;
+                        const wr = (t.win_rate * 100);
+                        return (
+                          <div key={t.symbol} style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: `${spacing.xs} ${spacing.sm}`,
+                            background: colors.bgSecondary,
+                            borderRadius: borderRadius.sm,
+                            border: `1px solid ${colors.border}`,
+                            borderLeft: `3px solid ${positive ? colors.success : colors.error}`,
+                          }}>
+                            <div>
+                              <span style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.textPrimary }}>
+                                {t.symbol}
+                              </span>
+                              <span style={{ fontSize: fontSize.xs, color: colors.textMuted, marginLeft: spacing.xs }}>
+                                {t.trades}T
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', gap: spacing.md, alignItems: 'center' }}>
+                              <span style={{ fontSize: fontSize.xs, fontFamily: fontFamily.mono, color: wr >= 50 ? colors.success : colors.warning }}>
+                                {wr.toFixed(0)}%
+                              </span>
+                              <span style={{
+                                fontSize: fontSize.sm,
+                                fontFamily: fontFamily.mono,
+                                fontWeight: fontWeight.bold,
+                                color: positive ? colors.success : colors.error,
+                                minWidth: 60,
+                                textAlign: 'right',
+                              }}>
+                                ${t.pnl >= 0 ? '+' : ''}{t.pnl.toFixed(0)}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
 
