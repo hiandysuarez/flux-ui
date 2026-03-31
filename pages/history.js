@@ -34,6 +34,7 @@ export default function HistoryPage() {
   const [win, setWin] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [strategy, setStrategy] = useState('');
 
   async function load() {
     setLoading(true);
@@ -47,6 +48,7 @@ export default function HistoryPage() {
         win: win === '' ? undefined : win === 'true',
         from: dateFrom || undefined,
         to: dateTo || undefined,
+        strategy: strategy || undefined,
       });
       if (res.ok) {
         setTrades(res.trades || []);
@@ -75,13 +77,25 @@ export default function HistoryPage() {
     setWin('');
     setDateFrom('');
     setDateTo('');
+    setStrategy('');
     setPage(1);
     setTimeout(load, 0);
   }
 
+  const STRATEGY_LABELS = {
+    llm_momentum: 'LLM Momentum',
+    fbs: 'Failed Breakout',
+    odf: 'Opening Fade',
+  };
+
+  function strategyLabel(s) {
+    if (!s) return '—';
+    return STRATEGY_LABELS[s] || s;
+  }
+
   function exportCsv() {
     if (!trades.length) return;
-    const headers = ['Date', 'Symbol', 'Side', 'Qty', 'Price', 'P&L', 'P&L %', 'Hold Min', 'Result', 'Exit Reason'];
+    const headers = ['Date', 'Symbol', 'Side', 'Qty', 'Price', 'P&L', 'P&L %', 'Hold Min', 'Result', 'Exit Reason', 'Strategy'];
     const rows = trades.map(t => [
       t.ts ? new Date(t.ts).toLocaleString() : '',
       t.symbol,
@@ -93,6 +107,7 @@ export default function HistoryPage() {
       t.hold_minutes,
       t.win ? 'WIN' : 'LOSS',
       t.exit_reason || '',
+      t.strategy || '',
     ]);
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -172,6 +187,34 @@ export default function HistoryPage() {
           <button onClick={clearFilters} aria-label="Clear all filters" style={buttonStyle}>Clear</button>
           <button onClick={exportCsv} aria-label="Export trades to CSV" style={{ ...buttonStyle, marginLeft: 'auto' }}>Export CSV</button>
         </div>
+        {/* Strategy filter pills */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: 12, color: colors.textMuted, marginRight: 4 }}>Strategy:</span>
+          {[
+            { value: '', label: 'All' },
+            { value: 'llm_momentum', label: 'LLM Momentum' },
+            { value: 'fbs', label: 'Failed Breakout' },
+            { value: 'odf', label: 'Opening Fade' },
+          ].map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => { setStrategy(opt.value); setPage(1); setTimeout(load, 0); }}
+              aria-pressed={strategy === opt.value}
+              style={{
+                padding: '4px 12px',
+                borderRadius: 20,
+                border: `1px solid ${strategy === opt.value ? colors.accent : colors.border}`,
+                background: strategy === opt.value ? colors.accentDark : 'transparent',
+                color: strategy === opt.value ? colors.accent : colors.textSecondary,
+                fontSize: 12,
+                cursor: 'pointer',
+                fontWeight: strategy === opt.value ? 700 : 400,
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {error && (
@@ -194,7 +237,7 @@ export default function HistoryPage() {
       {/* Table */}
       <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
         <div className="table-scroll" style={{ overflowX: 'auto' }} role="region" aria-label="Trade history table" tabIndex={0}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }} aria-describedby="trade-count">
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }} aria-describedby="trade-count">
           <thead>
             <tr style={{ background: colors.bgSecondary }}>
               <Th scope="col">Date</Th>
@@ -206,6 +249,7 @@ export default function HistoryPage() {
               <Th scope="col">P&L %</Th>
               <Th scope="col">Hold</Th>
               <Th scope="col">Result</Th>
+              <Th scope="col">Strategy</Th>
               <Th scope="col">Exit Reason</Th>
             </tr>
           </thead>
@@ -217,7 +261,7 @@ export default function HistoryPage() {
               ))
             ) : trades.length === 0 ? (
               <tr>
-                <td colSpan={10} style={{ padding: 40, textAlign: 'center', color: colors.textMuted }}>
+                <td colSpan={11} style={{ padding: 40, textAlign: 'center', color: colors.textMuted }}>
                   No trades found. The system executes trades during market hours (6:35–10:30 AM PT).
                 </td>
               </tr>
@@ -262,6 +306,27 @@ export default function HistoryPage() {
                     }}>
                       {t.win ? 'WIN' : 'LOSS'}
                     </span>
+                  </Td>
+                  <Td>
+                    {t.strategy ? (
+                      <span style={{
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        background: t.strategy === 'fbs' ? 'rgba(248,81,73,0.12)'
+                                  : t.strategy === 'odf' ? 'rgba(212,165,116,0.12)'
+                                  : 'rgba(63,185,80,0.10)',
+                        color: t.strategy === 'fbs' ? colors.error
+                             : t.strategy === 'odf' ? colors.accent
+                             : colors.success,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {strategyLabel(t.strategy)}
+                      </span>
+                    ) : (
+                      <span style={{ color: colors.textMuted, fontSize: 12 }}>—</span>
+                    )}
                   </Td>
                   <Td style={{ fontSize: 12, color: colors.textMuted }}>
                     {t.exit_reason || '—'}

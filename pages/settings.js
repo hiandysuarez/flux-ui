@@ -763,7 +763,7 @@ export default function SettingsPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <input
                       type="time"
-                      value={get('trading_window_start', '06:35')}
+                      value={get('trading_window_start', '08:30')}
                       onChange={(e) => set('trading_window_start', e.target.value)}
                       style={{
                         ...inputStyle,
@@ -784,7 +784,7 @@ export default function SettingsPage() {
                     />
                   </div>
                 ) : (
-                  <ReadOnlyValue colors={colors} value={`${get('trading_window_start', '06:35')} - ${get('trading_window_end', '10:30')}`} />
+                  <ReadOnlyValue colors={colors} value={`${get('trading_window_start', '08:30')} - ${get('trading_window_end', '10:30')}`} />
                 )}
               </SettingRow>
 
@@ -892,7 +892,7 @@ export default function SettingsPage() {
                 label="Confidence Threshold"
                 description="Minimum AI confidence score (0-100%) required before entering a trade."
                 guardrail={guardrails.conf_threshold}
-                value={get('conf_threshold', 0.60)}
+                value={get('conf_threshold', 0.55)}
                 colors={colors}
                 explanation={SETTING_EXPLANATIONS.conf_threshold}
                 expandedExplanations={expandedExplanations}
@@ -901,7 +901,7 @@ export default function SettingsPage() {
               >
                 {isAdmin ? (
                   <ValidatedNumberInput
-                    value={get('conf_threshold', 0.60)}
+                    value={get('conf_threshold', 0.55)}
                     onChange={(v) => set('conf_threshold', v)}
                     onValidate={(v) => validate('conf_threshold', v, 'conf_threshold')}
                     error={errors['conf_threshold']}
@@ -912,7 +912,7 @@ export default function SettingsPage() {
                     colors={colors}
                   />
                 ) : (
-                  <ReadOnlyPercent colors={colors} value={get('conf_threshold', 0.60)} />
+                  <ReadOnlyPercent colors={colors} value={get('conf_threshold', 0.55)} />
                 )}
               </SettingRow>
 
@@ -993,7 +993,7 @@ export default function SettingsPage() {
                 label="Stop Loss"
                 description="Maximum allowed loss before the position is automatically closed."
                 guardrail={guardrails.stop_loss_pct}
-                value={get('stop_loss_pct', 0.01)}
+                value={get('stop_loss_pct', 0.008)}
                 colors={colors}
                 explanation={SETTING_EXPLANATIONS.stop_loss_pct}
                 expandedExplanations={expandedExplanations}
@@ -1002,7 +1002,7 @@ export default function SettingsPage() {
               >
                 {isAdmin ? (
                   <ValidatedNumberInput
-                    value={get('stop_loss_pct', 0.01)}
+                    value={get('stop_loss_pct', 0.008)}
                     onChange={(v) => set('stop_loss_pct', v)}
                     onValidate={(v) => validate('stop_loss_pct', v, 'stop_loss_pct')}
                     error={errors['stop_loss_pct']}
@@ -1013,7 +1013,7 @@ export default function SettingsPage() {
                     colors={colors}
                   />
                 ) : (
-                  <ReadOnlyPercent colors={colors} value={get('stop_loss_pct', 0.01)} />
+                  <ReadOnlyPercent colors={colors} value={get('stop_loss_pct', 0.008)} />
                 )}
               </SettingRow>
 
@@ -1021,7 +1021,7 @@ export default function SettingsPage() {
                 label="Take Profit"
                 description="Target gain at which the position is automatically closed."
                 guardrail={guardrails.take_profit_pct}
-                value={get('take_profit_pct', 0.02)}
+                value={get('take_profit_pct', 0.015)}
                 colors={colors}
                 explanation={SETTING_EXPLANATIONS.take_profit_pct}
                 expandedExplanations={expandedExplanations}
@@ -1030,7 +1030,7 @@ export default function SettingsPage() {
               >
                 {isAdmin ? (
                   <ValidatedNumberInput
-                    value={get('take_profit_pct', 0.02)}
+                    value={get('take_profit_pct', 0.015)}
                     onChange={(v) => set('take_profit_pct', v)}
                     onValidate={(v) => validate('take_profit_pct', v, 'take_profit_pct')}
                     error={errors['take_profit_pct']}
@@ -1041,14 +1041,14 @@ export default function SettingsPage() {
                     colors={colors}
                   />
                 ) : (
-                  <ReadOnlyPercent colors={colors} value={get('take_profit_pct', 0.02)} />
+                  <ReadOnlyPercent colors={colors} value={get('take_profit_pct', 0.015)} />
                 )}
               </SettingRow>
 
               {/* Risk/Reward visual card */}
               <RiskRewardCard
-                stopLoss={get('stop_loss_pct', 0.01)}
-                takeProfit={get('take_profit_pct', 0.02)}
+                stopLoss={get('stop_loss_pct', 0.008)}
+                takeProfit={get('take_profit_pct', 0.015)}
                 colors={colors}
               />
             </SettingsSection>
@@ -1096,7 +1096,7 @@ export default function SettingsPage() {
                 label="Max Hold Time"
                 description="Positions open longer than this will be automatically closed."
                 guardrail={guardrails.max_hold_min}
-                value={get('max_hold_min', 120)}
+                value={get('max_hold_min', 60)}
                 colors={colors}
                 explanation={SETTING_EXPLANATIONS.max_hold_min}
                 expandedExplanations={expandedExplanations}
@@ -1105,7 +1105,7 @@ export default function SettingsPage() {
               >
                 {isAdmin ? (
                   <ValidatedNumberInput
-                    value={get('max_hold_min', 120)}
+                    value={get('max_hold_min', 60)}
                     onChange={(v) => set('max_hold_min', v)}
                     onValidate={(v) => validate('max_hold_min', v, 'max_hold_min')}
                     error={errors['max_hold_min']}
@@ -1116,7 +1116,7 @@ export default function SettingsPage() {
                     colors={colors}
                   />
                 ) : (
-                  <ReadOnlyValue colors={colors} value={`${get('max_hold_min', 120)} min`} />
+                  <ReadOnlyValue colors={colors} value={`${get('max_hold_min', 60)} min`} />
                 )}
               </SettingRow>
             </SettingsSection>
@@ -1587,7 +1587,7 @@ export default function SettingsPage() {
                 label="Confidence Threshold"
                 description="Minimum AI confidence score required to enter a trade."
                 guardrail={guardrails.llm_conf_threshold || guardrails.conf_threshold}
-                value={get('llm_conf_threshold', get('conf_threshold', 0.60))}
+                value={get('llm_conf_threshold', get('conf_threshold', 0.55))}
                 colors={colors}
                 explanation={SETTING_EXPLANATIONS.conf_threshold}
                 expandedExplanations={expandedExplanations}
@@ -1596,7 +1596,7 @@ export default function SettingsPage() {
               >
                 {isAdmin ? (
                   <ValidatedNumberInput
-                    value={get('llm_conf_threshold', get('conf_threshold', 0.60))}
+                    value={get('llm_conf_threshold', get('conf_threshold', 0.55))}
                     onChange={(v) => set('llm_conf_threshold', v)}
                     onValidate={(v) => validate('llm_conf_threshold', v, 'llm_conf_threshold')}
                     error={errors['llm_conf_threshold']}
@@ -1607,7 +1607,7 @@ export default function SettingsPage() {
                     colors={colors}
                   />
                 ) : (
-                  <ReadOnlyPercent colors={colors} value={get('llm_conf_threshold', get('conf_threshold', 0.60))} />
+                  <ReadOnlyPercent colors={colors} value={get('llm_conf_threshold', get('conf_threshold', 0.55))} />
                 )}
               </SettingRow>
 
@@ -1806,7 +1806,7 @@ export default function SettingsPage() {
                 label="Max Hold Time"
                 description="Maximum time a position can be held before automatic exit."
                 guardrail={guardrails.max_hold_min}
-                value={get('max_hold_min', 120)}
+                value={get('max_hold_min', 60)}
                 colors={colors}
                 explanation={SETTING_EXPLANATIONS.max_hold_min}
                 expandedExplanations={expandedExplanations}
@@ -1815,7 +1815,7 @@ export default function SettingsPage() {
               >
                 {isAdmin ? (
                   <ValidatedNumberInput
-                    value={get('max_hold_min', 120)}
+                    value={get('max_hold_min', 60)}
                     onChange={(v) => set('max_hold_min', v)}
                     onValidate={(v) => validate('max_hold_min', v, 'max_hold_min')}
                     error={errors['max_hold_min']}
@@ -1826,7 +1826,7 @@ export default function SettingsPage() {
                     colors={colors}
                   />
                 ) : (
-                  <ReadOnlyValue colors={colors} value={`${get('max_hold_min', 120)} min`} />
+                  <ReadOnlyValue colors={colors} value={`${get('max_hold_min', 60)} min`} />
                 )}
               </SettingRow>
 
