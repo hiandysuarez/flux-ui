@@ -809,7 +809,7 @@ function TradeRow({ trade, colors }) {
       {/* Direction */}
       <TdCell>
         <span style={{ color: trade.direction === 'LONG' ? colors.success : colors.error, fontWeight: fontWeight.semibold }}>
-          {trade.direction || (trade.side === 'SELL' ? 'LONG' : 'SHORT')}
+          {trade.direction || '—'}
         </span>
       </TdCell>
       {/* Qty */}

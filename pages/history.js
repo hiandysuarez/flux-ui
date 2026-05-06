@@ -95,11 +95,11 @@ export default function HistoryPage() {
 
   function exportCsv() {
     if (!trades.length) return;
-    const headers = ['Date', 'Symbol', 'Side', 'Qty', 'Price', 'P&L', 'P&L %', 'Hold Min', 'Result', 'Exit Reason', 'Strategy'];
+    const headers = ['Date', 'Symbol', 'Direction', 'Qty', 'Price', 'P&L', 'P&L %', 'Hold Min', 'Result', 'Exit Reason', 'Strategy'];
     const rows = trades.map(t => [
       t.ts ? new Date(t.ts).toLocaleString() : '',
       t.symbol,
-      t.side,
+      t.direction || (t.side === 'SELL' ? 'LONG' : 'SHORT'),
       t.qty,
       t.fill_price,
       t.pnl,
@@ -146,11 +146,17 @@ export default function HistoryPage() {
             />
           </div>
           <div>
-            <label htmlFor="filter-side" style={{ display: 'block', fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>Side</label>
-            <select id="filter-side" value={side} onChange={e => setSide(e.target.value)} aria-label="Filter by trade side" style={{ ...inputStyle, width: 100 }}>
+            <label htmlFor="filter-direction" style={{ display: 'block', fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>Direction</label>
+            <select
+              id="filter-direction"
+              value={side}
+              onChange={e => setSide(e.target.value)}
+              aria-label="Filter by trade direction"
+              style={{ ...inputStyle, width: 100 }}
+            >
               <option value="">All</option>
-              <option value="BUY">BUY</option>
-              <option value="SELL">SELL</option>
+              <option value="SELL">LONG</option>
+              <option value="BUY">SHORT</option>
             </select>
           </div>
           <div>
@@ -242,7 +248,7 @@ export default function HistoryPage() {
             <tr style={{ background: colors.bgSecondary }}>
               <Th scope="col">Date</Th>
               <Th scope="col">Symbol</Th>
-              <Th scope="col">Side</Th>
+              <Th scope="col">Direction</Th>
               <Th scope="col">Qty</Th>
               <Th scope="col">Price</Th>
               <Th scope="col">P&L</Th>
@@ -273,8 +279,8 @@ export default function HistoryPage() {
                   </Td>
                   <Td style={{ fontWeight: 700 }}>{t.symbol}</Td>
                   <Td>
-                    <span style={{ color: t.side === 'BUY' ? colors.accent : colors.error }}>
-                      {t.side}
+                    <span style={{ color: t.direction === 'LONG' ? colors.accent : colors.error }}>
+                      {t.direction || (t.side === 'SELL' ? 'LONG' : 'SHORT')}
                     </span>
                   </Td>
                   <Td style={{ fontFamily: 'monospace' }}>{t.qty}</Td>
